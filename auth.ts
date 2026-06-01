@@ -1,18 +1,18 @@
 import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
 
-const ALLOWED_EMAILS = [
-  'bothsides2026@gmail.com',
-  'yeonseong.dev@gmail.com',
-  'skcjfdnd1996@gmail.com',
-  'ihopyhapy29@gmail.com',
-];
+function getAllowedEmails(): string[] {
+  return (process.env.ADMIN_EMAILS ?? '')
+    .split(',')
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   providers: [Google],
   callbacks: {
     signIn({ user }) {
-      return ALLOWED_EMAILS.includes(user.email ?? '');
+      return getAllowedEmails().includes((user.email ?? '').toLowerCase());
     },
   },
   pages: {
