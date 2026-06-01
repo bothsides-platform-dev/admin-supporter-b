@@ -43,7 +43,7 @@ export default async function UsersPage({
               <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">이름</th>
               <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">이메일</th>
               <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">상태</th>
-              <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">소속 워크스페이스</th>
+              <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">소속 워크스페이스 수</th>
               <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">가입일</th>
             </tr>
           </thead>
