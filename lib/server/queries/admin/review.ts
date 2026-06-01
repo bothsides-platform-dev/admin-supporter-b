@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { workspaces, verificationApplications, pgProfiles, bizProfiles } from '@/lib/db/schema';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 import { getWorkspaceAdminUser } from './workspaceOwner';
@@ -15,7 +15,11 @@ export interface PendingApplicationRow {
   reviewedAt: Date | null;
 }
 
-export async function listPendingApplications(db: DB = actionDb()): Promise<PendingApplicationRow[]> {
+export async function listApplications(
+  opts: { status?: string; type?: string } = {},
+  db: DB = actionDb(),
+): Promise<PendingApplicationRow[]> {
+  const { status, type } = opts;
   const rows = await db
     .select({
       applicationId: verificationApplications.id,
@@ -28,7 +32,24 @@ export async function listPendingApplications(db: DB = actionDb()): Promise<Pend
     })
     .from(verificationApplications)
     .innerJoin(workspaces, eq(verificationApplications.workspaceId, workspaces.id))
-    .where(eq(verificationApplications.status, 'submitted'))
+    .where(
+      and(
+        status && status !== 'all'
+          ? eq(
+              verificationApplications.status,
+              status as
+                | 'submitted'
+                | 'review_pending'
+                | 'needs_more_info'
+                | 'approved'
+                | 'rejected',
+            )
+          : undefined,
+        type && type !== 'all'
+          ? eq(verificationApplications.orgType, type)
+          : undefined,
+      ),
+    )
     .orderBy(desc(verificationApplications.submittedAt));
   return rows as PendingApplicationRow[];
 }

@@ -1,13 +1,47 @@
-import { listPendingApplications } from '@/lib/server/queries/admin/review';
+import { listApplications } from '@/lib/server/queries/admin/review';
 import Link from 'next/link';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
 
-export default async function ReviewListPage() {
-  const apps = await listPendingApplications();
+export default async function ReviewListPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; type?: string }>;
+}) {
+  const { status, type } = await searchParams;
+  const apps = await listApplications({ status, type });
 
   return (
     <div className="space-y-4 p-6">
       <h1 className="text-headline-small font-semibold">입점 심사</h1>
+      <form method="GET" className="flex gap-2">
+        <select
+          name="type"
+          defaultValue={type ?? ''}
+          className="rounded border border-outline-variant px-3 py-1.5 text-body-small bg-surface"
+        >
+          <option value="">전체 유형</option>
+          <option value="buyer">구매사</option>
+          <option value="pg">PG사</option>
+        </select>
+        <select
+          name="status"
+          defaultValue={status ?? ''}
+          className="rounded border border-outline-variant px-3 py-1.5 text-body-small bg-surface"
+        >
+          <option value="">전체 상태</option>
+          <option value="submitted">신청</option>
+          <option value="review_pending">심사 중</option>
+          <option value="needs_more_info">추가 정보 요청</option>
+          <option value="approved">승인</option>
+          <option value="rejected">거절</option>
+        </select>
+        <button
+          type="submit"
+          className="rounded bg-primary text-on-primary px-3 py-1.5 text-label-small"
+        >
+          검색
+        </button>
+      </form>
       <div className="rounded border border-outline-variant overflow-hidden">
         <table className="w-full text-body-small">
           <thead>
@@ -31,7 +65,7 @@ export default async function ReviewListPage() {
                 </td>
                 <td className="px-4 py-3">
                   <Link
-                    href={`/admin/review/${app.applicationId}`}
+                    href={`/review/${app.applicationId}`}
                     className="text-primary hover:underline"
                   >
                     {app.workspaceName}
@@ -48,7 +82,7 @@ export default async function ReviewListPage() {
             {apps.length === 0 && (
               <tr>
                 <td colSpan={4} className="px-4 py-8 text-center text-on-surface-variant">
-                  대기 중인 신청이 없습니다.
+                  신청이 없습니다.
                 </td>
               </tr>
             )}
