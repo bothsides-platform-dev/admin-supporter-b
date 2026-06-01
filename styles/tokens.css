@@ -1,0 +1,323 @@
+/* bidit design tokens — Linear design language
+   Accent: #0061A4 (trust blue). Dark-mode signature surface: #08090A.
+   Variable names retained from the prior MD3 system so components need
+   no churn — only the *values* changed. DESIGN.md is the source of
+   truth for these decisions; this file syncs from it (one-way).
+*/
+
+@theme {
+  /* ── Color System — Light Theme ───────────────────── */
+
+  /* Primary — Trust blue accent */
+  --md-sys-color-primary:                  #0061A4;
+  --md-sys-color-on-primary:               #FFFFFF;
+  --md-sys-color-primary-container:        #D1E4FF;
+  --md-sys-color-on-primary-container:     #001D36;
+
+  /* Secondary — Neutral slate */
+  --md-sys-color-secondary:                #6B7079;
+  --md-sys-color-on-secondary:             #FFFFFF;
+  --md-sys-color-secondary-container:      #EDEEF2;
+  --md-sys-color-on-secondary-container:   #2A2D33;
+
+  /* Tertiary — Success green */
+  --md-sys-color-tertiary:                 #1F9D55;
+  --md-sys-color-on-tertiary:              #FFFFFF;
+  --md-sys-color-tertiary-container:       #D6F5E3;
+  --md-sys-color-on-tertiary-container:    #06351C;
+
+  /* Error */
+  --md-sys-color-error:                    #E5484D;
+  --md-sys-color-on-error:                 #FFFFFF;
+  --md-sys-color-error-container:          #FFE5E5;
+  --md-sys-color-on-error-container:       #5A1115;
+
+  /* Warning (amber — pending/waiting states) */
+  --md-sys-color-warning:                  #D9730D;
+  --md-sys-color-on-warning:               #FFFFFF;
+  --md-sys-color-warning-container:        #FCEBD2;
+  --md-sys-color-on-warning-container:     #4A2A05;
+
+  /* Surface container hierarchy — light grays, near-white */
+  --md-sys-color-surface-dim:              #ECEDF0;
+  --md-sys-color-surface:                  #FBFBFC;
+  --md-sys-color-surface-bright:           #FFFFFF;
+  --md-sys-color-surface-container-lowest: #FFFFFF;
+  --md-sys-color-surface-container-low:    #F7F8F9;
+  --md-sys-color-surface-container:        #F1F2F4;
+  --md-sys-color-surface-container-high:   #EBECEF;
+  --md-sys-color-surface-container-highest:#E4E5E9;
+
+  --md-sys-color-on-surface:               #1F2023;
+  --md-sys-color-on-surface-variant:       #6B7079;
+  --md-sys-color-outline:                  #D4D6DC;
+  --md-sys-color-outline-variant:          #E8E9EC;
+
+  /* Background */
+  --md-sys-color-background:               #FFFFFF;
+  --md-sys-color-on-background:            #1F2023;
+
+  /* Shell surfaces — 프레임(가라앉음) vs 메인 패널(떠 있음).
+     테마별로 다른 *토큰*을 가리킨다 (명도 방향이 라이트/다크 반대이므로
+     단일 토큰으로는 "메인이 항상 떠 보이게"를 만들 수 없음). */
+  --shell-chrome-bg: var(--md-sys-color-surface-container-low);
+  --shell-main-bg:   var(--md-sys-color-background);
+
+  /* Inverse (tooltips, snackbars) */
+  --md-sys-color-inverse-surface:          #1F2023;
+  --md-sys-color-inverse-on-surface:       #F7F8F8;
+  --md-sys-color-inverse-primary:          #9ECAFF;
+
+  /* Utility */
+  --md-sys-color-shadow:                   #000000;
+  --md-sys-color-scrim:                    #000000;
+  --md-sys-color-surface-tint:             #0061A4;
+
+  /* ── Typography ─────────────────────────────────── */
+  --font-sans: 'Pretendard Variable', system-ui, -apple-system, sans-serif;
+  --font-mono: 'Pretendard Variable', system-ui, -apple-system, sans-serif;
+
+  /* Compact, slightly negative tracking. Headings semibold (Linear "Display"). */
+
+  /* Display Large  44px */
+  --md-typescale-display-large-size:        2.75rem;
+  --md-typescale-display-large-weight:      600;
+  --md-typescale-display-large-line-height: 1.1;
+  --md-typescale-display-large-tracking:    -0.025em;
+
+  /* Display Medium 36px */
+  --md-typescale-display-medium-size:        2.25rem;
+  --md-typescale-display-medium-weight:      600;
+  --md-typescale-display-medium-line-height: 1.15;
+  --md-typescale-display-medium-tracking:    -0.022em;
+
+  /* Display Small  28px */
+  --md-typescale-display-small-size:        1.75rem;
+  --md-typescale-display-small-weight:      600;
+  --md-typescale-display-small-line-height: 1.2;
+  --md-typescale-display-small-tracking:    -0.02em;
+
+  /* Headline Large  28px */
+  --md-typescale-headline-large-size:        1.75rem;
+  --md-typescale-headline-large-weight:      600;
+  --md-typescale-headline-large-line-height: 1.25;
+  --md-typescale-headline-large-tracking:    -0.022em;
+
+  /* Headline Medium 24px */
+  --md-typescale-headline-medium-size:        1.5rem;
+  --md-typescale-headline-medium-weight:      600;
+  --md-typescale-headline-medium-line-height: 1.3;
+  --md-typescale-headline-medium-tracking:    -0.02em;
+
+  /* Headline Small  20px */
+  --md-typescale-headline-small-size:        1.25rem;
+  --md-typescale-headline-small-weight:      600;
+  --md-typescale-headline-small-line-height: 1.33;
+  --md-typescale-headline-small-tracking:    -0.018em;
+
+  /* Title Large  20px */
+  --md-typescale-title-large-size:        1.25rem;
+  --md-typescale-title-large-weight:      600;
+  --md-typescale-title-large-line-height: 1.3;
+  --md-typescale-title-large-tracking:    -0.018em;
+
+  /* Title Medium 15px/600 */
+  --md-typescale-title-medium-size:        0.9375rem;
+  --md-typescale-title-medium-weight:      600;
+  --md-typescale-title-medium-line-height: 1.4;
+  --md-typescale-title-medium-tracking:    -0.011em;
+
+  /* Title Small  13px/600 */
+  --md-typescale-title-small-size:        0.8125rem;
+  --md-typescale-title-small-weight:      600;
+  --md-typescale-title-small-line-height: 1.4;
+  --md-typescale-title-small-tracking:    -0.006em;
+
+  /* Body Large  14px (app baseline) */
+  --md-typescale-body-large-size:        0.875rem;
+  --md-typescale-body-large-weight:      400;
+  --md-typescale-body-large-line-height: 1.5;
+  --md-typescale-body-large-tracking:    -0.011em;
+
+  /* Body Medium 13px */
+  --md-typescale-body-medium-size:        0.8125rem;
+  --md-typescale-body-medium-weight:      400;
+  --md-typescale-body-medium-line-height: 1.5;
+  --md-typescale-body-medium-tracking:    -0.006em;
+
+  /* Body Small  12px */
+  --md-typescale-body-small-size:        0.75rem;
+  --md-typescale-body-small-weight:      400;
+  --md-typescale-body-small-line-height: 1.4;
+  --md-typescale-body-small-tracking:    0;
+
+  /* Label Large  13px/500 */
+  --md-typescale-label-large-size:        0.8125rem;
+  --md-typescale-label-large-weight:      500;
+  --md-typescale-label-large-line-height: 1.4;
+  --md-typescale-label-large-tracking:    -0.006em;
+
+  /* Label Medium 12px/500 */
+  --md-typescale-label-medium-size:        0.75rem;
+  --md-typescale-label-medium-weight:      500;
+  --md-typescale-label-medium-line-height: 1.33;
+  --md-typescale-label-medium-tracking:    0;
+
+  /* Label Small  11px/500 */
+  --md-typescale-label-small-size:        0.6875rem;
+  --md-typescale-label-small-weight:      500;
+  --md-typescale-label-small-line-height: 1.45;
+  --md-typescale-label-small-tracking:    0.01em;
+
+  /* ── Shape Scale — 6px is the dominant interactive radius ── */
+  --md-sys-shape-none:         0px;
+  --md-sys-shape-extra-small:  4px;
+  --md-sys-shape-small:        6px;
+  --md-sys-shape-medium:       8px;
+  --md-sys-shape-large:        10px;
+  --md-sys-shape-extra-large:  12px;
+  --md-sys-shape-full:         9999px;
+
+  /* ── Elevation — borders carry structure; shadows are minimal ── */
+  --md-sys-elevation-0: none;
+  --md-sys-elevation-1:
+    0px 1px 2px 0px rgba(0,0,0,0.04),
+    0px 1px 3px 0px rgba(0,0,0,0.02);
+  --md-sys-elevation-2:
+    0px 2px 8px 0px rgba(0,0,0,0.06);
+  --md-sys-elevation-3:
+    0px 4px 16px 0px rgba(0,0,0,0.08);
+  --md-sys-elevation-4:
+    0px 8px 24px 0px rgba(0,0,0,0.10);
+  --md-sys-elevation-5:
+    0px 8px 32px 0px rgba(0,0,0,0.12);
+
+  /* ── Motion — fast; cause→effect under ~100ms ──────── */
+  --md-sys-motion-easing-standard:              cubic-bezier(0.4, 0, 0.2, 1);
+  --md-sys-motion-easing-emphasized-decelerate: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --md-sys-motion-easing-emphasized-accelerate: cubic-bezier(0.3, 0, 0.8, 0.15);
+
+  --md-sys-motion-duration-short-4:   100ms;
+  --md-sys-motion-duration-medium-2:  250ms;
+  --md-sys-motion-duration-medium-4:  350ms;
+  --md-sys-motion-duration-long-2:    450ms;
+
+  /* ── State Layer Opacity ─────────────────────────── */
+  --md-sys-state-hover-opacity:    0.06;
+  --md-sys-state-pressed-opacity:  0.10;
+  --md-sys-state-focused-opacity:  0.12;
+
+  /* ── Shell Layout — single Linear sidebar + content ── */
+  --shell-sidebar: 200px;
+  --shell-topbar:  48px;
+  --shell-subnav:  200px;
+  --content-max:   1280px;
+
+  /* backward-compat aliases */
+  --shell-rail:    var(--shell-sidebar);
+
+  /* Sidebar는 chrome 프레임 색을 따른다 (사이드바·헤더·프레임 통일) */
+  --shell-rail-bg: var(--shell-chrome-bg);
+  --shell-rail-fg: var(--md-sys-color-on-surface);
+
+  /* ── Spacing — backward-compat aliases (landing/* components) ─── */
+  --s-1:   4px;
+  --s-2:   8px;
+  --s-3:   12px;
+  --s-4:   16px;
+  --s-5:   20px;
+  --s-6:   24px;
+  --s-7:   32px;
+  --s-8:   40px;
+  --s-9:   56px;
+  --s-10:  80px;
+  --s-11:  120px;
+
+  /* Workspace avatar — 라이트 팔레트 */
+  --workspace-avatar-blue-bg:   #D8EAFF;  --workspace-avatar-blue-fg:   #003258;
+  --workspace-avatar-purple-bg: #E8E0FF;  --workspace-avatar-purple-fg: #2A1255;
+  --workspace-avatar-teal-bg:   #C8F5E8;  --workspace-avatar-teal-fg:   #0A3025;
+  --workspace-avatar-orange-bg: #FFE8CC;  --workspace-avatar-orange-fg: #4A2A00;
+  --workspace-avatar-pink-bg:   #FFD5EE;  --workspace-avatar-pink-fg:   #4A0825;
+  --workspace-avatar-slate-bg:  #DDE3EF;  --workspace-avatar-slate-fg:  #1C2030;
+}
+
+/* ── Dark Theme — Linear signature near-black ───────────── */
+.dark {
+  /* Primary — lighter trust blue for contrast on dark */
+  --md-sys-color-primary:                  #9ECAFF;
+  --md-sys-color-on-primary:               #003258;
+  --md-sys-color-primary-container:        #004A77;
+  --md-sys-color-on-primary-container:     #D1E4FF;
+
+  /* Secondary */
+  --md-sys-color-secondary:                #C0C4CC;
+  --md-sys-color-on-secondary:             #2A2D33;
+  --md-sys-color-secondary-container:      #26282C;
+  --md-sys-color-on-secondary-container:   #E4E5E9;
+
+  /* Tertiary */
+  --md-sys-color-tertiary:                 #3FBF73;
+  --md-sys-color-on-tertiary:              #00351B;
+  --md-sys-color-tertiary-container:       #134F30;
+  --md-sys-color-on-tertiary-container:    #B8F0CF;
+
+  /* Error */
+  --md-sys-color-error:                    #FF6166;
+  --md-sys-color-on-error:                 #5A1115;
+  --md-sys-color-error-container:          #7A1D22;
+  --md-sys-color-on-error-container:       #FFD9DA;
+
+  /* Warning */
+  --md-sys-color-warning:                  #E8983D;
+  --md-sys-color-on-warning:               #3A2200;
+  --md-sys-color-warning-container:        #5A3A0A;
+  --md-sys-color-on-warning-container:     #FCE0BC;
+
+  /* Surface container hierarchy — layered near-blacks */
+  --md-sys-color-surface-dim:              #08090A;
+  --md-sys-color-surface:                  #0F1011;
+  --md-sys-color-surface-bright:           #202123;
+  --md-sys-color-surface-container-lowest: #08090A;
+  --md-sys-color-surface-container-low:    #141517;
+  --md-sys-color-surface-container:        #161718;
+  --md-sys-color-surface-container-high:   #1C1D1F;
+  --md-sys-color-surface-container-highest:#202123;
+
+  --md-sys-color-on-surface:               #F7F8F8;
+  --md-sys-color-on-surface-variant:       #8A8F98;
+  --md-sys-color-outline:                  #2E3033;
+  --md-sys-color-outline-variant:          #23252A;
+
+  /* Background — canvas */
+  --md-sys-color-background:               #08090A;
+  --md-sys-color-on-background:            #F7F8F8;
+
+  /* Shell surfaces — 다크에선 프레임이 near-black(가장 가라앉음),
+     메인 패널이 한 톤 밝은 surface(떠 있음)로 역전된다. */
+  --shell-chrome-bg: var(--md-sys-color-background);
+  --shell-main-bg:   var(--md-sys-color-surface);
+
+  /* Inverse — flips relative to light */
+  --md-sys-color-inverse-surface:          #F7F8F8;
+  --md-sys-color-inverse-on-surface:       #1F2023;
+  --md-sys-color-inverse-primary:          #0061A4;
+
+  /* Utility */
+  --md-sys-color-surface-tint:             #9ECAFF;
+
+  /* Elevation — deeper shadows on dark for floating surfaces */
+  --md-sys-elevation-1: 0px 1px 2px 0px rgba(0,0,0,0.40);
+  --md-sys-elevation-2: 0px 2px 8px 0px rgba(0,0,0,0.50);
+  --md-sys-elevation-3: 0px 4px 16px 0px rgba(0,0,0,0.55);
+  --md-sys-elevation-4: 0px 8px 24px 0px rgba(0,0,0,0.60);
+  --md-sys-elevation-5: 0px 8px 32px 0px rgba(0,0,0,0.60);
+
+  /* Workspace avatar — 다크 팔레트 */
+  --workspace-avatar-blue-bg:   #162236;  --workspace-avatar-blue-fg:   #6aadff;
+  --workspace-avatar-purple-bg: #231a45;  --workspace-avatar-purple-fg: #b59fff;
+  --workspace-avatar-teal-bg:   #0e2e25;  --workspace-avatar-teal-fg:   #4fd1a8;
+  --workspace-avatar-orange-bg: #2a1a10;  --workspace-avatar-orange-fg: #f5a05a;
+  --workspace-avatar-pink-bg:   #2e1029;  --workspace-avatar-pink-fg:   #f07bb8;
+  --workspace-avatar-slate-bg:  #1c2030;  --workspace-avatar-slate-fg:  #8aabcf;
+}
