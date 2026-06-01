@@ -15,30 +15,32 @@ export async function removeWorkspaceMemberAction(
   const session = await requireAdminSession();
   const db = actionDb();
 
-  const [memberRow] = await db
-    .select({ role: workspaceMembers.role })
-    .from(workspaceMembers)
-    .where(
-      and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, userId)),
-    );
-
-  if (!memberRow) return { ok: false, error: 'MEMBER_NOT_FOUND' };
-
-  if (memberRow.role === 'admin') {
-    const [result] = await db
-      .select({ adminCount: sql<number>`cast(count(*) as int)` })
-      .from(workspaceMembers)
-      .where(
-        and(
-          eq(workspaceMembers.workspaceId, workspaceId),
-          eq(workspaceMembers.role, 'admin'),
-        ),
-      );
-    if ((result?.adminCount ?? 0) <= 1) return { ok: false, error: 'LAST_ADMIN' };
-  }
+  let error: string | null = null;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await db.transaction(async (tx: any) => {
+    const [memberRow] = await tx
+      .select({ role: workspaceMembers.role })
+      .from(workspaceMembers)
+      .where(
+        and(eq(workspaceMembers.workspaceId, workspaceId), eq(workspaceMembers.userId, userId)),
+      );
+
+    if (!memberRow) { error = 'MEMBER_NOT_FOUND'; return; }
+
+    if (memberRow.role === 'admin') {
+      const [result] = await tx
+        .select({ adminCount: sql<number>`cast(count(*) as int)` })
+        .from(workspaceMembers)
+        .where(
+          and(
+            eq(workspaceMembers.workspaceId, workspaceId),
+            eq(workspaceMembers.role, 'admin'),
+          ),
+        );
+      if ((result?.adminCount ?? 0) <= 1) { error = 'LAST_ADMIN'; return; }
+    }
+
     await tx
       .delete(workspaceMembers)
       .where(
@@ -52,6 +54,8 @@ export async function removeWorkspaceMemberAction(
       payloadJson: { userId },
     });
   });
+
+  if (error) return { ok: false, error };
 
   revalidatePath(`/buyers/${workspaceId}`);
   revalidatePath(`/sellers/${workspaceId}`);
