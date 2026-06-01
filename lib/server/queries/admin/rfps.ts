@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, ilike, or } from 'drizzle-orm';
 import { rfps, workspaces, bids } from '@/lib/db/schema';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 
@@ -20,7 +20,10 @@ export type BidDetailRow = {
   submittedAt: Date;
 };
 
-export async function listAllRfps(): Promise<RfpListRow[]> {
+export async function listAllRfps(
+  opts: { q?: string; status?: string } = {},
+): Promise<RfpListRow[]> {
+  const { q, status } = opts;
   return actionDb()
     .select({
       id: rfps.id,
@@ -33,6 +36,14 @@ export async function listAllRfps(): Promise<RfpListRow[]> {
     })
     .from(rfps)
     .innerJoin(workspaces, eq(rfps.buyerWsId, workspaces.id))
+    .where(
+      and(
+        q ? or(ilike(rfps.title, `%${q}%`), ilike(rfps.code, `%${q}%`)) : undefined,
+        status && status !== 'all'
+          ? eq(rfps.status, status as 'draft' | 'sent' | 'closed' | 'cancelled' | 'awarded')
+          : undefined,
+      ),
+    )
     .orderBy(desc(rfps.createdAt)) as Promise<RfpListRow[]>;
 }
 
