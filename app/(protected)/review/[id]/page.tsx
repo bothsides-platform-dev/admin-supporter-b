@@ -22,6 +22,9 @@ export default async function ReviewDetailPage({
 
   const { application, workspace, pgProfile, bizProfile, ownerContact } = detail;
 
+  const canAct =
+    application.status === 'submitted' || application.status === 'needs_more_info';
+
   async function approveAction(formData: FormData) {
     'use server';
     const gradeRaw = formData.get('grade');
@@ -73,6 +76,41 @@ export default async function ReviewDetailPage({
           </div>
         </div>
       </section>
+
+      {/* 처리 이력 — needs_more_info 또는 rejected 상태일 때 표시 */}
+      {(application.status === 'needs_more_info' || application.status === 'rejected') && (
+        <section className="rounded border border-outline-variant">
+          <div className="border-b border-outline-variant px-4 py-2 bg-surface-container-low">
+            <h2 className="text-title-small font-medium">처리 이력</h2>
+          </div>
+          <div className="px-4 py-3 grid grid-cols-2 gap-3 text-body-small">
+            <div>
+              <span className="text-on-surface-variant">처리 상태</span>
+              <span className="ml-3"><AdminStatusBadge status={application.status} /></span>
+            </div>
+            {application.reviewedAt && (
+              <div>
+                <span className="text-on-surface-variant">처리일</span>
+                <span className="ml-3 md-numeric">
+                  {new Date(application.reviewedAt).toLocaleString('ko-KR')}
+                </span>
+              </div>
+            )}
+            {application.reviewedBy && (
+              <div className="col-span-2">
+                <span className="text-on-surface-variant">처리자</span>
+                <span className="ml-3">{application.reviewedBy}</span>
+              </div>
+            )}
+            {application.reason && (
+              <div className="col-span-2">
+                <span className="text-on-surface-variant">사유</span>
+                <span className="ml-3">{application.reason}</span>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       {/* Buyer biz profile (구매사 only) */}
       {application.orgType === 'buyer' && bizProfile && (
@@ -148,81 +186,91 @@ export default async function ReviewDetailPage({
         </section>
       )}
 
-      {/* Actions */}
-      {application.status === 'submitted' && (
+      {/* Actions — submitted 또는 needs_more_info 상태에서만 표시 */}
+      {canAct && (
         <section className="space-y-4">
           <h2 className="text-title-small font-medium">심사 처리</h2>
 
-          {/* Approve */}
-          <form action={approveAction} className="space-y-3">
-            {/* buyer 승인 시 가맹점 등급 선택 필수 */}
-            {application.orgType === 'buyer' && (
-              <div className="space-y-1">
-                <label
-                  htmlFor="grade-select"
-                  className="block text-body-small text-on-surface-variant"
-                >
-                  가맹점 등급 <span className="text-error">*</span>
-                </label>
-                <select
-                  id="grade-select"
-                  name="grade"
-                  required
-                  defaultValue={bizProfile?.grade ?? ''}
-                  className="rounded border border-outline px-3 py-2 text-body-small bg-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                >
-                  <option value="" disabled>등급 선택</option>
-                  {ALL_GRADES.map((g) => (
-                    <option key={g} value={g}>
-                      {GRADE_LABELS[g]}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-            <button
-              type="submit"
-              className="rounded bg-primary px-4 py-2 text-label-large text-on-primary hover:bg-primary/90"
-            >
-              승인
-            </button>
-          </form>
+          {/* 승인 카드 */}
+          <div className="rounded border border-primary p-4 space-y-3">
+            <h3 className="text-body-medium font-medium text-primary">승인</h3>
+            <form action={approveAction} className="space-y-3">
+              {application.orgType === 'buyer' && (
+                <div className="space-y-1">
+                  <label
+                    htmlFor="grade-select"
+                    className="block text-body-small text-on-surface-variant"
+                  >
+                    가맹점 등급 <span className="text-error">*</span>
+                  </label>
+                  <select
+                    id="grade-select"
+                    name="grade"
+                    required
+                    defaultValue={bizProfile?.grade ?? ''}
+                    className="rounded border border-outline px-3 py-2 text-body-small bg-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="" disabled>등급 선택</option>
+                    {ALL_GRADES.map((g) => (
+                      <option key={g} value={g}>
+                        {GRADE_LABELS[g]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <button
+                type="submit"
+                className="rounded bg-primary px-4 py-2 text-label-large text-on-primary hover:bg-primary/90"
+              >
+                승인
+              </button>
+            </form>
+          </div>
 
-          {/* Reject */}
-          <form action={rejectAction} className="space-y-2">
-            <label className="block text-body-small text-on-surface-variant">반려 사유</label>
-            <textarea
-              name="reason"
-              rows={3}
-              required
-              placeholder="반려 사유를 입력하세요"
-              className="w-full rounded border border-outline px-3 py-2 text-body-small bg-surface resize-none focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            <button
-              type="submit"
-              className="rounded border border-error px-4 py-2 text-label-large text-error hover:bg-error-container"
-            >
-              반려
-            </button>
-          </form>
+          {/* 반려 카드 */}
+          <div className="rounded border border-error p-4 space-y-3">
+            <h3 className="text-body-medium font-medium text-error">반려</h3>
+            <form action={rejectAction} className="space-y-2">
+              <label className="block text-body-small text-on-surface-variant">반려 사유</label>
+              <textarea
+                name="reason"
+                rows={3}
+                required
+                placeholder="반려 사유를 입력하세요"
+                className="w-full rounded border border-outline px-3 py-2 text-body-small bg-surface resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <button
+                type="submit"
+                className="rounded border border-error px-4 py-2 text-label-large text-error hover:bg-error-container"
+              >
+                반려
+              </button>
+            </form>
+          </div>
 
-          {/* Request More Info */}
-          <form action={moreInfoAction} className="space-y-2">
-            <label className="block text-body-small text-on-surface-variant">보완 요청 사유</label>
-            <textarea
-              name="reason"
-              rows={3}
-              required
-              placeholder="요청 사유를 입력하세요"
-              className="w-full rounded border border-outline px-3 py-2 text-body-small bg-surface resize-none focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-            <button
-              type="submit"
-              className="rounded border border-outline px-4 py-2 text-label-large text-on-surface hover:bg-surface-container-low"
-            >
-              보완 요청
-            </button>
-          </form>
+          {/* 보완 요청 / 재요청 카드 */}
+          <div className="rounded border border-outline-variant p-4 space-y-3">
+            <h3 className="text-body-medium font-medium text-on-surface">
+              {application.status === 'needs_more_info' ? '재요청' : '보완 요청'}
+            </h3>
+            <form action={moreInfoAction} className="space-y-2">
+              <label className="block text-body-small text-on-surface-variant">요청 사유</label>
+              <textarea
+                name="reason"
+                rows={3}
+                required
+                placeholder="요청 사유를 입력하세요"
+                className="w-full rounded border border-outline px-3 py-2 text-body-small bg-surface resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <button
+                type="submit"
+                className="rounded border border-outline px-4 py-2 text-label-large text-on-surface hover:bg-surface-container-low"
+              >
+                {application.status === 'needs_more_info' ? '재요청' : '보완 요청'}
+              </button>
+            </form>
+          </div>
         </section>
       )}
     </div>
