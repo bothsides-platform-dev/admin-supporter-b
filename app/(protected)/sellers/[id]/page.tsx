@@ -1,11 +1,20 @@
 import { notFound } from 'next/navigation';
 import { getSellerDetail } from '@/lib/server/queries/admin/sellers';
+import { getWorkspaceMembers } from '@/lib/server/queries/admin/workspaceMembers';
+import { removeWorkspaceMemberAction } from '@/lib/server/actions/admin/removeWorkspaceMemberAction';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
 import Link from 'next/link';
 
-export default async function SellerDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function SellerDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const { id } = await params;
-  const detail = await getSellerDetail(id);
+  const [detail, members] = await Promise.all([
+    getSellerDetail(id),
+    getWorkspaceMembers(id),
+  ]);
   if (!detail) notFound();
 
   const { workspace, pgProfile, bids, ownerContact } = detail;
@@ -27,12 +36,15 @@ export default async function SellerDetailPage({ params }: { params: Promise<{ i
                 <span className="text-body-small md-numeric">{pgProfile.bizNo}</span>
               </div>
             )}
-            {pgProfile.serviceScope?.paymentMethods && pgProfile.serviceScope.paymentMethods.length > 0 && (
-              <div className="px-4 py-3 flex gap-4">
-                <span className="text-label-small text-on-surface-variant w-32 shrink-0">결제수단</span>
-                <span className="text-body-small">{pgProfile.serviceScope.paymentMethods.join(', ')}</span>
-              </div>
-            )}
+            {pgProfile.serviceScope?.paymentMethods &&
+              pgProfile.serviceScope.paymentMethods.length > 0 && (
+                <div className="px-4 py-3 flex gap-4">
+                  <span className="text-label-small text-on-surface-variant w-32 shrink-0">결제수단</span>
+                  <span className="text-body-small">
+                    {pgProfile.serviceScope.paymentMethods.join(', ')}
+                  </span>
+                </div>
+              )}
             {pgProfile.serviceScope?.volumeRange && (
               <div className="px-4 py-3 flex gap-4">
                 <span className="text-label-small text-on-surface-variant w-32 shrink-0">거래량 규모</span>
@@ -45,7 +57,9 @@ export default async function SellerDetailPage({ params }: { params: Promise<{ i
                 <span className="text-body-small">
                   {ownerContact.name}
                   <span className="text-on-surface-variant ml-2">({ownerContact.email})</span>
-                  {ownerContact.phone && <span className="ml-2 md-numeric">{ownerContact.phone}</span>}
+                  {ownerContact.phone && (
+                    <span className="ml-2 md-numeric">{ownerContact.phone}</span>
+                  )}
                 </span>
               </div>
             )}
@@ -60,6 +74,65 @@ export default async function SellerDetailPage({ params }: { params: Promise<{ i
       )}
 
       <section>
+        <h2 className="text-title-small font-semibold mb-3">멤버 ({members.length}명)</h2>
+        <div className="rounded border border-outline-variant overflow-hidden">
+          <table className="w-full text-body-small">
+            <thead>
+              <tr className="border-b border-outline-variant bg-surface-container-low">
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">이름</th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">이메일</th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">역할</th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">가입일</th>
+                <th className="px-4 py-2"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((m) => {
+                async function doRemove() {
+                  'use server';
+                  await removeWorkspaceMemberAction(workspace.id, m.userId);
+                }
+                return (
+                  <tr key={m.userId} className="border-b border-outline-variant last:border-0">
+                    <td className="px-4 py-3">
+                      <Link href={`/users/${m.userId}`} className="text-primary hover:underline">
+                        {m.name}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-on-surface-variant">{m.email}</td>
+                    <td className="px-4 py-3 text-label-small">
+                      {m.role === 'admin' ? '관리자' : '멤버'}
+                    </td>
+                    <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant">
+                      {new Date(m.joinedAt).toLocaleDateString('ko-KR')}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <form action={doRemove}>
+                        <button
+                          type="submit"
+                          disabled={m.isLastAdmin}
+                          className="text-label-small text-error hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          제외
+                        </button>
+                      </form>
+                    </td>
+                  </tr>
+                );
+              })}
+              {members.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-6 text-center text-on-surface-variant">
+                    멤버 없음
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section>
         <h2 className="text-title-small font-semibold mb-3">최근 입찰 ({bids.length}건)</h2>
         <div className="rounded border border-outline-variant overflow-hidden">
           <table className="w-full text-body-small">
@@ -72,9 +145,15 @@ export default async function SellerDetailPage({ params }: { params: Promise<{ i
             </thead>
             <tbody>
               {bids.map((bid) => (
-                <tr key={bid.id} className="border-b border-outline-variant last:border-0 hover:bg-surface-container-low">
+                <tr
+                  key={bid.id}
+                  className="border-b border-outline-variant last:border-0 hover:bg-surface-container-low"
+                >
                   <td className="px-4 py-3">
-                    <Link href={`/admin/rfps/${bid.rfpId}`} className="text-primary hover:underline md-numeric text-label-small">
+                    <Link
+                      href={`/rfps/${bid.rfpId}`}
+                      className="text-primary hover:underline md-numeric text-label-small"
+                    >
                       {bid.rfpId.slice(0, 8)}…
                     </Link>
                   </td>
@@ -87,7 +166,11 @@ export default async function SellerDetailPage({ params }: { params: Promise<{ i
                 </tr>
               ))}
               {bids.length === 0 && (
-                <tr><td colSpan={3} className="px-4 py-6 text-center text-on-surface-variant">입찰 없음</td></tr>
+                <tr>
+                  <td colSpan={3} className="px-4 py-6 text-center text-on-surface-variant">
+                    입찰 없음
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
