@@ -8,6 +8,7 @@
   --color-background: var(--md-sys-color-background);
   --color-foreground: var(--md-sys-color-on-background);
   --color-primary: var(--md-sys-color-primary);
+  --color-on-primary: var(--md-sys-color-on-primary);
   --color-primary-foreground: var(--md-sys-color-on-primary);
   --color-border: var(--md-sys-color-outline-variant);
   --color-surface: var(--md-sys-color-surface);
@@ -17,6 +18,12 @@
   --color-on-surface-variant: var(--md-sys-color-on-surface-variant);
   --color-outline: var(--md-sys-color-outline);
   --color-outline-variant: var(--md-sys-color-outline-variant);
+  --color-primary-container: var(--md-sys-color-primary-container);
+  --color-on-primary-container: var(--md-sys-color-on-primary-container);
+  --color-secondary-container: var(--md-sys-color-secondary-container);
+  --color-on-secondary-container: var(--md-sys-color-on-secondary-container);
+  --color-surface-container-low: var(--md-sys-color-surface-container-low);
+  --color-surface-container-highest: var(--md-sys-color-surface-container-highest);
   --color-error: var(--md-sys-color-error);
   --color-warning: var(--md-sys-color-warning);
   --color-tertiary: var(--md-sys-color-tertiary);
@@ -24,7 +31,7 @@
 }
 
 :root {
-  color-scheme: light;
+  color-scheme: light dark;
 }
 
 @layer base {
