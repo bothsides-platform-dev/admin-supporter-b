@@ -3,6 +3,7 @@ import { getSellerDetail } from '@/lib/server/queries/admin/sellers';
 import { getWorkspaceMembers } from '@/lib/server/queries/admin/workspaceMembers';
 import { removeWorkspaceMemberAction } from '@/lib/server/actions/admin/removeWorkspaceMemberAction';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
+import { ConfirmButton } from '@/components/ConfirmButton';
 import Link from 'next/link';
 
 export default async function SellerDetailPage({
@@ -21,9 +22,14 @@ export default async function SellerDetailPage({
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center gap-3">
-        <h1 className="text-headline-small font-semibold">{workspace.name}</h1>
-        <AdminStatusBadge status={workspace.status} />
+      <div className="space-y-1">
+        <Link href="/sellers" className="text-on-surface-variant hover:text-on-surface text-body-small">
+          ← 목록
+        </Link>
+        <div className="flex items-center gap-3">
+          <h1 className="text-headline-small font-semibold">{workspace.name}</h1>
+          <AdminStatusBadge status={workspace.status} />
+        </div>
       </div>
 
       {pgProfile && (
@@ -107,15 +113,15 @@ export default async function SellerDetailPage({
                       {new Date(m.joinedAt).toLocaleDateString('ko-KR')}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <form action={doRemove}>
-                        <button
-                          type="submit"
-                          disabled={m.isLastAdmin}
-                          className="text-label-small text-error hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          제외
-                        </button>
-                      </form>
+                      <ConfirmButton
+                        action={doRemove}
+                        label="제외"
+                        confirmMessage="이 멤버를 제외하시겠습니까?"
+                        confirmLabel="제외"
+                        labelClassName="text-label-small text-error hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
+                        confirmClassName="text-label-small text-error hover:underline"
+                        disabled={m.isLastAdmin}
+                      />
                     </td>
                   </tr>
                 );
@@ -138,7 +144,7 @@ export default async function SellerDetailPage({
           <table className="w-full text-body-small">
             <thead>
               <tr className="border-b border-outline-variant bg-surface-container-low">
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">RFP ID</th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">RFP</th>
                 <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">상태</th>
                 <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">제출일</th>
               </tr>
@@ -152,9 +158,13 @@ export default async function SellerDetailPage({
                   <td className="px-4 py-3">
                     <Link
                       href={`/rfps/${bid.rfpId}`}
-                      className="text-primary hover:underline md-numeric text-label-small"
+                      className="text-primary hover:underline text-label-small"
                     >
-                      {bid.rfpId.slice(0, 8)}…
+                      {bid.rfpCode ? (
+                        <><span className="md-numeric">{bid.rfpCode}</span>{bid.rfpTitle && <span className="text-on-surface-variant ml-1">· {bid.rfpTitle}</span>}</>
+                      ) : (
+                        <span className="md-numeric">{bid.rfpId.slice(0, 8)}…</span>
+                      )}
                     </Link>
                   </td>
                   <td className="px-4 py-3">

@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { getApplicationDetail } from '@/lib/server/queries/admin/review';
 import { getAdminNotes } from '@/lib/server/queries/admin/adminNotes';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
+import { SubmitButton } from '@/components/SubmitButton';
+import { ConfirmButton } from '@/components/ConfirmButton';
 import { approveWorkspaceAction } from '@/lib/server/actions/admin/approveWorkspaceAction';
 import { rejectWorkspaceAction } from '@/lib/server/actions/admin/rejectWorkspaceAction';
 import { requestMoreInfoAction } from '@/lib/server/actions/admin/requestMoreInfoAction';
@@ -55,7 +57,7 @@ export default async function ReviewDetailPage({
   }
 
   return (
-    <div className="space-y-6 p-6 max-w-3xl">
+    <div className="space-y-6 max-w-3xl">
       <div className="flex items-center gap-3">
         <Link href="/review" className="text-on-surface-variant hover:text-on-surface text-body-small">
           ← 목록
@@ -65,6 +67,85 @@ export default async function ReviewDetailPage({
           {application.orgType === 'buyer' ? '구매사' : 'PG사'}
         </span>
       </div>
+
+      {/* Actions — submitted 또는 needs_more_info 상태에서만 표시 (위로 이동) */}
+      {canAct && (
+        <section className="space-y-4">
+          <h2 className="text-title-small font-medium">심사 처리</h2>
+
+          {/* 승인 카드 */}
+          <div className="rounded border border-primary p-4 space-y-3">
+            <h3 className="text-body-medium font-medium text-primary">승인</h3>
+            <form action={approveAction} className="space-y-3">
+              {application.orgType === 'buyer' && (
+                <div className="space-y-1">
+                  <label
+                    htmlFor="grade-select"
+                    className="block text-body-small text-on-surface-variant"
+                  >
+                    가맹점 등급 <span className="text-error">*</span>
+                  </label>
+                  <select
+                    id="grade-select"
+                    name="grade"
+                    required
+                    defaultValue={bizProfile?.grade ?? ''}
+                    className="rounded border border-outline px-3 py-2 text-body-small bg-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    <option value="" disabled>등급 선택</option>
+                    {ALL_GRADES.map((g) => (
+                      <option key={g} value={g}>
+                        {GRADE_LABELS[g]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              <SubmitButton className="rounded bg-primary px-4 py-2 text-label-large text-on-primary hover:bg-primary/90">
+                승인
+              </SubmitButton>
+            </form>
+          </div>
+
+          {/* 반려 카드 */}
+          <div className="rounded border border-error p-4 space-y-3">
+            <h3 className="text-body-medium font-medium text-error">반려</h3>
+            <form action={rejectAction} className="space-y-2">
+              <label className="block text-body-small text-on-surface-variant">반려 사유</label>
+              <textarea
+                name="reason"
+                rows={3}
+                required
+                placeholder="반려 사유를 입력하세요"
+                className="w-full rounded border border-outline px-3 py-2 text-body-small bg-surface resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <SubmitButton className="rounded border border-error px-4 py-2 text-label-large text-error hover:bg-error-container">
+                반려
+              </SubmitButton>
+            </form>
+          </div>
+
+          {/* 보완 요청 / 재요청 카드 */}
+          <div className="rounded border border-outline-variant p-4 space-y-3">
+            <h3 className="text-body-medium font-medium text-on-surface">
+              {application.status === 'needs_more_info' ? '재요청' : '보완 요청'}
+            </h3>
+            <form action={moreInfoAction} className="space-y-2">
+              <label className="block text-body-small text-on-surface-variant">요청 사유</label>
+              <textarea
+                name="reason"
+                rows={3}
+                required
+                placeholder="요청 사유를 입력하세요"
+                className="w-full rounded border border-outline px-3 py-2 text-body-small bg-surface resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <SubmitButton className="rounded border border-outline px-4 py-2 text-label-large text-on-surface hover:bg-surface-container-low">
+                {application.status === 'needs_more_info' ? '재요청' : '보완 요청'}
+              </SubmitButton>
+            </form>
+          </div>
+        </section>
+      )}
 
       {/* Application Info */}
       <section className="rounded border border-outline-variant">
@@ -196,94 +277,6 @@ export default async function ReviewDetailPage({
         </section>
       )}
 
-      {/* Actions — submitted 또는 needs_more_info 상태에서만 표시 */}
-      {canAct && (
-        <section className="space-y-4">
-          <h2 className="text-title-small font-medium">심사 처리</h2>
-
-          {/* 승인 카드 */}
-          <div className="rounded border border-primary p-4 space-y-3">
-            <h3 className="text-body-medium font-medium text-primary">승인</h3>
-            <form action={approveAction} className="space-y-3">
-              {application.orgType === 'buyer' && (
-                <div className="space-y-1">
-                  <label
-                    htmlFor="grade-select"
-                    className="block text-body-small text-on-surface-variant"
-                  >
-                    가맹점 등급 <span className="text-error">*</span>
-                  </label>
-                  <select
-                    id="grade-select"
-                    name="grade"
-                    required
-                    defaultValue={bizProfile?.grade ?? ''}
-                    className="rounded border border-outline px-3 py-2 text-body-small bg-surface focus:outline-none focus:ring-1 focus:ring-primary"
-                  >
-                    <option value="" disabled>등급 선택</option>
-                    {ALL_GRADES.map((g) => (
-                      <option key={g} value={g}>
-                        {GRADE_LABELS[g]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              <button
-                type="submit"
-                className="rounded bg-primary px-4 py-2 text-label-large text-on-primary hover:bg-primary/90"
-              >
-                승인
-              </button>
-            </form>
-          </div>
-
-          {/* 반려 카드 */}
-          <div className="rounded border border-error p-4 space-y-3">
-            <h3 className="text-body-medium font-medium text-error">반려</h3>
-            <form action={rejectAction} className="space-y-2">
-              <label className="block text-body-small text-on-surface-variant">반려 사유</label>
-              <textarea
-                name="reason"
-                rows={3}
-                required
-                placeholder="반려 사유를 입력하세요"
-                className="w-full rounded border border-outline px-3 py-2 text-body-small bg-surface resize-none focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <button
-                type="submit"
-                className="rounded border border-error px-4 py-2 text-label-large text-error hover:bg-error-container"
-              >
-                반려
-              </button>
-            </form>
-          </div>
-
-          {/* 보완 요청 / 재요청 카드 */}
-          <div className="rounded border border-outline-variant p-4 space-y-3">
-            <h3 className="text-body-medium font-medium text-on-surface">
-              {application.status === 'needs_more_info' ? '재요청' : '보완 요청'}
-            </h3>
-            <form action={moreInfoAction} className="space-y-2">
-              <label className="block text-body-small text-on-surface-variant">요청 사유</label>
-              <textarea
-                name="reason"
-                rows={3}
-                required
-                placeholder="요청 사유를 입력하세요"
-                className="w-full rounded border border-outline px-3 py-2 text-body-small bg-surface resize-none focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <button
-                type="submit"
-                className="rounded border border-outline px-4 py-2 text-label-large text-on-surface hover:bg-surface-container-low"
-              >
-                {application.status === 'needs_more_info' ? '재요청' : '보완 요청'}
-              </button>
-            </form>
-          </div>
-        </section>
-      )}
-
       {/* 어드민 노트 */}
       <section className="space-y-3">
         <h2 className="text-title-small font-medium">어드민 노트</h2>
@@ -303,14 +296,14 @@ export default async function ReviewDetailPage({
                     <span className="text-label-small text-on-surface-variant">
                       {note.createdBy} · {new Date(note.createdAt).toLocaleString('ko-KR')}
                     </span>
-                    <form action={doDeleteNote}>
-                      <button
-                        type="submit"
-                        className="text-label-small text-error hover:underline"
-                      >
-                        삭제
-                      </button>
-                    </form>
+                    <ConfirmButton
+                      action={doDeleteNote}
+                      label="삭제"
+                      confirmMessage="이 노트를 삭제하시겠습니까?"
+                      confirmLabel="삭제"
+                      labelClassName="text-label-small text-error hover:underline"
+                      confirmClassName="text-label-small text-error hover:underline"
+                    />
                   </div>
                   <p className="text-body-small whitespace-pre-wrap">{note.body}</p>
                 </div>
@@ -327,12 +320,9 @@ export default async function ReviewDetailPage({
             placeholder="메모를 입력하세요"
             className="w-full rounded border border-outline px-3 py-2 text-body-small bg-surface resize-none focus:outline-none focus:ring-1 focus:ring-primary"
           />
-          <button
-            type="submit"
-            className="rounded border border-outline px-4 py-2 text-label-large text-on-surface hover:bg-surface-container-low"
-          >
+          <SubmitButton className="rounded border border-outline px-4 py-2 text-label-large text-on-surface hover:bg-surface-container-low">
             저장
-          </button>
+          </SubmitButton>
         </form>
       </section>
     </div>

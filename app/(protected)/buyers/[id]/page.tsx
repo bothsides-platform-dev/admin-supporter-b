@@ -3,6 +3,7 @@ import { getBuyerDetail } from '@/lib/server/queries/admin/buyers';
 import { getWorkspaceMembers } from '@/lib/server/queries/admin/workspaceMembers';
 import { removeWorkspaceMemberAction } from '@/lib/server/actions/admin/removeWorkspaceMemberAction';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
+import { ConfirmButton } from '@/components/ConfirmButton';
 import Link from 'next/link';
 
 export default async function BuyerDetailPage({
@@ -21,9 +22,14 @@ export default async function BuyerDetailPage({
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center gap-3">
-        <h1 className="text-headline-small font-semibold">{workspace.name}</h1>
-        <AdminStatusBadge status={workspace.status} />
+      <div className="space-y-1">
+        <Link href="/buyers" className="text-on-surface-variant hover:text-on-surface text-body-small">
+          ← 목록
+        </Link>
+        <div className="flex items-center gap-3">
+          <h1 className="text-headline-small font-semibold">{workspace.name}</h1>
+          <AdminStatusBadge status={workspace.status} />
+        </div>
       </div>
 
       <section>
@@ -63,15 +69,15 @@ export default async function BuyerDetailPage({
                       {new Date(m.joinedAt).toLocaleDateString('ko-KR')}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <form action={doRemove}>
-                        <button
-                          type="submit"
-                          disabled={m.isLastAdmin}
-                          className="text-label-small text-error hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          제외
-                        </button>
-                      </form>
+                      <ConfirmButton
+                        action={doRemove}
+                        label="제외"
+                        confirmMessage="이 멤버를 제외하시겠습니까?"
+                        confirmLabel="제외"
+                        labelClassName="text-label-small text-error hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
+                        confirmClassName="text-label-small text-error hover:underline"
+                        disabled={m.isLastAdmin}
+                      />
                     </td>
                   </tr>
                 );

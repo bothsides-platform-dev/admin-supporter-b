@@ -1,5 +1,5 @@
 import { and, desc, eq, ilike } from 'drizzle-orm';
-import { workspaces, bids, pgProfiles } from '@/lib/db/schema';
+import { workspaces, bids, pgProfiles, rfps } from '@/lib/db/schema';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 import { getWorkspaceAdminUser } from './workspaceOwner';
 
@@ -13,6 +13,8 @@ export type SellerRow = {
 export type BidRow = {
   id: string;
   rfpId: string;
+  rfpCode: string | null;
+  rfpTitle: string | null;
   status: 'draft' | 'submitted' | 'withdrawn';
   submittedAt: Date;
 };
@@ -63,10 +65,13 @@ export async function getSellerDetail(workspaceId: string) {
     .select({
       id: bids.id,
       rfpId: bids.rfpId,
+      rfpCode: rfps.code,
+      rfpTitle: rfps.title,
       status: bids.status,
       submittedAt: bids.submittedAt,
     })
     .from(bids)
+    .leftJoin(rfps, eq(bids.rfpId, rfps.id))
     .where(eq(bids.pgWsId, workspaceId))
     .orderBy(desc(bids.submittedAt))
     .limit(20)) as BidRow[];

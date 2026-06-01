@@ -11,7 +11,7 @@ export default async function ReviewListPage({
   const apps = await listApplications({ status, type });
 
   return (
-    <div className="space-y-4 p-6">
+    <div className="space-y-4">
       <h1 className="text-headline-small font-semibold">입점 심사</h1>
       <form method="GET" className="flex gap-2">
         <select
@@ -29,11 +29,11 @@ export default async function ReviewListPage({
           className="rounded border border-outline-variant px-3 py-1.5 text-body-small bg-surface"
         >
           <option value="">전체 상태</option>
-          <option value="submitted">신청</option>
+          <option value="submitted">신청됨</option>
           <option value="review_pending">심사 중</option>
-          <option value="needs_more_info">추가 정보 요청</option>
+          <option value="needs_more_info">보완 요청</option>
           <option value="approved">승인</option>
-          <option value="rejected">거절</option>
+          <option value="rejected">반려</option>
         </select>
         <button
           type="submit"

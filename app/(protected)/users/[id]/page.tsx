@@ -1,6 +1,9 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { getUserDetail } from '@/lib/server/queries/admin/users';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
+import { ConfirmButton } from '@/components/ConfirmButton';
+import { SubmitButton } from '@/components/SubmitButton';
 import { suspendUserAction } from '@/lib/server/actions/admin/suspendUserAction';
 import { unsuspendUserAction } from '@/lib/server/actions/admin/unsuspendUserAction';
 import { removeWorkspaceMemberAction } from '@/lib/server/actions/admin/removeWorkspaceMemberAction';
@@ -29,9 +32,14 @@ export default async function UserDetailPage({
 
   return (
     <div className="space-y-6 max-w-4xl">
-      <div className="flex items-center gap-3">
-        <h1 className="text-headline-small font-semibold">{user.name}</h1>
-        <AdminStatusBadge status={user.status} />
+      <div className="space-y-1">
+        <Link href="/users" className="text-on-surface-variant hover:text-on-surface text-body-small">
+          ← 목록
+        </Link>
+        <div className="flex items-center gap-3">
+          <h1 className="text-headline-small font-semibold">{user.name}</h1>
+          <AdminStatusBadge status={user.status} />
+        </div>
       </div>
 
       <section className="rounded border border-outline-variant divide-y divide-outline-variant">
@@ -57,22 +65,19 @@ export default async function UserDetailPage({
         <h2 className="text-title-small font-semibold mb-3">계정 상태</h2>
         {isSuspended ? (
           <form action={doUnsuspend}>
-            <button
-              type="submit"
-              className="rounded border border-primary text-primary px-4 py-2 text-label-small hover:bg-primary/10"
-            >
+            <SubmitButton className="rounded border border-primary text-primary px-4 py-2 text-label-small hover:bg-primary/10">
               계정 활성화
-            </button>
+            </SubmitButton>
           </form>
         ) : (
-          <form action={doSuspend}>
-            <button
-              type="submit"
-              className="rounded border border-error text-error px-4 py-2 text-label-small hover:bg-error/10"
-            >
-              계정 정지
-            </button>
-          </form>
+          <ConfirmButton
+            action={doSuspend}
+            label="계정 정지"
+            confirmMessage="이 계정을 정지하시겠습니까?"
+            confirmLabel="정지"
+            labelClassName="rounded border border-error text-error px-4 py-2 text-label-small hover:bg-error/10"
+            confirmClassName="rounded border border-error text-error px-3 py-1.5 text-label-small hover:bg-error/10"
+          />
         )}
       </section>
 
@@ -113,15 +118,15 @@ export default async function UserDetailPage({
                       {new Date(m.joinedAt).toLocaleDateString('ko-KR')}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <form action={doRemove}>
-                        <button
-                          type="submit"
-                          disabled={m.isLastAdmin}
-                          className="text-label-small text-error hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
-                        >
-                          제외
-                        </button>
-                      </form>
+                      <ConfirmButton
+                        action={doRemove}
+                        label="제외"
+                        confirmMessage="이 멤버를 제외하시겠습니까?"
+                        confirmLabel="제외"
+                        labelClassName="text-label-small text-error hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
+                        confirmClassName="text-label-small text-error hover:underline"
+                        disabled={m.isLastAdmin}
+                      />
                     </td>
                   </tr>
                 );

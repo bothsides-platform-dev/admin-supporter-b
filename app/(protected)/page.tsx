@@ -5,18 +5,19 @@ export default async function AdminDashboardPage() {
   const [stats, hotlist] = await Promise.all([getDashboardStats(), getHotlist()]);
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <h1 className="text-headline-small font-semibold">대시보드</h1>
 
       <div className="grid grid-cols-3 gap-4">
         <StatCard label="심사 대기" value={stats.pendingReviewCount} href="/review" />
-        <StatCard label="SLA 초과" value={stats.slaOverdueCount} href="/review?filter=sla" alert />
+        <StatCard label="SLA 초과" value={stats.slaOverdueCount} href="/review?status=review_pending" alert />
         <StatCard label="진행 중 RFP" value={stats.activeRfpCount} href="/rfps" />
       </div>
 
       {hotlist.length > 0 && (
         <section>
-          <h2 className="text-title-medium font-semibold mb-3">핫리스트</h2>
+          <h2 className="text-title-medium font-semibold mb-1">핫리스트</h2>
+          <p className="text-body-small text-on-surface-variant mb-3">최근 7일 이내 신청, SLA 초과, 또는 2주 이상 심사 대기 항목</p>
           <div className="rounded border border-outline-variant overflow-hidden">
             {hotlist.map((item) => (
               <Link
