@@ -8,16 +8,15 @@ export default async function AdminDashboardPage() {
     <div className="space-y-6">
       <h1 className="text-headline-small font-semibold">대시보드</h1>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-4">
         <StatCard label="심사 대기" value={stats.pendingReviewCount} href="/review" />
-        <StatCard label="SLA 초과" value={stats.slaOverdueCount} href="/review?status=review_pending" alert />
         <StatCard label="진행 중 RFP" value={stats.activeRfpCount} href="/rfps" />
       </div>
 
       {hotlist.length > 0 && (
         <section>
           <h2 className="text-title-medium font-semibold mb-1">핫리스트</h2>
-          <p className="text-body-small text-on-surface-variant mb-3">최근 7일 이내 신청, SLA 초과, 또는 2주 이상 심사 대기 항목</p>
+          <p className="text-body-small text-on-surface-variant mb-3">최근 7일 이내 신청 또는 2주 이상 심사 대기 항목</p>
           <div className="rounded border border-outline-variant overflow-hidden">
             {hotlist.map((item) => (
               <Link
@@ -39,28 +38,14 @@ export default async function AdminDashboardPage() {
   );
 }
 
-function StatCard({
-  label,
-  value,
-  href,
-  alert,
-}: {
-  label: string;
-  value: number;
-  href: string;
-  alert?: boolean;
-}) {
+function StatCard({ label, value, href }: { label: string; value: number; href: string }) {
   return (
     <Link
       href={href}
       className="block rounded border border-outline-variant bg-surface p-4 hover:bg-surface-container-low"
     >
       <div className="text-body-small text-on-surface-variant">{label}</div>
-      <div
-        className={`mt-1 md-numeric text-3xl font-bold ${alert && value > 0 ? 'text-error' : 'text-on-surface'}`}
-      >
-        {value}
-      </div>
+      <div className="mt-1 md-numeric text-3xl font-bold text-on-surface">{value}</div>
     </Link>
   );
 }

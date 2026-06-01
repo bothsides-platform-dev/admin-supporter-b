@@ -69,12 +69,6 @@ export default async function SellerDetailPage({
                 </span>
               </div>
             )}
-            {pgProfile.slaDays != null && (
-              <div className="px-4 py-3 flex gap-4">
-                <span className="text-label-small text-on-surface-variant w-32 shrink-0">SLA (일)</span>
-                <span className="text-body-small md-numeric">{pgProfile.slaDays}일</span>
-              </div>
-            )}
           </div>
         </section>
       )}
