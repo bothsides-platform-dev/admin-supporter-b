@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, ilike } from 'drizzle-orm';
 import { workspaces, bids, pgProfiles } from '@/lib/db/schema';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 import { getWorkspaceAdminUser } from './workspaceOwner';
@@ -20,8 +20,11 @@ export type BidRow = {
 export type WorkspaceFullRow = typeof workspaces.$inferSelect;
 export type PgProfileRow = typeof pgProfiles.$inferSelect;
 
-export async function listSellers(): Promise<SellerRow[]> {
-  const rows = await (actionDb()
+export async function listSellers(
+  opts: { q?: string; status?: string } = {},
+): Promise<SellerRow[]> {
+  const { q, status } = opts;
+  const rows = await actionDb()
     .select({
       id: workspaces.id,
       name: workspaces.name,
@@ -29,24 +32,34 @@ export async function listSellers(): Promise<SellerRow[]> {
       createdAt: workspaces.createdAt,
     })
     .from(workspaces)
-    .where(eq(workspaces.type, 'pg'))
-    .orderBy(desc(workspaces.createdAt)) as Promise<SellerRow[]>);
-  return rows;
+    .where(
+      and(
+        eq(workspaces.type, 'pg'),
+        q ? ilike(workspaces.name, `%${q}%`) : undefined,
+        status && status !== 'all'
+          ? eq(workspaces.status, status as 'pending' | 'active' | 'suspended')
+          : undefined,
+      ),
+    )
+    .orderBy(desc(workspaces.createdAt));
+  return rows as SellerRow[];
 }
 
 export async function getSellerDetail(workspaceId: string) {
-  const [ws] = (await (actionDb()
+  const wsRows = await actionDb()
     .select()
     .from(workspaces)
-    .where(eq(workspaces.id, workspaceId)) as Promise<WorkspaceFullRow[]>));
+    .where(eq(workspaces.id, workspaceId));
+  const ws = wsRows[0] as WorkspaceFullRow | undefined;
   if (!ws) return null;
 
-  const [profile] = (await (actionDb()
+  const profileRows = await actionDb()
     .select()
     .from(pgProfiles)
-    .where(eq(pgProfiles.workspaceId, workspaceId)) as Promise<PgProfileRow[]>));
+    .where(eq(pgProfiles.workspaceId, workspaceId));
+  const profile = profileRows[0] as PgProfileRow | undefined;
 
-  const sellerBids = await (actionDb()
+  const sellerBids = (await actionDb()
     .select({
       id: bids.id,
       rfpId: bids.rfpId,
@@ -56,7 +69,7 @@ export async function getSellerDetail(workspaceId: string) {
     .from(bids)
     .where(eq(bids.pgWsId, workspaceId))
     .orderBy(desc(bids.submittedAt))
-    .limit(20) as Promise<BidRow[]>);
+    .limit(20)) as BidRow[];
 
   const ownerContact = await getWorkspaceAdminUser(workspaceId);
 

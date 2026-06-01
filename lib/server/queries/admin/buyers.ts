@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq, ilike } from 'drizzle-orm';
 import { workspaces, rfps } from '@/lib/db/schema';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 
@@ -20,8 +20,11 @@ export type RfpRow = {
 
 export type WorkspaceFullRow = typeof workspaces.$inferSelect;
 
-export async function listBuyers(): Promise<BuyerRow[]> {
-  const rows = await (actionDb()
+export async function listBuyers(
+  opts: { q?: string; status?: string } = {},
+): Promise<BuyerRow[]> {
+  const { q, status } = opts;
+  const rows = await actionDb()
     .select({
       id: workspaces.id,
       name: workspaces.name,
@@ -29,19 +32,28 @@ export async function listBuyers(): Promise<BuyerRow[]> {
       createdAt: workspaces.createdAt,
     })
     .from(workspaces)
-    .where(eq(workspaces.type, 'buyer'))
-    .orderBy(desc(workspaces.createdAt)) as Promise<BuyerRow[]>);
-  return rows;
+    .where(
+      and(
+        eq(workspaces.type, 'buyer'),
+        q ? ilike(workspaces.name, `%${q}%`) : undefined,
+        status && status !== 'all'
+          ? eq(workspaces.status, status as 'pending' | 'active' | 'suspended')
+          : undefined,
+      ),
+    )
+    .orderBy(desc(workspaces.createdAt));
+  return rows as BuyerRow[];
 }
 
 export async function getBuyerDetail(workspaceId: string) {
-  const [ws] = (await (actionDb()
+  const wsRows = await actionDb()
     .select()
     .from(workspaces)
-    .where(eq(workspaces.id, workspaceId)) as Promise<WorkspaceFullRow[]>));
+    .where(eq(workspaces.id, workspaceId));
+  const ws = wsRows[0] as WorkspaceFullRow | undefined;
   if (!ws) return null;
 
-  const buyerRfps = await (actionDb()
+  const buyerRfps = (await actionDb()
     .select({
       id: rfps.id,
       code: rfps.code,
@@ -52,7 +64,7 @@ export async function getBuyerDetail(workspaceId: string) {
     })
     .from(rfps)
     .where(eq(rfps.buyerWsId, workspaceId))
-    .orderBy(desc(rfps.createdAt)) as Promise<RfpRow[]>);
+    .orderBy(desc(rfps.createdAt))) as RfpRow[];
 
   return { workspace: ws, rfps: buyerRfps };
 }
