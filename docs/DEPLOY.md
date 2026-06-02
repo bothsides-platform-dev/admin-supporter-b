@@ -53,10 +53,10 @@ pm2 save
 
 `admin.<도메인>` 라우트는 **bidit 레포**의 `deploy/Caddyfile`에 정의돼 있고,
 `/etc/caddy/Caddyfile`은 bidit bootstrap이 복사한 사본이다. 라우트(또는 포트)를 바꿨다면
-bidit 체크아웃에서 수동 반영한다:
+bidit 체크아웃(이 서버는 `~/supporter-b`)에서 수동 반영한다:
 
 ```bash
-cd ~/bidit && git pull --ff-only
+cd ~/supporter-b && git pull --ff-only
 sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
 sudo systemctl reload caddy
 journalctl -u caddy -f          # admin 서브도메인 인증서 발급 확인
@@ -102,5 +102,5 @@ git pull → install → build → `pm2 reload` (무중단). DB·Caddy는 건드
 - **로그인 거부**: 본인 Google 이메일이 `ADMIN_EMAILS`에 있는지, OAuth 리디렉트 URI에
   `https://admin.<도메인>/api/auth/callback/google`이 등록됐는지 확인.
 - **TLS 안 됨**: `dig +short admin.<도메인>`이 고정 IP를 가리키는지, `journalctl -u caddy`의 ACME 에러 확인.
-- **DB 접속 실패**: bidit의 Postgres 컨테이너가 떠 있는지(`docker compose -f ~/bidit/docker-compose.prod.yml ps`),
+- **DB 접속 실패**: bidit의 Postgres 컨테이너가 떠 있는지(`docker compose -f ~/supporter-b/docker-compose.prod.yml ps`),
   `DATABASE_URL` 자격증명이 bidit의 `POSTGRES_*`와 일치하는지 확인.
