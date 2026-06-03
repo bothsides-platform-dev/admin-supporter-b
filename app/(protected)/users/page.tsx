@@ -25,9 +25,10 @@ export default async function UsersPage({
           defaultValue={status ?? ''}
           className="rounded border border-outline-variant px-3 py-1.5 text-body-small bg-surface"
         >
-          <option value="">전체</option>
+          <option value="">전체 (활성/정지)</option>
           <option value="active">활성</option>
           <option value="suspended">정지</option>
+          <option value="deleted">탈퇴</option>
         </select>
         <button
           type="submit"
@@ -60,7 +61,11 @@ export default async function UsersPage({
                 </td>
                 <td className="px-4 py-3 text-on-surface-variant">{u.email}</td>
                 <td className="px-4 py-3">
-                  <AdminStatusBadge status={u.status} />
+                  {u.deletedAt ? (
+                    <AdminStatusBadge status="deleted" />
+                  ) : (
+                    <AdminStatusBadge status={u.status} />
+                  )}
                 </td>
                 <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant">
                   {u.workspaceCount}개

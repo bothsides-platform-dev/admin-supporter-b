@@ -19,6 +19,7 @@ function statusToColor(status: string): ChipColor {
     case 'suspended':
     case 'cancelled':
     case 'withdrawn':
+    case 'deleted':
       return 'error';
     case 'closed':
       return 'surface';
@@ -37,6 +38,7 @@ function statusToLabel(status: string): string {
     case 'active': return '활성';
     case 'rejected': return '반려';
     case 'suspended': return '정지';
+    case 'deleted': return '탈퇴';
     // RFP statuses
     case 'draft': return '초안';
     case 'sent': return '발송됨';

@@ -19,6 +19,7 @@ export default async function UserDetailPage({
 
   const { user, memberships } = detail;
   const isSuspended = user.status === 'suspended';
+  const isDeleted = user.deletedAt != null;
 
   async function doSuspend() {
     'use server';
@@ -38,7 +39,11 @@ export default async function UserDetailPage({
         </Link>
         <div className="flex items-center gap-3">
           <h1 className="text-headline-small font-semibold">{user.name}</h1>
-          <AdminStatusBadge status={user.status} />
+          {isDeleted ? (
+            <AdminStatusBadge status="deleted" />
+          ) : (
+            <AdminStatusBadge status={user.status} />
+          )}
         </div>
       </div>
 

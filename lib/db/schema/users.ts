@@ -22,6 +22,8 @@ export const users = pgTable('users', {
   // Drizzle-level .references() is unnecessary.
   lastActiveWorkspaceId: uuid('last_active_workspace_id'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
+  // 소프트 딜리트 — null이면 활성, non-null이면 탈퇴 계정. bidit 메인 앱이 소유.
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
   // Auto-maintained by the `set_updated_at` trigger (see 0000 migration).
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`),
 });
