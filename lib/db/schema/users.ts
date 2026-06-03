@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, boolean } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 export const users = pgTable('users', {
@@ -9,6 +9,10 @@ export const users = pgTable('users', {
   phone: text('phone'),
   avatarColor: text('avatar_color').notNull().default('#000'),
   status: text('status').notNull().default('active'),
+  // 이메일 인증 플래그 — 메인 앱(bidit)이 소유하는 컬럼. admin 은 읽기 전용으로
+  // 심사 큐 뱃지 표시 + 승인 게이트(인증된 유저만 승인)에 사용한다.
+  emailVerified: boolean('email_verified').notNull().default(false),
+  emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
   // Remembered active workspace — restored on login so a multi-workspace user
   // lands where they left off. Nullable; set on first ws creation (signup /
   // createWorkspace) and on every switchWorkspaceAction. The FK (ON DELETE SET

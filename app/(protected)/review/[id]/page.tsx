@@ -223,11 +223,20 @@ export default async function ReviewDetailPage({
               </div>
             )}
             {ownerContact && (
-              <div className="col-span-2">
+              <div className="col-span-2 flex flex-wrap items-center gap-2">
                 <span className="text-on-surface-variant">담당자</span>
-                <span className="ml-3">
+                <span>
                   {ownerContact.name} · {ownerContact.email} · {ownerContact.phone ?? '—'}
                 </span>
+                {ownerContact.emailVerified ? (
+                  <span className="rounded bg-tertiary/15 px-2 py-0.5 text-label-small text-tertiary">
+                    이메일 인증됨
+                  </span>
+                ) : (
+                  <span className="rounded bg-error/15 px-2 py-0.5 text-label-small text-error">
+                    이메일 미인증
+                  </span>
+                )}
               </div>
             )}
           </div>
@@ -266,11 +275,20 @@ export default async function ReviewDetailPage({
               </div>
             )}
             {ownerContact && (
-              <div className="col-span-2">
+              <div className="col-span-2 flex flex-wrap items-center gap-2">
                 <span className="text-on-surface-variant">담당자</span>
-                <span className="ml-3">
+                <span>
                   {ownerContact.name} · {ownerContact.email} · {ownerContact.phone ?? '—'}
                 </span>
+                {ownerContact.emailVerified ? (
+                  <span className="rounded bg-tertiary/15 px-2 py-0.5 text-label-small text-tertiary">
+                    이메일 인증됨
+                  </span>
+                ) : (
+                  <span className="rounded bg-error/15 px-2 py-0.5 text-label-small text-error">
+                    이메일 미인증
+                  </span>
+                )}
               </div>
             )}
           </div>

@@ -56,6 +56,24 @@ export async function approveWorkspaceAction(
 
     if (!ws) throw new Error(`workspace not found: ${workspaceId}`);
 
+    // 이메일 인증 게이트 — 인증된 유저만 승인한다(요구사항). 오너(admin 멤버)가
+    // 존재하고 이메일 미인증이면 승인을 차단한다. 오너가 없는 레거시 row 는
+    // 기존 관용(승인 메일 skip 과 동일)대로 통과시킨다.
+    const [owner] = await tx
+      .select({ emailVerified: users.emailVerified })
+      .from(workspaceMembers)
+      .innerJoin(users, eq(workspaceMembers.userId, users.id))
+      .where(
+        and(
+          eq(workspaceMembers.workspaceId, workspaceId),
+          eq(workspaceMembers.role, 'admin'),
+        ),
+      )
+      .limit(1);
+    if (owner && !owner.emailVerified) {
+      throw new Error('OWNER_EMAIL_NOT_VERIFIED');
+    }
+
     // buyer 승인 시 grade 필수
     if (ws.type === 'buyer') {
       if (!grade) throw new Error('GRADE_REQUIRED');

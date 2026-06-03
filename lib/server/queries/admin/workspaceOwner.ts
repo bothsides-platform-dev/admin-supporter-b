@@ -8,6 +8,7 @@ export interface WorkspaceOwnerContact {
   name: string;
   email: string;
   phone: string | null;
+  emailVerified: boolean;
 }
 
 /**
@@ -24,6 +25,7 @@ export async function getWorkspaceAdminUser(
       name: users.name,
       email: users.email,
       phone: users.phone,
+      emailVerified: users.emailVerified,
     })
     .from(workspaceMembers)
     .innerJoin(users, eq(workspaceMembers.userId, users.id))
