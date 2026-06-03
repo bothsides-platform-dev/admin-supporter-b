@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, or, sql } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import { users, workspaceMembers, workspaces } from '@/lib/db/schema';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 
@@ -7,6 +7,7 @@ export type UserRow = {
   name: string;
   email: string;
   status: string;
+  deletedAt: Date | null;
   workspaceCount: number;
   createdAt: Date;
 };
@@ -27,6 +28,7 @@ export type UserDetailResult = {
     email: string;
     phone: string | null;
     status: string;
+    deletedAt: Date | null;
     createdAt: Date;
   };
   memberships: UserMembershipRow[];
@@ -36,12 +38,15 @@ export async function listUsers(
   opts: { q?: string; status?: string } = {},
 ): Promise<UserRow[]> {
   const { q, status } = opts;
+  // status='deleted' 는 탈퇴 유저만, 그 외에는 deletedAt IS NULL 로 탈퇴 유저 제외
+  const deletedFilter = status === 'deleted' ? isNotNull(users.deletedAt) : isNull(users.deletedAt);
   const rows = await actionDb()
     .select({
       id: users.id,
       name: users.name,
       email: users.email,
       status: users.status,
+      deletedAt: users.deletedAt,
       workspaceCount: sql<number>`cast(count(${workspaceMembers.userId}) as int)`,
       createdAt: users.createdAt,
     })
@@ -49,11 +54,12 @@ export async function listUsers(
     .leftJoin(workspaceMembers, eq(workspaceMembers.userId, users.id))
     .where(
       and(
+        deletedFilter,
         q ? or(ilike(users.name, `%${q}%`), ilike(users.email, `%${q}%`)) : undefined,
-        status && status !== 'all' ? eq(users.status, status) : undefined,
+        status && status !== 'all' && status !== 'deleted' ? eq(users.status, status) : undefined,
       ),
     )
-    .groupBy(users.id, users.name, users.email, users.status, users.createdAt)
+    .groupBy(users.id, users.name, users.email, users.status, users.deletedAt, users.createdAt)
     .orderBy(desc(users.createdAt));
   return rows as UserRow[];
 }
@@ -68,6 +74,7 @@ export async function getUserDetail(userId: string): Promise<UserDetailResult | 
       email: users.email,
       phone: users.phone,
       status: users.status,
+      deletedAt: users.deletedAt,
       createdAt: users.createdAt,
     })
     .from(users)
