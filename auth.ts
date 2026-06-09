@@ -7,6 +7,7 @@ const ALLOWED_EMAILS = (process.env.ADMIN_EMAILS ?? '')
   .filter(Boolean);
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  trustHost: true,
   providers: [Google],
   callbacks: {
     signIn({ user }) {
