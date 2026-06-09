@@ -6,6 +6,7 @@ import { ConfirmButton } from '@/components/ConfirmButton';
 import { SubmitButton } from '@/components/SubmitButton';
 import { suspendUserAction } from '@/lib/server/actions/admin/suspendUserAction';
 import { unsuspendUserAction } from '@/lib/server/actions/admin/unsuspendUserAction';
+import { formatDateKST } from '@/lib/utils';
 import { removeWorkspaceMemberAction } from '@/lib/server/actions/admin/removeWorkspaceMemberAction';
 
 export default async function UserDetailPage({
@@ -61,7 +62,7 @@ export default async function UserDetailPage({
         <div className="px-4 py-3 flex gap-4">
           <span className="text-label-small text-on-surface-variant w-32 shrink-0">가입일</span>
           <span className="text-body-small md-numeric">
-            {new Date(user.createdAt).toLocaleDateString('ko-KR')}
+            {formatDateKST(user.createdAt)}
           </span>
         </div>
       </section>
@@ -120,7 +121,7 @@ export default async function UserDetailPage({
                       {m.role === 'admin' ? '관리자' : '멤버'}
                     </td>
                     <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant">
-                      {new Date(m.joinedAt).toLocaleDateString('ko-KR')}
+                      {formatDateKST(m.joinedAt)}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <ConfirmButton

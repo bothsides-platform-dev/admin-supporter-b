@@ -12,6 +12,7 @@ import { createAdminNoteAction } from '@/lib/server/actions/admin/createAdminNot
 import { deleteAdminNoteAction } from '@/lib/server/actions/admin/deleteAdminNoteAction';
 import { GRADE_LABELS } from '@/lib/types/biz-profile';
 import type { MerchantGrade } from '@/lib/types/biz-profile';
+import { formatKST } from '@/lib/utils';
 
 const ALL_GRADES: MerchantGrade[] = ['small', 'sme1', 'sme2', 'sme3', 'general'];
 
@@ -155,7 +156,7 @@ export default async function ReviewDetailPage({
         <div className="px-4 py-3 grid grid-cols-2 gap-3 text-body-small">
           <div>
             <span className="text-on-surface-variant">신청일</span>
-            <span className="ml-3 md-numeric">{new Date(application.submittedAt).toLocaleString('ko-KR')}</span>
+            <span className="ml-3 md-numeric">{formatKST(application.submittedAt)}</span>
           </div>
           <div>
             <span className="text-on-surface-variant">상태</span>
@@ -183,7 +184,7 @@ export default async function ReviewDetailPage({
               <div>
                 <span className="text-on-surface-variant">처리일</span>
                 <span className="ml-3 md-numeric">
-                  {new Date(application.reviewedAt).toLocaleString('ko-KR')}
+                  {formatKST(application.reviewedAt)}
                 </span>
               </div>
             )}
@@ -312,7 +313,7 @@ export default async function ReviewDetailPage({
                 <div key={note.id} className="px-4 py-3 space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="text-label-small text-on-surface-variant">
-                      {note.createdBy} · {new Date(note.createdAt).toLocaleString('ko-KR')}
+                      {note.createdBy} · {formatKST(note.createdAt)}
                     </span>
                     <ConfirmButton
                       action={doDeleteNote}

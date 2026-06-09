@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { getRfpDetail } from '@/lib/server/queries/admin/rfps';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
 import { extendRfpDeadlineAction } from '@/lib/server/actions/admin/extendRfpDeadlineAction';
+import { formatKST, formatDateKST } from '@/lib/utils';
 import { hideQuoteAction } from '@/lib/server/actions/admin/hideQuoteAction';
 import { sendReminderAction } from '@/lib/server/actions/admin/sendReminderAction';
 
@@ -61,14 +62,14 @@ export default async function RfpDetailPage({
           <div>
             <span className="text-on-surface-variant">마감</span>
             <span className="ml-3 md-numeric">
-              {new Date(rfp.deadline).toLocaleString('ko-KR')}
+              {formatKST(rfp.deadline)}
             </span>
           </div>
           {rfp.sentAt && (
             <div>
               <span className="text-on-surface-variant">발송일</span>
               <span className="ml-3 md-numeric">
-                {new Date(rfp.sentAt).toLocaleString('ko-KR')}
+                {formatKST(rfp.sentAt)}
               </span>
             </div>
           )}
@@ -143,7 +144,7 @@ export default async function RfpDetailPage({
                       <AdminStatusBadge status={bid.status} />
                     </td>
                     <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant">
-                      {new Date(bid.submittedAt).toLocaleDateString('ko-KR')}
+                      {formatDateKST(bid.submittedAt)}
                     </td>
                     <td className="px-4 py-3">
                       {bid.status === 'submitted' && (

@@ -1,6 +1,7 @@
 import { listSellers } from '@/lib/server/queries/admin/sellers';
 import Link from 'next/link';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
+import { formatDateKST } from '@/lib/utils';
 
 export default async function SellersPage({
   searchParams,
@@ -61,7 +62,7 @@ export default async function SellersPage({
                   <AdminStatusBadge status={s.status} />
                 </td>
                 <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant">
-                  {new Date(s.createdAt).toLocaleDateString('ko-KR')}
+                  {formatDateKST(s.createdAt)}
                 </td>
               </tr>
             ))}

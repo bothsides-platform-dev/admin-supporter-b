@@ -3,6 +3,7 @@ import { getBuyerDetail } from '@/lib/server/queries/admin/buyers';
 import { getWorkspaceMembers } from '@/lib/server/queries/admin/workspaceMembers';
 import { removeWorkspaceMemberAction } from '@/lib/server/actions/admin/removeWorkspaceMemberAction';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
+import { formatDateKST } from '@/lib/utils';
 import { ConfirmButton } from '@/components/ConfirmButton';
 import Link from 'next/link';
 
@@ -66,7 +67,7 @@ export default async function BuyerDetailPage({
                       {m.role === 'admin' ? '관리자' : '멤버'}
                     </td>
                     <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant">
-                      {new Date(m.joinedAt).toLocaleDateString('ko-KR')}
+                      {formatDateKST(m.joinedAt)}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <ConfirmButton
@@ -122,7 +123,7 @@ export default async function BuyerDetailPage({
                     <AdminStatusBadge status={rfp.status} />
                   </td>
                   <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant">
-                    {new Date(rfp.deadline).toLocaleDateString('ko-KR')}
+                    {formatDateKST(rfp.deadline)}
                   </td>
                 </tr>
               ))}

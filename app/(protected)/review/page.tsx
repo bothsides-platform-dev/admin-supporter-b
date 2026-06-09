@@ -1,4 +1,5 @@
 import { listApplications } from '@/lib/server/queries/admin/review';
+import { formatKST } from '@/lib/utils';
 import Link from 'next/link';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
 
@@ -72,7 +73,7 @@ export default async function ReviewListPage({
                   </Link>
                 </td>
                 <td className="px-4 py-3 md-numeric text-on-surface-variant">
-                  {new Date(app.submittedAt).toLocaleString('ko-KR')}
+                  {formatKST(app.submittedAt)}
                 </td>
                 <td className="px-4 py-3">
                   <AdminStatusBadge status={app.status} />

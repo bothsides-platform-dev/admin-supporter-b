@@ -1,5 +1,6 @@
 import { listAuditLogs } from '@/lib/server/queries/admin/audit-log';
 import Link from 'next/link';
+import { formatKST } from '@/lib/utils';
 
 const ACTION_LABELS: Record<string, string> = {
   'workspace.approve': '워크스페이스 승인',
@@ -56,7 +57,7 @@ export default async function AuditLogPage() {
                   className="border-b border-outline-variant last:border-0 hover:bg-surface-container-low"
                 >
                   <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant whitespace-nowrap">
-                    {new Date(log.occurredAt).toLocaleString('ko-KR')}
+                    {formatKST(log.occurredAt)}
                   </td>
                   <td className="px-4 py-3 text-label-small">
                     {ACTION_LABELS[log.action] ?? log.action}

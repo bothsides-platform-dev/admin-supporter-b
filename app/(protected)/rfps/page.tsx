@@ -1,6 +1,7 @@
 import { listAllRfps } from '@/lib/server/queries/admin/rfps';
 import Link from 'next/link';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
+import { formatDateKST } from '@/lib/utils';
 
 export default async function RfpsPage({
   searchParams,
@@ -73,7 +74,7 @@ export default async function RfpsPage({
                   <AdminStatusBadge status={rfp.status} />
                 </td>
                 <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant">
-                  {new Date(rfp.deadline).toLocaleDateString('ko-KR')}
+                  {formatDateKST(rfp.deadline)}
                 </td>
               </tr>
             ))}
