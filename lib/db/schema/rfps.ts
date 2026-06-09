@@ -42,13 +42,6 @@ export const rfps = pgTable(
     currentSolution: text('current_solution'),
     currentSolutionDetail: text('current_solution_detail'),
     deadline: timestamp('deadline', { withTimezone: true }).notNull(),
-    // RFP-scoped permanent share URL token — buyer distributes to PG workspaces.
-    // Plaintext; auto-expires at deadline; default exists for fixtures/backfill,
-    // production overrides with generateToken().
-    shareToken: text('share_token')
-      .notNull()
-      .unique()
-      .default(sql`gen_random_uuid()::text`),
     status: rfpStatusEnum('status').notNull().default('draft'),
     // Circular FK with bids.rfp_id — annotated to break TS recursion.
     awardedBidId: uuid('awarded_bid_id').references((): AnyPgColumn => bids.id, {
