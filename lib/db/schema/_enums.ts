@@ -35,6 +35,13 @@ export const invitationStatusEnum = pgEnum('invitation_status', [
 ]);
 export const bidStatusEnum = pgEnum('bid_status', ['draft', 'submitted', 'withdrawn']);
 
+// 비초대 PG가 오픈 게시판에서 보낸 참여 요청(콜드 피치)의 상태.
+export const pgRequestStatusEnum = pgEnum('pg_request_status', [
+  'pending',
+  'accepted',
+  'rejected',
+]);
+
 export const notificationStatusEnum = pgEnum('notification_status', [
   'queued',
   'sent',
@@ -59,9 +66,12 @@ export const outboxEventEnum = pgEnum('outbox_event', [
   'rfp.sent',
   'bid.submitted',
   'rfp.awarded',
+  'rfp.requote_requested',
   'workspace.invited',
   'workspace.approved',
   'workspace.rejected',
+  'chat.message',
+  'team_chat.message',
 ]);
 
 export const workspaceInvitationStatusEnum = pgEnum('workspace_invitation_status', [
@@ -77,8 +87,8 @@ export const verificationPurposeEnum = pgEnum('verification_purpose', [
 ]);
 
 // Unified kanban: which board a column belongs to. (workspace_id, kind) is the
-// board key — no `boards` table. `rfp_bids` instances are per-RFP views.
-export const columnKindEnum = pgEnum('column_kind', ['pipeline', 'rfp_bids']);
+// board key — no `boards` table.
+export const columnKindEnum = pgEnum('column_kind', ['pipeline']);
 
 // Column accent color — mirrors the MD3 Chip color roles.
 export const chipColorEnum = pgEnum('chip_color', [
@@ -101,4 +111,11 @@ export const verificationStatusEnum = pgEnum('verification_status', [
   'needs_more_info',
   'approved',
   'rejected',
+]);
+
+export const contractTypeEnum = pgEnum('contract_type', ['new', 'renewal']);
+
+export const rfpRequoteRequestStatusEnum = pgEnum('rfp_requote_request_status', [
+  'pending',
+  'responded',
 ]);

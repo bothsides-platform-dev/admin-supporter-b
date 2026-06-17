@@ -1,4 +1,4 @@
-import { pgTable, uuid, text, timestamp, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, text, timestamp, boolean, integer } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 export const users = pgTable('users', {
@@ -9,10 +9,16 @@ export const users = pgTable('users', {
   phone: text('phone'),
   avatarColor: text('avatar_color').notNull().default('#000'),
   status: text('status').notNull().default('active'),
-  // 이메일 인증 플래그 — 메인 앱(bidit)이 소유하는 컬럼. admin 은 읽기 전용으로
-  // 심사 큐 뱃지 표시 + 승인 게이트(인증된 유저만 승인)에 사용한다.
+  // Email-verification flag. New signups are created false and flipped true when
+  // the user consumes a signup_email token (link or 6-digit code). Read by the
+  // /pending-approval verify UI and the (separate-repo) admin console, which
+  // only approves verified users. NOT in the JWT/session — read from DB.
   emailVerified: boolean('email_verified').notNull().default(false),
   emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
+  // Server-side JWT revocation counter. Stamped into the token as the `sv`
+  // claim at login; bumped on password reset / email change / account deletion
+  // so previously issued tokens go stale (see lib/auth/session-version.ts).
+  sessionVersion: integer('session_version').notNull().default(1),
   // Remembered active workspace — restored on login so a multi-workspace user
   // lands where they left off. Nullable; set on first ws creation (signup /
   // createWorkspace) and on every switchWorkspaceAction. The FK (ON DELETE SET
@@ -21,8 +27,10 @@ export const users = pgTable('users', {
   // biz_profiles→users type cycle (TS7022). Migrations are hand-written, so the
   // Drizzle-level .references() is unnecessary.
   lastActiveWorkspaceId: uuid('last_active_workspace_id'),
+  // System-managed master accounts (pre-seeded PG company admins).
+  // Hidden from all member-list UIs; never shown to end users.
+  isSystemAccount: boolean('is_system_account').notNull().default(false),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().default(sql`now()`),
-  // 소프트 딜리트 — null이면 활성, non-null이면 탈퇴 계정. bidit 메인 앱이 소유.
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   // Auto-maintained by the `set_updated_at` trigger (see 0000 migration).
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().default(sql`now()`),
