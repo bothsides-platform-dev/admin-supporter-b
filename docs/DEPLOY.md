@@ -74,7 +74,7 @@ journalctl -u caddy -f          # admin 서브도메인 인증서 발급 확인
 | `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` | Google OAuth 클라이언트 |
 | `NEXT_PUBLIC_BASE_URL` | `https://admin.<도메인>` — admin 자체 origin. **빌드 타임 인라인**이라 deploy 전에 설정 |
 | `PUBLIC_APP_URL` | `https://<도메인>` — **메인 앱** URL (승인/반려 메일 링크용, admin 자신 아님) |
-| `RESEND_API_KEY` / `RESEND_FROM` | 워크스페이스 승인/반려 메일 |
+| `RESEND_API_KEY` / `RESEND_FROM` | 워크스페이스·PG 담당자 멤버십 승인/반려 메일 발송 (outbox 패턴) |
 | `ADMIN_EMAILS` | 허용 admin Google 이메일 (쉼표 구분) |
 | `ADMIN_SUPER_EMAILS` | 그중 `super_admin` 역할 부분집합 |
 
