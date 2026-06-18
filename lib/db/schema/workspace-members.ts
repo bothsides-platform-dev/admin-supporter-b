@@ -1,4 +1,4 @@
-import { pgTable, uuid, timestamp, primaryKey, index } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, timestamp, primaryKey, text, index } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { memberRoleEnum } from './_enums';
 import { workspaces } from './workspaces';
@@ -14,6 +14,7 @@ export const workspaceMembers = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     role: memberRoleEnum('role').notNull().default('member'),
+    approvalStatus: text('approval_status').notNull().default('approved'),
     joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().default(sql`now()`),
     lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
   },

@@ -6,8 +6,10 @@ import { ConfirmButton } from '@/components/ConfirmButton';
 import { SubmitButton } from '@/components/SubmitButton';
 import { suspendUserAction } from '@/lib/server/actions/admin/suspendUserAction';
 import { unsuspendUserAction } from '@/lib/server/actions/admin/unsuspendUserAction';
+import { deleteUserAction } from '@/lib/server/actions/admin/deleteUserAction';
 import { formatDateKST } from '@/lib/utils';
 import { removeWorkspaceMemberAction } from '@/lib/server/actions/admin/removeWorkspaceMemberAction';
+import { requireAdminSession } from '@/lib/auth/admin-session';
 
 export default async function UserDetailPage({
   params,
@@ -15,12 +17,13 @@ export default async function UserDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const detail = await getUserDetail(id);
+  const [detail, session] = await Promise.all([getUserDetail(id), requireAdminSession()]);
   if (!detail) notFound();
 
   const { user, memberships } = detail;
   const isSuspended = user.status === 'suspended';
   const isDeleted = user.deletedAt != null;
+  const isSuperAdmin = session.role === 'super_admin';
 
   async function doSuspend() {
     'use server';
@@ -30,6 +33,11 @@ export default async function UserDetailPage({
   async function doUnsuspend() {
     'use server';
     await unsuspendUserAction(user.id);
+  }
+
+  async function doDelete() {
+    'use server';
+    await deleteUserAction(user.id);
   }
 
   return (
@@ -86,6 +94,23 @@ export default async function UserDetailPage({
           />
         )}
       </section>
+
+      {isSuperAdmin && (
+        <section className="rounded border border-error p-4 space-y-2">
+          <h2 className="text-title-small font-medium text-error">위험 구역</h2>
+          <p className="text-body-small text-on-surface-variant">
+            유저를 영구 삭제합니다. 이 작업은 되돌릴 수 없습니다.
+          </p>
+          <ConfirmButton
+            action={doDelete}
+            label="유저 영구 삭제"
+            confirmMessage="정말로 이 유저를 영구 삭제하시겠습니까? 복구 불가합니다."
+            confirmLabel="영구 삭제"
+            labelClassName="rounded border border-error text-error px-4 py-2 text-label-small hover:bg-error/10"
+            confirmClassName="rounded bg-error text-on-error px-4 py-2 text-label-small hover:bg-error/90"
+          />
+        </section>
+      )}
 
       <section>
         <h2 className="text-title-small font-semibold mb-3">

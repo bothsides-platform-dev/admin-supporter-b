@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.0.3] - 2026-06-19
+
+### Added
+- PG 담당자 승인/거부 기능 — `/admin/pg-members` 페이지에서 `pending_approval` 상태의 PG 워크스페이스 멤버를 승인하거나 거부할 수 있음. 처리 시 담당자에게 이메일 발송 (outbox 패턴).
+- 유저/워크스페이스 영구 삭제 기능 — super_admin만 접근 가능한 "위험 구역" 섹션이 유저·구매사·PG사 상세 페이지에 추가됨. 삭제 전 확인 단계(ConfirmButton) 포함.
+- 사이드바에 "PG 담당자 승인" 메뉴 항목 추가.
+- `AdminStatusBadge`에 `pending_approval` 상태 표시 지원 추가.
+
+### Changed
+- 스키마 미러: `outbox_event` enum에 `membership.approved`, `membership.rejected` 값 추가 (supporter-b PR #247 동기화).
+- 스키마 미러: `workspace_members`에 `approval_status` 컬럼 추가 (`text`, NOT NULL, default `'approved'`).
+
 ## [0.1.0.2] - 2026-06-18
 
 ### Changed
