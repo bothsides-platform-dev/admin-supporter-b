@@ -9,6 +9,7 @@ import { ThemeToggle } from './ThemeToggle';
 const NAV = [
   { href: '/', label: '대시보드' },
   { href: '/review', label: '입점 심사' },
+  { href: '/admin/pg-members', label: 'PG 담당자 승인' },
   { href: '/users', label: '회원' },
   { href: '/buyers', label: '구매사' },
   { href: '/sellers', label: '판매사' },

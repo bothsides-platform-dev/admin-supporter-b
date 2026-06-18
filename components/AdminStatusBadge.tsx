@@ -8,6 +8,7 @@ function statusToColor(status: string): ChipColor {
     case 'review_pending':
     case 'needs_more_info':
     case 'pending':
+    case 'pending_approval':
     case 'draft':
       return 'warning';
     case 'approved':
@@ -34,6 +35,7 @@ function statusToLabel(status: string): string {
     case 'review_pending': return '심사 중';
     case 'needs_more_info': return '보완 요청';
     case 'pending': return '대기';
+    case 'pending_approval': return '승인 대기';
     case 'approved': return '승인';
     case 'active': return '활성';
     case 'rejected': return '반려';

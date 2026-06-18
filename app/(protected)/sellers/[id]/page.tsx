@@ -2,9 +2,11 @@ import { notFound } from 'next/navigation';
 import { getSellerDetail } from '@/lib/server/queries/admin/sellers';
 import { getWorkspaceMembers } from '@/lib/server/queries/admin/workspaceMembers';
 import { removeWorkspaceMemberAction } from '@/lib/server/actions/admin/removeWorkspaceMemberAction';
+import { deleteWorkspaceAction } from '@/lib/server/actions/admin/deleteWorkspaceAction';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
 import { formatDateKST } from '@/lib/utils';
 import { ConfirmButton } from '@/components/ConfirmButton';
+import { requireAdminSession } from '@/lib/auth/admin-session';
 import Link from 'next/link';
 
 export default async function SellerDetailPage({
@@ -13,13 +15,20 @@ export default async function SellerDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const [detail, members] = await Promise.all([
+  const [detail, members, session] = await Promise.all([
     getSellerDetail(id),
     getWorkspaceMembers(id),
+    requireAdminSession(),
   ]);
   if (!detail) notFound();
 
   const { workspace, pgProfile, bids, ownerContact } = detail;
+  const isSuperAdmin = session.role === 'super_admin';
+
+  async function doDelete() {
+    'use server';
+    await deleteWorkspaceAction(workspace.id, '/sellers');
+  }
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -32,6 +41,23 @@ export default async function SellerDetailPage({
           <AdminStatusBadge status={workspace.status} />
         </div>
       </div>
+
+      {isSuperAdmin && (
+        <section className="rounded border border-error p-4 space-y-2">
+          <h2 className="text-title-small font-medium text-error">위험 구역</h2>
+          <p className="text-body-small text-on-surface-variant">
+            워크스페이스를 영구 삭제합니다. 멤버, 입찰 등 모든 연결 데이터가 함께 삭제됩니다.
+          </p>
+          <ConfirmButton
+            action={doDelete}
+            label="워크스페이스 영구 삭제"
+            confirmMessage="정말로 이 워크스페이스를 영구 삭제하시겠습니까? 복구 불가합니다."
+            confirmLabel="영구 삭제"
+            labelClassName="rounded border border-error text-error px-4 py-2 text-label-small hover:bg-error/10"
+            confirmClassName="rounded bg-error text-on-error px-4 py-2 text-label-small hover:bg-error/90"
+          />
+        </section>
+      )}
 
       {pgProfile && (
         <section>
