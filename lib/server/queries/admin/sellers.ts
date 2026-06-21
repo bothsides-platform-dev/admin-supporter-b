@@ -1,7 +1,8 @@
 import { and, desc, eq, ilike } from 'drizzle-orm';
-import { workspaces, bids, pgProfiles, rfps } from '@/lib/db/schema';
+import { workspaces, bids, pgProfiles, rfps, bizProfiles } from '@/lib/db/schema';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 import { getWorkspaceAdminUser } from './workspaceOwner';
+import type { MerchantGrade } from '@/lib/types/biz-profile';
 
 export type SellerRow = {
   id: string;
@@ -78,5 +79,16 @@ export async function getSellerDetail(workspaceId: string) {
 
   const ownerContact = await getWorkspaceAdminUser(workspaceId);
 
-  return { workspace: ws, pgProfile: profile ?? null, bids: sellerBids, ownerContact };
+  // 현재 영중소구간(가맹점 등급) — bizProfileId 포인터가 가리키는 행에서 조회.
+  // PG는 보통 bizProfileId가 없으나, admin이 등급을 지정하면 동일 포인터에 적재된다.
+  let grade: MerchantGrade | null = null;
+  if (ws.bizProfileId) {
+    const [bp] = await actionDb()
+      .select({ grade: bizProfiles.grade })
+      .from(bizProfiles)
+      .where(eq(bizProfiles.id, ws.bizProfileId));
+    grade = (bp?.grade as MerchantGrade | null) ?? null;
+  }
+
+  return { workspace: ws, pgProfile: profile ?? null, bids: sellerBids, ownerContact, grade };
 }
