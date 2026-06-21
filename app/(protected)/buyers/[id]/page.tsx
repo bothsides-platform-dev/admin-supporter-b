@@ -3,10 +3,13 @@ import { getBuyerDetail } from '@/lib/server/queries/admin/buyers';
 import { getWorkspaceMembers } from '@/lib/server/queries/admin/workspaceMembers';
 import { removeWorkspaceMemberAction } from '@/lib/server/actions/admin/removeWorkspaceMemberAction';
 import { deleteWorkspaceAction } from '@/lib/server/actions/admin/deleteWorkspaceAction';
+import { updateWorkspaceGradeAction } from '@/lib/server/actions/admin/updateWorkspaceGradeAction';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
+import { GradeEditForm } from '@/components/GradeEditForm';
 import { formatDateKST } from '@/lib/utils';
 import { ConfirmButton } from '@/components/ConfirmButton';
 import { requireAdminSession } from '@/lib/auth/admin-session';
+import type { MerchantGrade } from '@/lib/types/biz-profile';
 import Link from 'next/link';
 
 export default async function BuyerDetailPage({
@@ -22,12 +25,20 @@ export default async function BuyerDetailPage({
   ]);
   if (!detail) notFound();
 
-  const { workspace, rfps } = detail;
+  const { workspace, rfps, grade } = detail;
   const isSuperAdmin = session.role === 'super_admin';
 
   async function doDelete() {
     'use server';
     await deleteWorkspaceAction(workspace.id, '/buyers');
+  }
+
+  async function saveGrade(formData: FormData) {
+    'use server';
+    const gradeRaw = formData.get('grade');
+    if (typeof gradeRaw !== 'string' || !gradeRaw) throw new Error('GRADE_REQUIRED');
+    const result = await updateWorkspaceGradeAction(workspace.id, gradeRaw as MerchantGrade);
+    if (!result.ok) throw new Error(result.error);
   }
 
   return (
@@ -41,6 +52,8 @@ export default async function BuyerDetailPage({
           <AdminStatusBadge status={workspace.status} />
         </div>
       </div>
+
+      <GradeEditForm action={saveGrade} currentGrade={grade} />
 
       {isSuperAdmin && (
         <section className="rounded border border-error p-4 space-y-2">
