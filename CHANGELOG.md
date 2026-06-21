@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.0.4] - 2026-06-22
+
+### Added
+- 구매사·PG사 영중소구간(가맹점 등급) 수정 기능 — 구매사·PG사 상세 페이지에 "영중소구간 (가맹점 등급)" 섹션이 추가되어, 관리자가 영세/중소1~3/일반 등급을 선택해 변경할 수 있음. 기존에는 워크스페이스 승인 시점에만 설정 가능했으나, 이제 승인 이후에도 상시 수정 가능. PG사도 동일하게 등급을 부여·변경할 수 있음(스키마 변경 없이 `biz_profiles` 불변 패턴 + `workspaces.biz_profile_id` 포인터 재사용). 변경 내역은 감사 로그(`workspace.grade_update`)에 기록됨.
+
 ## [0.1.0.3] - 2026-06-19
 
 ### Added

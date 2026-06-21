@@ -1,6 +1,7 @@
 import { and, desc, eq, ilike } from 'drizzle-orm';
-import { workspaces, rfps } from '@/lib/db/schema';
+import { workspaces, rfps, bizProfiles } from '@/lib/db/schema';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
+import type { MerchantGrade } from '@/lib/types/biz-profile';
 
 export type BuyerRow = {
   id: string;
@@ -66,5 +67,15 @@ export async function getBuyerDetail(workspaceId: string) {
     .where(eq(rfps.buyerWsId, workspaceId))
     .orderBy(desc(rfps.createdAt))) as RfpRow[];
 
-  return { workspace: ws, rfps: buyerRfps };
+  // 현재 영중소구간(가맹점 등급) — bizProfileId 포인터가 가리키는 행에서 조회.
+  let grade: MerchantGrade | null = null;
+  if (ws.bizProfileId) {
+    const [bp] = await actionDb()
+      .select({ grade: bizProfiles.grade })
+      .from(bizProfiles)
+      .where(eq(bizProfiles.id, ws.bizProfileId));
+    grade = (bp?.grade as MerchantGrade | null) ?? null;
+  }
+
+  return { workspace: ws, rfps: buyerRfps, grade };
 }
