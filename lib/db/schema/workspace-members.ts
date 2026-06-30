@@ -20,8 +20,6 @@ export const workspaceMembers = pgTable(
   },
   (t) => [
     primaryKey({ columns: [t.workspaceId, t.userId] }),
-    // PK leftmost-prefix covers (workspace_id); user_id needs its own index so
-    // user-delete cascade and member→user lookups don't seq-scan.
     index('workspace_members_user_idx').on(t.userId),
   ],
 );

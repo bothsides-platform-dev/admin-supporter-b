@@ -14,7 +14,9 @@ export const workspaces = pgTable(
     }),
     status: workspaceStatusEnum('status').notNull().default('pending'),
     statusReason: text('status_reason'),
-    hasLogo: boolean('has_logo').notNull().default(false),
+    // 로고 버전/존재 겸용(avatar_updated_at 패턴). NULL=로고 없음,
+    // non-NULL=있음 + <img> ?v 캐시 버스트 키. 바이트는 workspace_logo_blobs.
+    logoUpdatedAt: timestamp('logo_updated_at', { withTimezone: true }),
     reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
     // Marks pre-seeded canonical PG company workspaces (e.g. 'tosspayments', 'kginicis').
     // NULL on all user-created workspaces. Used to populate the PG signup company-selector
