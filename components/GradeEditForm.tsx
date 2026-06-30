@@ -1,8 +1,8 @@
 import { SubmitButton } from './SubmitButton';
-import { GRADE_LABELS } from '@/lib/types/biz-profile';
-import type { MerchantGrade } from '@/lib/types/biz-profile';
+import { MERCHANT_TIER_LABELS, MERCHANT_TIERS } from '@/lib/types/biz-profile';
+import type { MerchantTier } from '@/lib/types/biz-profile';
 
-const ALL_GRADES: MerchantGrade[] = ['small', 'sme1', 'sme2', 'sme3', 'general'];
+const ALL_GRADES: MerchantTier[] = [...MERCHANT_TIERS];
 
 /**
  * 워크스페이스(구매사·PG사)의 영중소구간(가맹점 등급)을 수정하는 폼 섹션.
@@ -13,14 +13,14 @@ export function GradeEditForm({
   currentGrade,
 }: {
   action: (formData: FormData) => void | Promise<void>;
-  currentGrade?: MerchantGrade | null;
+  currentGrade?: MerchantTier | null;
 }) {
   return (
     <section className="rounded border border-outline-variant p-4 space-y-3">
       <div className="flex items-baseline justify-between">
         <h2 className="text-title-small font-medium">영중소구간 (가맹점 등급)</h2>
         <span className="text-label-small text-on-surface-variant">
-          현재: {currentGrade ? GRADE_LABELS[currentGrade] : '미설정'}
+          현재: {currentGrade ? MERCHANT_TIER_LABELS[currentGrade] : '미설정'}
         </span>
       </div>
       <form action={action} className="flex flex-wrap items-end gap-3">
@@ -40,7 +40,7 @@ export function GradeEditForm({
             </option>
             {ALL_GRADES.map((g) => (
               <option key={g} value={g}>
-                {GRADE_LABELS[g]}
+                {MERCHANT_TIER_LABELS[g]}
               </option>
             ))}
           </select>

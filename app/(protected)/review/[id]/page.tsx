@@ -10,11 +10,11 @@ import { rejectWorkspaceAction } from '@/lib/server/actions/admin/rejectWorkspac
 import { requestMoreInfoAction } from '@/lib/server/actions/admin/requestMoreInfoAction';
 import { createAdminNoteAction } from '@/lib/server/actions/admin/createAdminNoteAction';
 import { deleteAdminNoteAction } from '@/lib/server/actions/admin/deleteAdminNoteAction';
-import { GRADE_LABELS } from '@/lib/types/biz-profile';
-import type { MerchantGrade } from '@/lib/types/biz-profile';
+import { MERCHANT_TIER_LABELS, MERCHANT_TIERS } from '@/lib/types/biz-profile';
+import type { MerchantTier } from '@/lib/types/biz-profile';
 import { formatKST } from '@/lib/utils';
 
-const ALL_GRADES: MerchantGrade[] = ['small', 'sme1', 'sme2', 'sme3', 'general'];
+const ALL_GRADES: MerchantTier[] = [...MERCHANT_TIERS];
 
 export default async function ReviewDetailPage({
   params,
@@ -35,7 +35,7 @@ export default async function ReviewDetailPage({
   async function approveAction(formData: FormData) {
     'use server';
     const gradeRaw = formData.get('grade');
-    const grade = gradeRaw ? (gradeRaw as MerchantGrade) : undefined;
+    const grade = gradeRaw ? (gradeRaw as MerchantTier) : undefined;
     await approveWorkspaceAction(undefined, workspace.id, grade);
   }
 
@@ -96,7 +96,7 @@ export default async function ReviewDetailPage({
                     <option value="" disabled>등급 선택</option>
                     {ALL_GRADES.map((g) => (
                       <option key={g} value={g}>
-                        {GRADE_LABELS[g]}
+                        {MERCHANT_TIER_LABELS[g]}
                       </option>
                     ))}
                   </select>
@@ -220,7 +220,7 @@ export default async function ReviewDetailPage({
             {bizProfile.grade && (
               <div>
                 <span className="text-on-surface-variant">현재 등급</span>
-                <span className="ml-3">{GRADE_LABELS[bizProfile.grade as MerchantGrade]}</span>
+                <span className="ml-3">{MERCHANT_TIER_LABELS[bizProfile.grade as MerchantTier]}</span>
               </div>
             )}
             {ownerContact && (

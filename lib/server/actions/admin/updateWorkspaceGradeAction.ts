@@ -6,9 +6,10 @@ import { revalidatePath } from 'next/cache';
 import { workspaces, bizProfiles, adminAuditLogs } from '@/lib/db/schema';
 import { requireAdminSession } from '@/lib/auth/admin-session';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
-import type { MerchantGrade } from '@/lib/types/biz-profile';
+import { MERCHANT_TIERS } from '@/lib/types/biz-profile';
+import type { MerchantTier } from '@/lib/types/biz-profile';
 
-const VALID_GRADES: MerchantGrade[] = ['small', 'sme1', 'sme2', 'sme3', 'general'];
+const VALID_GRADES: readonly MerchantTier[] = MERCHANT_TIERS;
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -24,7 +25,7 @@ type Result = { ok: true } | { ok: false; error: string };
  */
 export async function updateWorkspaceGradeAction(
   workspaceId: string,
-  grade: MerchantGrade,
+  grade: MerchantTier,
 ): Promise<Result> {
   if (!VALID_GRADES.includes(grade)) return { ok: false, error: 'INVALID_GRADE' };
 
@@ -44,7 +45,7 @@ export async function updateWorkspaceGradeAction(
     if (!ws) { error = 'WORKSPACE_NOT_FOUND'; return; }
 
     // 기존 biz_profile 필드 복사 + 현재 등급(before) 확보
-    let prevGrade: MerchantGrade | null = null;
+    let prevGrade: MerchantTier | null = null;
     let existingBizNo: string | null = null;
     let existingTaxType: string | null = null;
     let existingStatus: string | null = null;

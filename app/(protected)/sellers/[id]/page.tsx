@@ -9,7 +9,7 @@ import { GradeEditForm } from '@/components/GradeEditForm';
 import { formatDateKST } from '@/lib/utils';
 import { ConfirmButton } from '@/components/ConfirmButton';
 import { requireAdminSession } from '@/lib/auth/admin-session';
-import type { MerchantGrade } from '@/lib/types/biz-profile';
+import type { MerchantTier } from '@/lib/types/biz-profile';
 import Link from 'next/link';
 
 export default async function SellerDetailPage({
@@ -37,7 +37,7 @@ export default async function SellerDetailPage({
     'use server';
     const gradeRaw = formData.get('grade');
     if (typeof gradeRaw !== 'string' || !gradeRaw) throw new Error('GRADE_REQUIRED');
-    const result = await updateWorkspaceGradeAction(workspace.id, gradeRaw as MerchantGrade);
+    const result = await updateWorkspaceGradeAction(workspace.id, gradeRaw as MerchantTier);
     if (!result.ok) throw new Error(result.error);
   }
 

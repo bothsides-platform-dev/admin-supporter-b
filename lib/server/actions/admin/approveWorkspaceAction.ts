@@ -16,7 +16,7 @@ import { actionDb, appBaseUrl } from '@/lib/server/actions/auth/_shared';
 import { DrizzleOutboxRepository } from '@/lib/server/repositories/drizzle/outbox';
 import { renderWorkspaceApproved } from '@/lib/server/outbox/templates/workspaceApproved';
 import { flushAfterCommit } from '@/lib/server/outbox/post-commit';
-import type { MerchantGrade } from '@/lib/types/biz-profile';
+import type { MerchantTier } from '@/lib/types/biz-profile';
 
 type DB = ReturnType<typeof actionDb>;
 
@@ -39,7 +39,7 @@ const ORG_LABEL: Record<'buyer' | 'pg', string> = {
 export async function approveWorkspaceAction(
   db: DB = actionDb(),
   workspaceId: string,
-  grade?: MerchantGrade,
+  grade?: MerchantTier,
 ) {
   const session = await requireAdminSession();
   const now = new Date();
