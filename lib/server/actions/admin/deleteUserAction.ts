@@ -57,7 +57,8 @@ export async function deleteUserAction(userId: string): Promise<void> {
       .where(eq(rfpRequoteRequests.createdByUserId, userId));
 
     // attachments.uploaded_by — NOT NULL, 해당 첨부파일 삭제
-    // (attachment_blobs는 attachments FK cascade로 연쇄 삭제됨)
+    // (바이트는 Cloudflare R2에 있음 — 이 delete는 DB row만 지우며 R2 객체는
+    // 정리되지 않고 고아로 남는다. R2 정리는 별도 인프라 작업 필요.)
     await tx.delete(attachments).where(eq(attachments.uploadedBy, userId));
 
     // contracts.awarded_by — NOT NULL, 해당 계약 삭제
