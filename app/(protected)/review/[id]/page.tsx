@@ -72,7 +72,27 @@ export default async function ReviewDetailPage({
       {/* Actions — submitted 또는 needs_more_info 상태에서만 표시 (위로 이동) */}
       {canAct && (
         <section className="space-y-4">
-          <h2 className="text-title-small font-medium">심사 처리</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-title-small font-medium">심사 처리</h2>
+            <div className="flex items-center gap-2">
+              <a
+                href="https://bizno.net/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded border border-outline px-2 py-1 text-label-small hover:bg-surface-container-high"
+              >
+                비즈노(사업자정보 조회)
+              </a>
+              <a
+                href="https://www.pay2pay.co.kr/board/view?bId=faq&wr_id=3779"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded border border-outline px-2 py-1 text-label-small hover:bg-surface-container-high"
+              >
+                페이투페이(사업자 등급 조회)
+              </a>
+            </div>
+          </div>
 
           {/* 승인 카드 */}
           <div className="rounded border border-primary p-4 space-y-3">
@@ -207,26 +227,8 @@ export default async function ReviewDetailPage({
       {/* Buyer biz profile (구매사 only) */}
       {application.orgType === 'buyer' && bizProfile && (
         <section className="rounded border border-outline-variant">
-          <div className="flex items-center justify-between border-b border-outline-variant px-4 py-2 bg-surface-container-low">
+          <div className="border-b border-outline-variant px-4 py-2 bg-surface-container-low">
             <h2 className="text-title-small font-medium">사업자 정보</h2>
-            <div className="flex items-center gap-3">
-              <a
-                href="https://bizno.net/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline text-label-small"
-              >
-                비즈노(사업자정보 조회)
-              </a>
-              <a
-                href="https://www.pay2pay.co.kr/board/view?bId=faq&wr_id=3779"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline text-label-small"
-              >
-                페이투페이(사업자 등급 조회)
-              </a>
-            </div>
           </div>
           <div className="px-4 py-3 grid grid-cols-2 gap-3 text-body-small">
             {bizProfile.bizNo && (
@@ -265,26 +267,8 @@ export default async function ReviewDetailPage({
       {/* PG Profile (판매사 only) */}
       {application.orgType === 'pg' && pgProfile && (
         <section className="rounded border border-outline-variant">
-          <div className="flex items-center justify-between border-b border-outline-variant px-4 py-2 bg-surface-container-low">
+          <div className="border-b border-outline-variant px-4 py-2 bg-surface-container-low">
             <h2 className="text-title-small font-medium">PG 프로필</h2>
-            <div className="flex items-center gap-3">
-              <a
-                href="https://bizno.net/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline text-label-small"
-              >
-                비즈노(사업자정보 조회)
-              </a>
-              <a
-                href="https://www.pay2pay.co.kr/board/view?bId=faq&wr_id=3779"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline text-label-small"
-              >
-                페이투페이(사업자 등급 조회)
-              </a>
-            </div>
           </div>
           <div className="px-4 py-3 grid grid-cols-2 gap-3 text-body-small">
             {pgProfile.bizNo && (
