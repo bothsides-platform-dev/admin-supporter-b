@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm';
 import { workspaceMembers, users } from '@/lib/db/schema';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
+import { migrateSignupSource, type SignupSource } from '@/lib/types/signup-source';
 
 type DB = ReturnType<typeof actionDb>;
 
@@ -9,6 +10,7 @@ export interface WorkspaceOwnerContact {
   email: string;
   phone: string | null;
   emailVerified: boolean;
+  signupSource: SignupSource;
 }
 
 /**
@@ -26,6 +28,7 @@ export async function getWorkspaceAdminUser(
       email: users.email,
       phone: users.phone,
       emailVerified: users.emailVerified,
+      signupSource: users.signupSource,
     })
     .from(workspaceMembers)
     .innerJoin(users, eq(workspaceMembers.userId, users.id))
@@ -37,5 +40,6 @@ export async function getWorkspaceAdminUser(
     )
     .limit(1);
 
-  return row ?? null;
+  if (!row) return null;
+  return { ...row, signupSource: migrateSignupSource(row.signupSource) };
 }

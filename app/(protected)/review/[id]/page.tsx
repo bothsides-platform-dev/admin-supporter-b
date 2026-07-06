@@ -316,6 +316,77 @@ export default async function ReviewDetailPage({
         </section>
       )}
 
+      {/* 가입 유입 경로 (신청 유저 = 담당자 signupSource) */}
+      <section className="rounded border border-outline-variant">
+        <div className="border-b border-outline-variant px-4 py-2 bg-surface-container-low">
+          <h2 className="text-title-small font-medium">가입 유입 경로</h2>
+        </div>
+        <div className="px-4 py-3 grid grid-cols-2 gap-3 text-body-small">
+          {!ownerContact?.signupSource.utmSource &&
+          !ownerContact?.signupSource.utmMedium &&
+          !ownerContact?.signupSource.utmCampaign &&
+          !ownerContact?.signupSource.utmTerm &&
+          !ownerContact?.signupSource.utmContent &&
+          !ownerContact?.signupSource.referrer &&
+          !ownerContact?.signupSource.landingPath ? (
+            <p className="col-span-2 text-on-surface-variant">유입 정보 없음</p>
+          ) : (
+            <>
+              {ownerContact.signupSource.utmSource && (
+                <div>
+                  <span className="text-on-surface-variant">유입 소스</span>
+                  <span className="ml-3">{ownerContact.signupSource.utmSource}</span>
+                </div>
+              )}
+              {ownerContact.signupSource.utmMedium && (
+                <div>
+                  <span className="text-on-surface-variant">매체</span>
+                  <span className="ml-3">{ownerContact.signupSource.utmMedium}</span>
+                </div>
+              )}
+              {ownerContact.signupSource.utmCampaign && (
+                <div>
+                  <span className="text-on-surface-variant">캠페인</span>
+                  <span className="ml-3">{ownerContact.signupSource.utmCampaign}</span>
+                </div>
+              )}
+              {ownerContact.signupSource.utmTerm && (
+                <div>
+                  <span className="text-on-surface-variant">검색어</span>
+                  <span className="ml-3">{ownerContact.signupSource.utmTerm}</span>
+                </div>
+              )}
+              {ownerContact.signupSource.utmContent && (
+                <div>
+                  <span className="text-on-surface-variant">콘텐츠</span>
+                  <span className="ml-3">{ownerContact.signupSource.utmContent}</span>
+                </div>
+              )}
+              {ownerContact.signupSource.referrer && (
+                <div className="col-span-2">
+                  <span className="text-on-surface-variant">외부 유입 referrer</span>
+                  <span className="ml-3 break-all">{ownerContact.signupSource.referrer}</span>
+                </div>
+              )}
+              {ownerContact.signupSource.landingPath && (
+                <div className="col-span-2">
+                  <span className="text-on-surface-variant">최초 진입 경로</span>
+                  <span className="ml-3 break-all">{ownerContact.signupSource.landingPath}</span>
+                </div>
+              )}
+              {ownerContact.signupSource.capturedAt && (
+                <div>
+                  <span className="text-on-surface-variant">캡처 시각</span>
+                  <span className="ml-3 md-numeric">
+                    {formatKST(ownerContact.signupSource.capturedAt)}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </section>
+
       {/* 어드민 노트 */}
       <section className="space-y-3">
         <h2 className="text-title-small font-medium">어드민 노트</h2>
