@@ -69,7 +69,7 @@ export async function rejectMemberAction(
         {
           event: 'membership.rejected',
           to: memberRow.email,
-          subject: '[Support B] 담당자 계정 합류 요청 결과 안내',
+          subject: '[서포트비] 담당자 계정 합류 요청 결과 안내',
           html,
           dedupeKey: `membership-rejected:${workspaceId}:${userId}`,
         },

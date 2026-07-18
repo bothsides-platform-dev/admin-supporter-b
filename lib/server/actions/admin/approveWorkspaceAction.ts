@@ -164,7 +164,7 @@ export async function approveWorkspaceAction(
         {
           event: 'workspace.approved',
           to: ownerRow.email,
-          subject: '[Support B] 가입이 승인되었습니다',
+          subject: '[서포트비] 가입이 승인되었습니다',
           html,
           dedupeKey: `workspace-approved:${workspaceId}`,
         },

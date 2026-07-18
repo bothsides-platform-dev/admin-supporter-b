@@ -70,7 +70,7 @@ export async function approveMemberAction(
         {
           event: 'membership.approved',
           to: memberRow.email,
-          subject: '[Support B] 담당자 계정이 승인되었습니다',
+          subject: '[서포트비] 담당자 계정이 승인되었습니다',
           html,
           dedupeKey: `membership-approved:${workspaceId}:${userId}`,
         },
