@@ -13,7 +13,7 @@
 import * as Sentry from '@sentry/nextjs';
 import { Resend } from 'resend';
 
-const DEFAULT_FROM = 'send@supporter-b.store';
+const DEFAULT_FROM = 'send@support-b.com';
 
 // ADMIN_NOTIFY_EMAIL 은 ',' 로 구분된 여러 주소를 허용한다. 공백 trim 후 빈 항목 제거.
 function parseRecipients(raw: string | undefined): string[] {

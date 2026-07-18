@@ -105,7 +105,7 @@ export function Layout({
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>SUPPORTER B</title>
+        <title>SUPPORT B</title>
       </head>
       <body
         style={{
@@ -159,7 +159,7 @@ export function Layout({
                     fontWeight: 600,
                   }}
                 >
-                  SUPPORTER B
+                  SUPPORT B
                 </div>
                 {serial ? (
                   <div style={{ marginTop: '4px' }}>
@@ -184,7 +184,7 @@ export function Layout({
                   color: '#999',
                 }}
               >
-                SUPPORTER B · 본 메일은 발신 전용입니다.
+                SUPPORT B · 본 메일은 발신 전용입니다.
               </td>
             </tr>
           </tbody>

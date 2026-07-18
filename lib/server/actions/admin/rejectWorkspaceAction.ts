@@ -79,7 +79,7 @@ export async function rejectWorkspaceAction(
         {
           event: 'workspace.rejected',
           to: ownerRow.email,
-          subject: '[Supporter B] 가입 심사 결과 — 보완이 필요합니다',
+          subject: '[Support B] 가입 심사 결과 — 보완이 필요합니다',
           html,
           dedupeKey: `workspace-rejected:${workspaceId}`,
         },

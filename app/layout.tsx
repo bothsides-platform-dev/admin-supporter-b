@@ -11,7 +11,7 @@ const pretendard = localFont({
 });
 
 export const metadata: Metadata = {
-  title: 'Supporter B Admin',
+  title: 'Support B Admin',
   robots: { index: false, follow: false },
 };
 

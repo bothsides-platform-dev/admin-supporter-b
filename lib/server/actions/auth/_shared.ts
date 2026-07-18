@@ -29,7 +29,7 @@ export function baseUrl(): string {
 }
 
 // User-facing app origin — for email links pointing to the MAIN app
-// (login, signup). Set PUBLIC_APP_URL=https://supporter-b.store in .env.production.
+// (login, signup). Set PUBLIC_APP_URL=https://support-b.com in .env.production.
 export function appBaseUrl(): string {
   return (
     process.env.PUBLIC_APP_URL ??

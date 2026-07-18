@@ -6,10 +6,10 @@ const ALLOWED_EMAILS = (process.env.ADMIN_EMAILS ?? '')
   .map((e) => e.trim().toLowerCase())
   .filter(Boolean);
 
-// This admin app shares its parent domain (supporter-b.store) with the main app,
-// which scopes its Auth.js session cookie to `Domain=.supporter-b.store`. Because
+// This admin app shares its parent domain (support-b.com) with the main app,
+// which scopes its Auth.js session cookie to `Domain=.support-b.com`. Because
 // both apps use Auth.js' default cookie names, that parent-domain cookie collides
-// with this app's host-only cookie of the SAME name on admin.supporter-b.store —
+// with this app's host-only cookie of the SAME name on admin.support-b.com —
 // the browser sends both, @auth/core reads the wrong one, decryption fails, and
 // the user is bounced back to /login (only clearing cookies "fixes" it).
 // Giving this app uniquely-named cookies (`admin-authjs.*`) removes the collision
