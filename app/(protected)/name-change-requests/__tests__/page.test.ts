@@ -133,6 +133,30 @@ describe('WorkspaceNameChangeRequestsPage', () => {
     );
   });
 
+  it('이전 오류 주소에서 승인·거절이 성공하면 오류를 제거한 목록으로 이동한다', async () => {
+    mocks.list.mockResolvedValue([request()]);
+    const tree = await WorkspaceNameChangeRequestsPage({
+      searchParams: Promise.resolve({ status: 'pending', error: 'WORKSPACE_NOT_ACTIVE' }),
+    });
+    const actionForms: Array<(data: FormData) => Promise<void>> = [];
+    walk(tree, (props, type) => {
+      if (type === 'form' && typeof props.action === 'function') {
+        actionForms.push(props.action as (data: FormData) => Promise<void>);
+      }
+    });
+
+    const rejectData = new FormData();
+    rejectData.set('requestId', '20000000-0000-4000-8000-000000000001');
+    rejectData.set('reason', '증빙이 필요합니다.');
+    await actionForms[0](rejectData);
+    const approveData = new FormData();
+    approveData.set('requestId', '20000000-0000-4000-8000-000000000001');
+    await actionForms[1](approveData);
+
+    expect(mocks.redirect).toHaveBeenNthCalledWith(1, '/name-change-requests?status=pending');
+    expect(mocks.redirect).toHaveBeenNthCalledWith(2, '/name-change-requests?status=pending');
+  });
+
   it('처리된 PG 요청은 사유를 표시하고 처리 폼을 숨긴다', async () => {
     mocks.list.mockResolvedValue([request({
       workspaceType: 'pg',

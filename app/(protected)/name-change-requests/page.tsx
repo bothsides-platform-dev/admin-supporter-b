@@ -19,6 +19,10 @@ function redirectWithError(status: string, code: string): never {
   redirect(`/name-change-requests?${params.toString()}`);
 }
 
+function redirectToList(status: string): never {
+  redirect(status ? `/name-change-requests?status=${encodeURIComponent(status)}` : '/name-change-requests');
+}
+
 export default async function WorkspaceNameChangeRequestsPage({
   searchParams,
 }: {
@@ -32,6 +36,7 @@ export default async function WorkspaceNameChangeRequestsPage({
     'use server';
     const result = await approveWorkspaceNameChangeAction(undefined, String(formData.get('requestId')));
     if (!result.ok) redirectWithError(selectedStatus, result.error);
+    else redirectToList(selectedStatus);
   }
   async function reject(formData: FormData) {
     'use server';
@@ -41,6 +46,7 @@ export default async function WorkspaceNameChangeRequestsPage({
       String(formData.get('reason') ?? ''),
     );
     if (!result.ok) redirectWithError(selectedStatus, result.error);
+    else redirectToList(selectedStatus);
   }
 
   return (
