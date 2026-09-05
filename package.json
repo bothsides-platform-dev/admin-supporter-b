@@ -1,13 +1,14 @@
 {
   "name": "admin-supporter-b",
-  "version": "0.1.0.4",
+  "version": "0.1.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev -p 4242",
     "build": "next build",
     "start": "next start -p 4242",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test": "vitest run"
   },
   "dependencies": {
     "@react-email/render": "^2.0.8",
@@ -27,6 +28,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.3.13",
     "@tailwindcss/postcss": "^4.2.4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -34,6 +36,7 @@
     "eslint": "^9.39.4",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4.2.4",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.9"
   }
 }
