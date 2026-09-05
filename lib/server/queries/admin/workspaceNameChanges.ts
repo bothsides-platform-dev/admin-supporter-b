@@ -5,6 +5,8 @@ import { actionDb } from '@/lib/server/actions/auth/_shared';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DB = any;
 
+export const WORKSPACE_NAME_CHANGE_PAGE_SIZE = 100;
+
 export type WorkspaceNameChangeRequestRow = {
   id: string;
   workspaceId: string;
@@ -41,6 +43,7 @@ export async function listWorkspaceNameChangeRequests(
     .leftJoin(workspaces, eq(workspaceNameChangeRequests.workspaceId, workspaces.id))
     .leftJoin(users, eq(workspaceNameChangeRequests.requestedByUserId, users.id))
     .where(opts.status ? eq(workspaceNameChangeRequests.status, opts.status) : undefined)
-    .orderBy(desc(workspaceNameChangeRequests.submittedAt), desc(workspaceNameChangeRequests.id));
+    .orderBy(desc(workspaceNameChangeRequests.submittedAt), desc(workspaceNameChangeRequests.id))
+    .limit(WORKSPACE_NAME_CHANGE_PAGE_SIZE);
   return rows as WorkspaceNameChangeRequestRow[];
 }

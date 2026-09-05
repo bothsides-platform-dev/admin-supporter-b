@@ -1,30 +1,46 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { SubmitButton } from '@/components/SubmitButton';
 import { formatKST } from '@/lib/utils';
 import { listWorkspaceNameChangeRequests } from '@/lib/server/queries/admin/workspaceNameChanges';
 import { approveWorkspaceNameChangeAction, rejectWorkspaceNameChangeAction } from '@/lib/server/actions/admin/reviewWorkspaceNameChangeAction';
 
 const STATUS_LABEL: Record<string, string> = { pending: '확인 중', approved: '승인', rejected: '거절' };
+const ERROR_LABEL: Record<string, string> = {
+  INVALID_INPUT: '입력값을 확인한 뒤 다시 시도해 주세요.',
+  REQUEST_NOT_PENDING: '이미 처리된 요청이에요. 최신 목록을 확인해 주세요.',
+  WORKSPACE_NOT_ACTIVE: '워크스페이스 상태나 현재 이름이 달라 승인할 수 없어요.',
+};
+
+function redirectWithError(status: string, code: string): never {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  params.set('error', code);
+  redirect(`/name-change-requests?${params.toString()}`);
+}
 
 export default async function WorkspaceNameChangeRequestsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; error?: string }>;
 }) {
-  const { status } = await searchParams;
+  const { status, error } = await searchParams;
   const selectedStatus = status ?? 'pending';
   const requests = await listWorkspaceNameChangeRequests({ status: selectedStatus });
 
   async function approve(formData: FormData) {
     'use server';
-    await approveWorkspaceNameChangeAction(undefined, String(formData.get('requestId')));
+    const result = await approveWorkspaceNameChangeAction(undefined, String(formData.get('requestId')));
+    if (!result.ok) redirectWithError(selectedStatus, result.error);
   }
   async function reject(formData: FormData) {
     'use server';
-    await rejectWorkspaceNameChangeAction(
+    const result = await rejectWorkspaceNameChangeAction(
       undefined,
       String(formData.get('requestId')),
       String(formData.get('reason') ?? ''),
     );
+    if (!result.ok) redirectWithError(selectedStatus, result.error);
   }
 
   return (
@@ -33,6 +49,11 @@ export default async function WorkspaceNameChangeRequestsPage({
         <h1 className="text-headline-small font-semibold">이름 변경 심사</h1>
         <p className="mt-1 text-body-small text-on-surface-variant">승인하기 전까지 고객 화면에는 기존 이름이 유지됩니다.</p>
       </div>
+      {error && ERROR_LABEL[error] && (
+        <p role="alert" className="rounded border border-error bg-error-container px-3 py-2 text-body-small text-on-error-container">
+          {ERROR_LABEL[error]}
+        </p>
+      )}
       <form method="GET" className="flex gap-2">
         <select name="status" defaultValue={selectedStatus} className="rounded border border-outline-variant px-3 py-1.5 text-body-small bg-surface">
           <option value="pending">확인 중</option>
@@ -61,12 +82,13 @@ export default async function WorkspaceNameChangeRequestsPage({
               <div className="flex flex-col gap-2 border-t border-outline-variant pt-3 sm:flex-row sm:items-end">
                 <form action={reject} className="flex flex-1 gap-2">
                   <input type="hidden" name="requestId" value={request.id} />
-                  <input name="reason" required maxLength={500} placeholder="거절 사유" className="min-w-0 flex-1 rounded border border-outline-variant bg-surface px-3 py-1.5 text-body-small" />
-                  <button type="submit" className="rounded border border-outline-variant px-3 py-1.5 text-label-small hover:bg-surface-container-low">거절</button>
+                  <label htmlFor={`name-change-reject-reason-${request.id}`} className="sr-only">거절 사유</label>
+                  <input id={`name-change-reject-reason-${request.id}`} name="reason" required maxLength={500} placeholder="거절 사유" className="min-w-0 flex-1 rounded border border-outline-variant bg-surface px-3 py-1.5 text-body-small" />
+                  <SubmitButton className="rounded border border-outline-variant px-3 py-1.5 text-label-small hover:bg-surface-container-low">거절</SubmitButton>
                 </form>
                 <form action={approve}>
                   <input type="hidden" name="requestId" value={request.id} />
-                  <button type="submit" className="w-full rounded bg-primary px-3 py-1.5 text-label-small text-on-primary sm:w-auto">승인</button>
+                  <SubmitButton className="w-full rounded bg-primary px-3 py-1.5 text-label-small text-on-primary sm:w-auto">승인</SubmitButton>
                 </form>
               </div>
             )}

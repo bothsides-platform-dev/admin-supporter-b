@@ -63,4 +63,33 @@ describe('listWorkspaceNameChangeRequests', () => {
     expect(pending.every((row) => row.status === 'pending')).toBe(true);
     expect(pending[0]).toMatchObject({ workspaceType: 'pg', reason: null });
   });
+
+  it('한 번에 최신 요청 100건까지만 반환한다', async () => {
+    const client = new PGlite();
+    await client.exec(`
+      CREATE TABLE users (id uuid PRIMARY KEY, name text NOT NULL, email text NOT NULL);
+      CREATE TABLE workspaces (id uuid PRIMARY KEY, type text NOT NULL, name text NOT NULL);
+      CREATE TABLE workspace_name_change_requests (
+        id uuid PRIMARY KEY, workspace_id uuid NOT NULL, requested_by_user_id uuid NOT NULL,
+        current_name text NOT NULL, requested_name text NOT NULL, status text NOT NULL,
+        reviewed_by text, reason text, submitted_at timestamptz NOT NULL, reviewed_at timestamptz
+      );
+      INSERT INTO workspace_name_change_requests
+        (id, workspace_id, requested_by_user_id, current_name, requested_name, status, submitted_at)
+      SELECT
+        gen_random_uuid(),
+        '10000000-0000-4000-8000-000000000001',
+        '30000000-0000-4000-8000-000000000001',
+        '기존 이름',
+        '요청 ' || n,
+        'approved',
+        '2026-09-01T00:00:00Z'::timestamptz + n * interval '1 minute'
+      FROM generate_series(1, 101) AS n;
+    `);
+
+    const rows = await listWorkspaceNameChangeRequests({ status: 'approved' }, drizzle(client));
+    expect(rows).toHaveLength(100);
+    expect(rows[0]?.requestedName).toBe('요청 101');
+    expect(rows.at(-1)?.requestedName).toBe('요청 2');
+  });
 });
