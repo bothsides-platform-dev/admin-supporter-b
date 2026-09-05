@@ -2,6 +2,14 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.1.0] - 2026-09-05
+
+### Added
+
+- 구매사·PG사의 이름 변경 요청을 검토하는 `/name-change-requests` 화면을 추가했습니다. 승인은 워크스페이스 이름과 요청 상태를 한 트랜잭션에서 반영하고, 거절은 기존 이름을 유지한 채 사유를 기록합니다.
+- 승인·거절 결과를 `admin_audit_logs`에 남기고, 이미 처리된 요청의 중복 처리를 차단합니다.
+- 운영자 액션과 조회 회귀 테스트를 위한 Vitest 기반을 추가했습니다.
+
 ## [0.1.0.4] - 2026-06-22
 
 ### Added
