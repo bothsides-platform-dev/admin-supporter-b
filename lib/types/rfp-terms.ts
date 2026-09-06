@@ -19,9 +19,30 @@ export type CurrentTermsV1 = {
   annualPgVolume?: string;
 };
 
+// currentTerms 의 모든 필드는 string 이어야 하지만 jsonb 라 DB 가 이를 강제하지
+// 않는다 — 값이 객체/배열로 잘못 저장되면 React 가 "Objects are not valid as a
+// React child" 로 페이지 전체를 500 낸다(코드 리뷰에서 지적됨). string 이 아닌
+// 필드는 표시 직전에 undefined 로 떨어뜨려 그 행 자체를 숨긴다(DetailRow 는
+// undefined 값을 렌더하지 않음).
+const STRING_FIELDS = [
+  'feeRate',
+  'settlementLimit',
+  'guaranteeInsurance',
+  'settlementCycle',
+  'deliveryServicePeriod',
+  'solution',
+  'solutionDetail',
+  'annualPgVolume',
+] as const satisfies readonly (keyof CurrentTermsV1)[];
+
 /** 관대한 읽기 — rfps.current_terms 는 항상 이 모양이라고 가정하지 않는다. */
 export function currentTermsOf(raw: unknown): CurrentTermsV1 {
-  return (raw ?? {}) as CurrentTermsV1;
+  const o = (raw ?? {}) as Record<string, unknown>;
+  const terms: CurrentTermsV1 = typeof o._v === 'number' ? { _v: o._v } : {};
+  for (const key of STRING_FIELDS) {
+    if (typeof o[key] === 'string') terms[key] = o[key] as string;
+  }
+  return terms;
 }
 
 // bidit(lib/rfp/solutions.ts)의 라벨 — SOLUTION_VALUES 와 1:1.

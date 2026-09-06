@@ -12,7 +12,8 @@ function textOf(node: ReactNode): string {
     const props = node.props as { children?: ReactNode };
     // 클래스 컴포넌트가 아닌 함수 컴포넌트는 직접 호출해 하위 트리를 얻는다.
     if (typeof node.type === 'function') {
-      return textOf((node.type as any)(node.props));
+      const Component = node.type as (props: unknown) => ReactNode;
+      return textOf(Component(node.props));
     }
     return textOf(props.children);
   }
@@ -118,6 +119,36 @@ describe('BidFeeMatrix', () => {
       BidFeeMatrix({ bids: [bid], requiredPaymentMethods: [], customPaymentMethods: [] }),
     );
     expect(text).toContain('unknown-id');
+  });
+
+  it('RFP가 요청한 커스텀 수단을 아무도 제출하지 않아도 행 자체는 노출한다 (누락과 미노출을 구분)', () => {
+    const bid = baseBid({ customFees: {} });
+    const text = textOf(
+      BidFeeMatrix({
+        bids: [bid],
+        requiredPaymentMethods: [],
+        customPaymentMethods: [{ id: 'custom-1', label: '제로 제출 수단' }],
+      }),
+    );
+    expect(text).toContain('제로 제출 수단');
+    expect(text).toContain('—');
+  });
+
+  it('null/false/문자열 등 잘못된 fee 값은 0%가 아니라 —로 표시한다 (가짜 수수료 방지)', () => {
+    const bid = baseBid({
+      paymentFees: { card: null as unknown as number, gift_card: false as unknown as number },
+      customFees: { 'custom-1': null as unknown as number },
+    });
+    const text = textOf(
+      BidFeeMatrix({
+        bids: [bid],
+        requiredPaymentMethods: ['card', 'gift_card'],
+        customPaymentMethods: [{ id: 'custom-1', label: '기타수단' }],
+      }),
+    );
+    expect(text).not.toContain('0.00%');
+    // 카드/상품권/기타수단 3행 모두 —여야 한다.
+    expect((text.match(/—/g) ?? []).length).toBe(3);
   });
 
   it('일부 견적만 커스텀 수단을 제출했으면 나머지 열은 —로 표시한다', () => {

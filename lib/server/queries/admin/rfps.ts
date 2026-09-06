@@ -17,7 +17,34 @@ import type {
 } from '@/lib/types/bid';
 import { currentTermsOf, type CurrentTermsV1 } from '@/lib/types/rfp-terms';
 
+// jsonb 컬럼은 DB 레벨에서 모양을 강제하지 않는다 — 과거 데이터 오류나 수기
+// SQL 로 잘못된 모양(배열이어야 할 자리에 객체 등)이 들어가면 .map()/Object.keys()
+// 가 그대로 던져 페이지 전체가 500 난다(코드 리뷰에서 지적됨). 표시 직전에 한 번
+// 모양을 확인해 아니면 빈 값으로 fail-safe 처리한다.
+function asArray<T>(value: unknown): T[] {
+  return Array.isArray(value) ? (value as T[]) : [];
+}
+function asRecord(value: unknown): Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+// 배열 모양은 맞아도 원소가 잘못될 수 있다(null, id/label 이 string 이 아닌 항목
+// 등) — page.tsx/BidFeeMatrix 가 c.id/c.label 을 그대로 dereference 하므로
+// 원소 단위로도 검증해야 한다(코드 리뷰에서 지적됨).
+function asCustomPaymentMethods(value: unknown): CustomPaymentMethod[] {
+  return asArray<unknown>(value).filter(
+    (c): c is CustomPaymentMethod =>
+      typeof c === 'object' &&
+      c !== null &&
+      typeof (c as Record<string, unknown>).id === 'string' &&
+      typeof (c as Record<string, unknown>).label === 'string',
+  );
+}
+
 // PGlite 테스트 주입용 — lib/server/queries/admin/workspaceNameChanges.ts 와 동일 패턴.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DB = any;
 
 export type RfpListRow = {
@@ -140,7 +167,7 @@ export async function getRfpDetail(rfpId: string, db: DB = actionDb()) {
   const { rfp, ...rfpMeta } = rfpRow;
   const currentTerms: CurrentTermsV1 = currentTermsOf(rfp.currentTerms);
   // jsonb 컬럼이라 drizzle 이 unknown 으로 돌려준다 — 표시 전 타입 좁히기.
-  const customPaymentMethods = (rfp.customPaymentMethods ?? []) as CustomPaymentMethod[];
+  const customPaymentMethods = asCustomPaymentMethods(rfp.customPaymentMethods);
 
   // 아래 3개 쿼리는 서로 독립적(모두 rfpId 만으로 조회)이라 병렬로 실행한다 —
   // proposalAttachments 만 rawBids 의 bidIds 에 의존하므로 별도로 이어서 조회.
@@ -192,8 +219,8 @@ export async function getRfpDetail(rfpId: string, db: DB = actionDb()) {
     ...b,
     settleLimit: Number(b.settleLimit),
     guaranteeInsurance: Number(b.guaranteeInsurance),
-    paymentFees: (b.paymentFees ?? {}) as PaymentFeesDisplay,
-    customFees: (b.customFees ?? {}) as CustomFeesDisplay,
+    paymentFees: asRecord(b.paymentFees) as PaymentFeesDisplay,
+    customFees: asRecord(b.customFees) as CustomFeesDisplay,
   }));
 
   const bidIds = normalizedBids.map((b) => b.id);

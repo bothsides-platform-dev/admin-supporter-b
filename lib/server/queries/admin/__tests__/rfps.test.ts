@@ -193,6 +193,50 @@ describe('getRfpDetail', () => {
     expect(detail.proposalAttachments).toEqual([]);
     expect(detail.currentTerms._v).toBe(1);
   });
+
+  it('customPaymentMethods/paymentFees가 배열/객체가 아닌 잘못된 모양으로 저장돼 있어도 500 대신 빈 값으로 fail-safe 처리한다', async () => {
+    const client = new PGlite();
+    await client.exec(SCHEMA_SQL);
+    const bidId = '50000000-0000-4000-8000-000000000099';
+    await client.exec(`
+      INSERT INTO users VALUES ('${CREATOR}', '작성자박', 'buyer@example.com'), ('${PG_ALPHA_USER}', '김PG', 'alpha@example.com');
+      INSERT INTO workspaces VALUES ('${BUYER_WS}', '테스트구매사'), ('${PG_ALPHA_WS}', 'AlphaPG');
+      INSERT INTO rfps (id, code, buyer_ws_id, biz_profile_id, title, deadline, share_token, created_by, custom_payment_methods)
+      VALUES ('${RFP_ID}', 'P-2609-0004', '${BUYER_WS}', NULL, '모양이 잘못된 RFP', '2026-09-20T00:00:00Z', 'tok3', '${CREATOR}', '{}'::jsonb);
+      INSERT INTO bids (id, rfp_id, pg_ws_id, settle_cycle, payment_fees, custom_fees, round, status, submitted_by)
+      VALUES ('${bidId}', '${RFP_ID}', '${PG_ALPHA_WS}', 'D+1', '"오타로 문자열이 들어감"'::jsonb, '[1,2,3]'::jsonb, 1, 'submitted', '${PG_ALPHA_USER}');
+    `);
+    const db = drizzle(client);
+
+    const detail = await getRfpDetail(RFP_ID, db);
+    if (!detail) throw new Error('detail must not be null');
+
+    // customPaymentMethods 는 배열이어야 하는데 객체({})로 저장됨 → 크래시 없이 [].
+    expect(detail.customPaymentMethods).toEqual([]);
+    // paymentFees 는 객체여야 하는데 문자열로 저장됨, customFees 는 배열로 저장됨 → 둘 다 {}.
+    expect(detail.bids[0].paymentFees).toEqual({});
+    expect(detail.bids[0].customFees).toEqual({});
+  });
+
+  it('customPaymentMethods 배열 안에 모양이 잘못된 원소(null, id/label 이 문자열 아님)가 섞여 있어도 그 원소만 걸러낸다', async () => {
+    const client = new PGlite();
+    await client.exec(SCHEMA_SQL);
+    await client.exec(`
+      INSERT INTO users VALUES ('${CREATOR}', '작성자박', 'buyer@example.com');
+      INSERT INTO workspaces VALUES ('${BUYER_WS}', '테스트구매사');
+      INSERT INTO rfps (id, code, buyer_ws_id, biz_profile_id, title, deadline, share_token, created_by, custom_payment_methods)
+      VALUES (
+        '${RFP_ID}', 'P-2609-0005', '${BUYER_WS}', NULL, '원소가 섞인 RFP', '2026-09-20T00:00:00Z', 'tok4', '${CREATOR}',
+        '[null, {"id": 123, "label": "숫자 id"}, {"id": "ok-1", "label": {}}, {"id": "ok-2", "label": "정상"}]'::jsonb
+      );
+    `);
+    const db = drizzle(client);
+
+    const detail = await getRfpDetail(RFP_ID, db);
+    if (!detail) throw new Error('detail must not be null');
+
+    expect(detail.customPaymentMethods).toEqual([{ id: 'ok-2', label: '정상' }]);
+  });
 });
 
 describe('listAllRfps', () => {
