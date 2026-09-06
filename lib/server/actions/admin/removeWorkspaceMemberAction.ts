@@ -17,7 +17,7 @@ export async function removeWorkspaceMemberAction(
 
   let error: string | null = null;
 
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await db.transaction(async (tx: any) => {
     const [memberRow] = await tx
       .select({ role: workspaceMembers.role })

@@ -17,7 +17,7 @@ import { actionDb } from '@/lib/server/actions/auth/_shared';
 export async function deleteUserAction(userId: string): Promise<void> {
   const session = await requireSuperAdmin();
 
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await actionDb().transaction(async (tx: any) => {
     const [userRow] = await tx
       .select({ email: users.email, name: users.name })

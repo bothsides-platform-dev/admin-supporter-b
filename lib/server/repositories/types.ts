@@ -3,7 +3,7 @@ import type { PgTransaction } from 'drizzle-orm/pg-core';
 import type { DB } from '@/lib/db/index';
 import type { OutboxEntry, OutboxEvent, Sender } from '../outbox/types';
 
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Tx = DB | PgTransaction<any, any, any>;
 
 export interface OutboxRepo {

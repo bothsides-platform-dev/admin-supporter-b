@@ -28,10 +28,10 @@ function rowToEntry(row: OutboxRow): OutboxEntry {
 }
 
 export class DrizzleOutboxRepository implements OutboxRepo {
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   constructor(private readonly _db: DB | any) {}
 
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private h(tx?: Tx): any {
     return tx ?? this._db;
   }
@@ -162,7 +162,7 @@ export class DrizzleOutboxRepository implements OutboxRepo {
     let ok = 0;
     let failed = 0;
 
-
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const claimed: OutboxEntry[] = await db.transaction(async (tx: any) => {
       const rows = await tx
         .select()

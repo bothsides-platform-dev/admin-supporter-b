@@ -20,7 +20,7 @@ export async function rejectMemberAction(
   const session = await requireAdminSession();
   const outbox = new DrizzleOutboxRepository(db);
 
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await db.transaction(async (tx: any) => {
     const updated = await tx
       .update(workspaceMembers)

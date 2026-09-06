@@ -11,7 +11,7 @@ type Result = { ok: true } | { ok: false; error: string };
 export async function unsuspendUserAction(userId: string): Promise<Result> {
   const session = await requireAdminSession();
 
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await actionDb().transaction(async (tx: any) => {
     await tx.update(users).set({ status: 'active' }).where(eq(users.id, userId));
     await tx.insert(adminAuditLogs).values({

@@ -34,7 +34,7 @@ export async function rejectWorkspaceAction(
   const now = new Date();
   const outbox = new DrizzleOutboxRepository(db);
 
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await db.transaction(async (tx: any) => {
     await tx.update(verificationApplications)
       .set({ status: 'rejected', reviewedBy: session.adminId, reviewedAt: now, reason })

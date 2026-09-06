@@ -45,7 +45,7 @@ export async function approveWorkspaceAction(
   const now = new Date();
   const outbox = new DrizzleOutboxRepository(db);
 
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await db.transaction(async (tx: any) => {
     // workspace 조회 — type + 현재 bizProfileId 확인
     const [ws] = await tx

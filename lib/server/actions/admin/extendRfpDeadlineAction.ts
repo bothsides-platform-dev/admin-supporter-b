@@ -24,7 +24,7 @@ export async function extendRfpDeadlineAction(
   const oldDeadline = rfp.deadline;
   const newDeadline = new Date(new Date(oldDeadline).getTime() + days * 86_400_000);
 
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await db.transaction(async (tx: any) => {
     await tx.update(rfps).set({ deadline: newDeadline }).where(eq(rfps.id, rfpId));
     await tx.insert(adminAuditLogs).values({

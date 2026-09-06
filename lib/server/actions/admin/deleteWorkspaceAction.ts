@@ -12,7 +12,7 @@ export async function deleteWorkspaceAction(
 ): Promise<void> {
   const session = await requireSuperAdmin();
 
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await actionDb().transaction(async (tx: any) => {
     const [wsRow] = await tx
       .select({ name: workspaces.name, type: workspaces.type, status: workspaces.status })

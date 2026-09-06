@@ -35,7 +35,7 @@ export async function updateWorkspaceGradeAction(
 
   let error: string | null = null;
 
-
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await db.transaction(async (tx: any) => {
     const [ws] = await tx
       .select()
