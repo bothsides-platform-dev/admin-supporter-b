@@ -22,7 +22,7 @@ export async function hideQuoteAction(
   if (!bid) return { ok: false, error: 'NOT_FOUND' };
   const rfpId = bid.rfpId;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   await db.transaction(async (tx: any) => {
     await tx.update(bids).set({ status: 'withdrawn' }).where(eq(bids.id, bidId));
     await tx.insert(adminAuditLogs).values({

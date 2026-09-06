@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm';
 import { users, workspaceNameChangeRequests, workspaces } from '@/lib/db/schema';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 type DB = any;
 
 export const WORKSPACE_NAME_CHANGE_PAGE_SIZE = 100;

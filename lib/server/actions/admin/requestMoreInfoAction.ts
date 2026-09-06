@@ -19,7 +19,7 @@ export async function requestMoreInfoAction(
   const session = await requireAdminSession();
   const now = new Date();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   await (db as ReturnType<typeof actionDb>).transaction(async (tx: any) => {
     await tx.update(verificationApplications)
       .set({ status: 'needs_more_info', reviewedBy: session.adminId, reviewedAt: now, reason })

@@ -16,7 +16,7 @@ export async function sendReminderAction(
 
   const session = await requireAdminSession();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   await (db as ReturnType<typeof actionDb>).transaction(async (tx: any) => {
     await tx.insert(adminAuditLogs).values({
       actor: session.adminId,

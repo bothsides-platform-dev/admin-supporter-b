@@ -1,14 +1,11 @@
-import { dirname } from "path";
-import { fileURLToPath } from "url";
-import { FlatCompat } from "@eslint/eslintrc";
+// eslint-config-next 16.x ships its own flat config array (core-web-vitals +
+// typescript combined) — no need for @eslint/eslintrc's FlatCompat shim
+// anymore. FlatCompat targets legacy shareable-config resolution and chokes
+// on this package's self-referential plugin objects (eslint-plugin-react's
+// configs.recommended.plugins.react === itself), throwing "Converting
+// circular structure to JSON" out of ConfigValidator.formatErrors.
+import nextConfig from "eslint-config-next";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({ baseDirectory: __dirname });
-
-const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
-];
+const eslintConfig = [...nextConfig];
 
 export default eslintConfig;

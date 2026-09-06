@@ -8,7 +8,7 @@ import { requireAdminSession } from '@/lib/auth/admin-session';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 
 // Admin actions accept an injected handle to keep the transaction boundary testable.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 type DB = any;
 
 const RequestId = z.string().uuid();

@@ -10,7 +10,7 @@ import type { DB } from '@/lib/db/index';
 // `T` is the success-payload shape. Default is an empty object so callers
 // that don't carry data can write `Promise<AuthActionResult>` without
 // listing a generic.
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+
 export type AuthActionResult<T extends object = {}> =
   | ({ ok: true } & T)
   | { ok: false; error: string };

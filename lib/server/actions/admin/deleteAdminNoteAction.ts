@@ -14,7 +14,7 @@ export async function deleteAdminNoteAction(
 ): Promise<Result> {
   const session = await requireAdminSession();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   await actionDb().transaction(async (tx: any) => {
     await tx.delete(adminNotes).where(eq(adminNotes.id, noteId));
     await tx.insert(adminAuditLogs).values({
