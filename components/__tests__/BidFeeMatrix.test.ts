@@ -92,6 +92,14 @@ describe('BidFeeMatrix', () => {
     expect(text).toContain('1.00%');
   });
 
+  it('requiredPaymentMethods 에 중복이 있어도 행을 한 번만 렌더한다 (key 충돌 방지)', () => {
+    const bid = baseBid({ paymentFees: { card: 0.01 } });
+    const text = textOf(
+      BidFeeMatrix({ bids: [bid], requiredPaymentMethods: ['card', 'card'], customPaymentMethods: [] }),
+    );
+    expect(text.match(/카드/g)).toHaveLength(1);
+  });
+
   it('어휘에 없는 결제수단 키가 와도 원문 키로 렌더한다 (fail-open)', () => {
     const bid = baseBid({ paymentFees: { unknown_method: 0.03 } });
     const text = textOf(

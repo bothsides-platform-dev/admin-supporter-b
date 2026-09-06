@@ -9,7 +9,7 @@ import { hideQuoteAction } from '@/lib/server/actions/admin/hideQuoteAction';
 import { sendReminderAction } from '@/lib/server/actions/admin/sendReminderAction';
 import { paymentMethodLabel, merchantTierLabel } from '@/lib/types/bid';
 import { CONTRACT_TYPE_LABELS, STRIP_PATH_FEE_RATE, solutionLabel } from '@/lib/types/rfp-terms';
-import { TAX_TYPE_LABELS, GRADE_SOURCE_LABELS, type TaxType, type GradeSource } from '@/lib/types/biz-profile';
+import { taxTypeLabel, gradeSourceLabel } from '@/lib/types/biz-profile';
 import { Chip } from '@/components/primitives/Chip';
 
 function DetailRow({ label, value, badge }: { label: string; value: React.ReactNode; badge?: React.ReactNode }) {
@@ -149,7 +149,7 @@ export default async function RfpDetailPage({
           {rfp.mainProducts && <DetailRow label="주요 상품" value={rfp.mainProducts} />}
           {bizProfile?.bizNo && <DetailRow label="사업자번호" value={<span className="md-numeric">{bizProfile.bizNo}</span>} />}
           {bizProfile?.taxType && (
-            <DetailRow label="과세유형" value={TAX_TYPE_LABELS[bizProfile.taxType as TaxType] ?? bizProfile.taxType} />
+            <DetailRow label="과세유형" value={taxTypeLabel(bizProfile.taxType)} />
           )}
           {bizProfile?.grade && (
             <DetailRow
@@ -158,7 +158,7 @@ export default async function RfpDetailPage({
               badge={
                 bizProfile.gradeSource && (
                   <span className="ml-2 text-label-small text-on-surface-variant">
-                    ({GRADE_SOURCE_LABELS[bizProfile.gradeSource as GradeSource] ?? bizProfile.gradeSource})
+                    ({gradeSourceLabel(bizProfile.gradeSource)})
                   </span>
                 )
               }
@@ -417,6 +417,13 @@ export default async function RfpDetailPage({
             <DetailRow label="낙찰일시" value={<span className="md-numeric">{formatKST(contract.awardedAt)}</span>} />
             <DetailRow label="처리자" value={contract.awardedByName ?? '—'} />
           </div>
+        ) : contract ? (
+          // contract 는 있는데 그 bidId 가 이 RFP 의 bids 목록에 없는 경우 —
+          // "미낙찰"/"계약 정보 없음"으로 표시하면 실제로 계약이 있는데
+          // 없다고 거짓 확언하는 셈이라 별도 불일치 상태로 보여준다.
+          <p className="px-4 py-8 text-center text-error text-body-small">
+            데이터 불일치: 계약은 존재하나 연결된 견적을 찾을 수 없습니다 (bid: {contract.bidId})
+          </p>
         ) : (
           <p className="px-4 py-8 text-center text-on-surface-variant text-body-small">
             {rfp.status === 'awarded' ? '계약 정보 없음' : '미낙찰'}

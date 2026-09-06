@@ -73,15 +73,16 @@ function FeeCell({ method, fee }: { method: string; fee: unknown }) {
 export function BidFeeMatrix({ bids, requiredPaymentMethods, customPaymentMethods }: BidFeeMatrixProps) {
   if (bids.length === 0) return null;
 
-  // 행 순서: RFP 요청 수단 우선, 그 외 어떤 견적이든 실제 제출한 수단은 뒤에 추가.
-  const seen = new Set<string>(requiredPaymentMethods);
-  const extraMethods: string[] = [];
-  for (const m of bids.flatMap((b) => Object.keys(b.paymentFees))) {
+  // 행 순서: RFP 요청 수단 우선(중복 제거 — requiredPaymentMethods 는 유니크
+  // 제약 없는 text[] 라 중복이 들어오면 <tr key={method}> 가 충돌한다), 그 외
+  // 어떤 견적이든 실제 제출한 수단은 뒤에 추가.
+  const methodRows: string[] = [];
+  const seen = new Set<string>();
+  for (const m of [...requiredPaymentMethods, ...bids.flatMap((b) => Object.keys(b.paymentFees))]) {
     if (seen.has(m)) continue;
     seen.add(m);
-    extraMethods.push(m);
+    methodRows.push(m);
   }
-  const methodRows = [...requiredPaymentMethods, ...extraMethods];
 
   // RFP 가 정의한 커스텀 수단은 아무도 제출하지 않아도 행으로 노출해야 한다 —
   // 표준 요청 수단처럼 "누락"이 —로 보이지 않으면 안 보이는 것과 구분이 안 된다.

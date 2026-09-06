@@ -1,3 +1,5 @@
+import { labelOf } from './label';
+
 export const MERCHANT_TIERS = ['sole', 'sme1', 'sme2', 'sme3', 'general'] as const;
 export type MerchantTier = (typeof MERCHANT_TIERS)[number];
 
@@ -29,6 +31,13 @@ export const TAX_TYPE_LABELS: Record<TaxType, string> = {
   exempt: '면세',
 };
 
+// 어휘 밖 값(예: 프로토타입 체인 키)이 와도 원문을 그대로 보여준다(fail-open) —
+// 대괄호 접근 + `?? fallback` 은 'constructor' 같은 키에서 truthy 한 함수를
+// 돌려줘 fallback 이 발동하지 않는 함정이 있다(다른 라벨 조회와 동일 이슈).
+export function taxTypeLabel(taxType: string): string {
+  return labelOf(TAX_TYPE_LABELS, taxType);
+}
+
 // biz_profiles.grade_source — 영중소구간이 어떻게 확정됐는지. admin 이 직접
 // 확인한 값(admin_confirmed)인지, 사용자가 답하거나 정정한 값인지 구분해 보여준다.
 export type GradeSource = 'user_confirmed' | 'user_overridden' | 'unset' | 'admin_confirmed';
@@ -39,3 +48,7 @@ export const GRADE_SOURCE_LABELS: Record<GradeSource, string> = {
   unset: '미설정',
   admin_confirmed: '관리자 확인',
 };
+
+export function gradeSourceLabel(source: string): string {
+  return labelOf(GRADE_SOURCE_LABELS, source);
+}
