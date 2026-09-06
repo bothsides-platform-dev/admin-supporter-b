@@ -7,6 +7,11 @@ export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
+  // 마운트 감지용 — next-themes 는 서버/클라이언트 첫 렌더가 다를 수 있어(SSR엔
+  // 테마 정보가 없음) hydration mismatch 를 피하려고 마운트 후에만 아이콘을
+  // 그린다. 표준 패턴이지만 react-hooks/set-state-in-effect 는 이 형태를
+  // 일괄 플래그하므로 의도적으로 억제한다.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
   if (!mounted) return <div className="w-7 h-7" />;
