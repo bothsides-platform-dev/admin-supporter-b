@@ -90,4 +90,39 @@ describe('BidFeeMatrix', () => {
     );
     expect(text).toContain('unknown_method');
   });
+
+  it('커스텀 결제수단은 RFP가 정의한 라벨로 렌더한다', () => {
+    const bid = baseBid({ customFees: { 'custom-1': 0.02 } });
+    const text = textOf(
+      BidFeeMatrix({
+        bids: [bid],
+        requiredPaymentMethods: [],
+        customPaymentMethods: [{ id: 'custom-1', label: '네이버 스마트스토어' }],
+      }),
+    );
+    expect(text).toContain('네이버 스마트스토어');
+    expect(text).toContain('2.00%');
+  });
+
+  it('customPaymentMethods에 라벨이 없으면 id를 그대로 보여준다 (fail-open)', () => {
+    const bid = baseBid({ customFees: { 'unknown-id': 0.03 } });
+    const text = textOf(
+      BidFeeMatrix({ bids: [bid], requiredPaymentMethods: [], customPaymentMethods: [] }),
+    );
+    expect(text).toContain('unknown-id');
+  });
+
+  it('일부 견적만 커스텀 수단을 제출했으면 나머지 열은 —로 표시한다', () => {
+    const submitted = baseBid({ id: 'bid-1', customFees: { 'custom-1': 0.02 } });
+    const notSubmitted = baseBid({ id: 'bid-2', customFees: {} });
+    const text = textOf(
+      BidFeeMatrix({
+        bids: [submitted, notSubmitted],
+        requiredPaymentMethods: [],
+        customPaymentMethods: [{ id: 'custom-1', label: '기타수단' }],
+      }),
+    );
+    expect(text).toContain('기타수단');
+    expect(text).toContain('—');
+  });
 });
