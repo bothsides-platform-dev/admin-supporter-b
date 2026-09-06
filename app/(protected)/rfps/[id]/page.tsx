@@ -282,18 +282,18 @@ export default async function RfpDetailPage({
           )}
         </div>
         <div className="rounded border border-outline-variant overflow-x-auto">
-          <table className="w-full text-body-small">
+          <table className="min-w-full text-body-small">
             <thead>
               <tr className="border-b border-outline-variant bg-surface-container-low">
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">PG사</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">차수</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">상태</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">정산주기</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">정산한도</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">보증보험</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">제출자</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">제출일</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">처리</th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">PG사</th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">차수</th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">상태</th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">정산주기</th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">정산한도</th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">보증보험</th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">제출자</th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">제출일</th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">처리</th>
               </tr>
             </thead>
             <tbody>
@@ -311,24 +311,24 @@ export default async function RfpDetailPage({
                     key={bid.id}
                     className={`border-b border-outline-variant last:border-0 hover:bg-surface-container-low ${isAwarded ? 'bg-tertiary-container/30' : ''}`}
                   >
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         {bid.pgWsName}
                         {isAwarded && <Chip color="tertiary" label="낙찰" />}
                       </div>
                     </td>
-                    <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant">{bid.round}</td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant whitespace-nowrap">{bid.round}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <AdminStatusBadge status={bid.status} />
                     </td>
-                    <td className="px-4 py-3 md-numeric text-label-small">{bid.settleCycle}</td>
-                    <td className="px-4 py-3 md-numeric text-label-small">{formatKRW(bid.settleLimit)}</td>
-                    <td className="px-4 py-3 md-numeric text-label-small">{formatKRW(bid.guaranteeInsurance)}</td>
-                    <td className="px-4 py-3 text-label-small text-on-surface-variant">{bid.submittedByName ?? '—'}</td>
-                    <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant">
+                    <td className="px-4 py-3 md-numeric text-label-small whitespace-nowrap">{bid.settleCycle}</td>
+                    <td className="px-4 py-3 md-numeric text-label-small whitespace-nowrap">{formatKRW(bid.settleLimit)}</td>
+                    <td className="px-4 py-3 md-numeric text-label-small whitespace-nowrap">{formatKRW(bid.guaranteeInsurance)}</td>
+                    <td className="px-4 py-3 text-label-small text-on-surface-variant whitespace-nowrap">{bid.submittedByName ?? '—'}</td>
+                    <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant whitespace-nowrap">
                       {formatDateKST(bid.submittedAt)}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       {bid.status === 'submitted' && (
                         <form action={hideBidAction} className="flex items-center gap-2">
                           <input
