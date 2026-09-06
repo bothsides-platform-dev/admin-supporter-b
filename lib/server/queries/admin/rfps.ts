@@ -17,6 +17,9 @@ import type {
 } from '@/lib/types/bid';
 import { currentTermsOf, type CurrentTermsV1 } from '@/lib/types/rfp-terms';
 
+// PGlite 테스트 주입용 — lib/server/queries/admin/workspaceNameChanges.ts 와 동일 패턴.
+type DB = any;
+
 export type RfpListRow = {
   id: string;
   code: string;
@@ -57,11 +60,42 @@ export type ContractRow = {
   awardedByName: string | null;
 };
 
+// db: DB(any) 로 select 체인 반환형이 전부 any 로 새는 것을 막기 위한 명시적 캐스팅
+// 타입 — page.tsx 쪽 rfp.contractType/customPaymentMethods 등이 any 로 번지지
+// 않도록 쿼리 결과를 여기서 한 번 좁힌다.
+type RfpDetailQueryRow = {
+  rfp: typeof rfps.$inferSelect;
+  buyerName: string;
+  createdByName: string;
+  createdByEmail: string;
+  bizNo: string | null;
+  taxType: 'general' | 'simple' | 'exempt' | null;
+  grade: MerchantTier | null;
+  gradeSource: string;
+};
+
+type RawBidRow = {
+  id: string;
+  pgWsId: string;
+  pgWsName: string;
+  status: 'draft' | 'submitted' | 'withdrawn';
+  round: number;
+  settleCycle: string;
+  settleLimit: string;
+  guaranteeInsurance: string;
+  paymentFees: unknown;
+  customFees: unknown;
+  memo: string;
+  submittedByName: string | null;
+  submittedAt: Date;
+};
+
 export async function listAllRfps(
   opts: { q?: string; status?: string } = {},
+  db: DB = actionDb(),
 ): Promise<RfpListRow[]> {
   const { q, status } = opts;
-  return actionDb()
+  return db
     .select({
       id: rfps.id,
       code: rfps.code,
@@ -84,8 +118,8 @@ export async function listAllRfps(
     .orderBy(desc(rfps.createdAt)) as Promise<RfpListRow[]>;
 }
 
-export async function getRfpDetail(rfpId: string) {
-  const [rfpRow] = await actionDb()
+export async function getRfpDetail(rfpId: string, db: DB = actionDb()) {
+  const [rfpRow] = await db
     .select({
       rfp: rfps,
       buyerName: workspaces.name,
@@ -100,7 +134,7 @@ export async function getRfpDetail(rfpId: string) {
     .innerJoin(workspaces, eq(rfps.buyerWsId, workspaces.id))
     .innerJoin(users, eq(rfps.createdBy, users.id))
     .leftJoin(bizProfiles, eq(rfps.bizProfileId, bizProfiles.id))
-    .where(eq(rfps.id, rfpId));
+    .where(eq(rfps.id, rfpId)) as RfpDetailQueryRow[];
   if (!rfpRow) return null;
 
   const { rfp, ...rfpMeta } = rfpRow;
@@ -108,7 +142,7 @@ export async function getRfpDetail(rfpId: string) {
   // jsonb 컬럼이라 drizzle 이 unknown 으로 돌려준다 — 표시 전 타입 좁히기.
   const customPaymentMethods = (rfp.customPaymentMethods ?? []) as CustomPaymentMethod[];
 
-  const rawBids = await actionDb()
+  const rawBids = await db
     .select({
       id: bids.id,
       pgWsId: bids.pgWsId,
@@ -128,10 +162,10 @@ export async function getRfpDetail(rfpId: string) {
     .innerJoin(workspaces, eq(bids.pgWsId, workspaces.id))
     .leftJoin(users, eq(bids.submittedBy, users.id))
     .where(eq(bids.rfpId, rfpId))
-    .orderBy(asc(workspaces.name), asc(bids.round));
+    .orderBy(asc(workspaces.name), asc(bids.round)) as RawBidRow[];
 
   // numeric(precision,scale) 컬럼은 drizzle 이 문자열로 돌려준다 — 표시 전 변환.
-  const normalizedBids: BidDetailRow[] = rawBids.map((b) => ({
+  const normalizedBids: BidDetailRow[] = rawBids.map((b: RawBidRow) => ({
     ...b,
     settleLimit: Number(b.settleLimit),
     guaranteeInsurance: Number(b.guaranteeInsurance),
@@ -141,7 +175,7 @@ export async function getRfpDetail(rfpId: string) {
 
   const bidIds = normalizedBids.map((b) => b.id);
 
-  const [contractRow] = await actionDb()
+  const [contractRow] = await db
     .select({
       bidId: contracts.bidId,
       awardedAt: contracts.awardedAt,
@@ -152,7 +186,7 @@ export async function getRfpDetail(rfpId: string) {
     .where(eq(contracts.rfpId, rfpId));
   const contract: ContractRow | null = contractRow ?? null;
 
-  const rfpAttachments: AttachmentRow[] = await actionDb()
+  const rfpAttachments: AttachmentRow[] = await db
     .select({
       id: attachments.id,
       name: attachments.name,
@@ -164,7 +198,7 @@ export async function getRfpDetail(rfpId: string) {
     .where(and(eq(attachments.rfpId, rfpId), eq(attachments.status, 'ready')));
 
   const proposalAttachments: AttachmentRow[] = bidIds.length
-    ? await actionDb()
+    ? await db
         .select({
           id: attachments.id,
           name: attachments.name,
