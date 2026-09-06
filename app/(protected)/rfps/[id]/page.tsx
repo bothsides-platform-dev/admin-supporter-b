@@ -4,18 +4,13 @@ import { getRfpDetail } from '@/lib/server/queries/admin/rfps';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
 import { BidFeeMatrix } from '@/components/BidFeeMatrix';
 import { extendRfpDeadlineAction } from '@/lib/server/actions/admin/extendRfpDeadlineAction';
-import { formatKST, formatDateKST, formatKRW } from '@/lib/utils';
+import { formatKST, formatDateKST, formatKRW, isSafeHttpUrl } from '@/lib/utils';
 import { hideQuoteAction } from '@/lib/server/actions/admin/hideQuoteAction';
 import { sendReminderAction } from '@/lib/server/actions/admin/sendReminderAction';
 import { paymentMethodLabel, merchantTierLabel } from '@/lib/types/bid';
 import { CONTRACT_TYPE_LABELS, STRIP_PATH_FEE_RATE, solutionLabel } from '@/lib/types/rfp-terms';
+import { TAX_TYPE_LABELS, GRADE_SOURCE_LABELS, type TaxType, type GradeSource } from '@/lib/types/biz-profile';
 import { Chip } from '@/components/primitives/Chip';
-
-const TAX_TYPE_LABELS: Record<string, string> = {
-  general: '일반과세',
-  simple: '간이과세',
-  exempt: '면세',
-};
 
 function DetailRow({ label, value, badge }: { label: string; value: React.ReactNode; badge?: React.ReactNode }) {
   if (value === null || value === undefined || value === '') return null;
@@ -25,6 +20,21 @@ function DetailRow({ label, value, badge }: { label: string; value: React.ReactN
       <span className="ml-3">{value}</span>
       {badge}
     </div>
+  );
+}
+
+function AttachmentList({ attachments }: { attachments: { id: string; name: string; size: number; uploadedAt: Date }[] }) {
+  return (
+    <ul className="list-disc list-inside space-y-0.5">
+      {attachments.map((a) => (
+        <li key={a.id}>
+          {a.name}{' '}
+          <span className="text-label-small text-on-surface-variant md-numeric">
+            ({Math.ceil(a.size / 1024)}KB · {formatDateKST(a.uploadedAt)})
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -126,18 +136,34 @@ export default async function RfpDetailPage({
             <DetailRow
               label="사이트"
               value={
-                <a href={rfp.websiteUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline break-all">
-                  {rfp.websiteUrl}
-                </a>
+                isSafeHttpUrl(rfp.websiteUrl) ? (
+                  <a href={rfp.websiteUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline break-all">
+                    {rfp.websiteUrl}
+                  </a>
+                ) : (
+                  <span className="break-all">{rfp.websiteUrl}</span>
+                )
               }
             />
           )}
           {rfp.mainProducts && <DetailRow label="주요 상품" value={rfp.mainProducts} />}
           {bizProfile?.bizNo && <DetailRow label="사업자번호" value={<span className="md-numeric">{bizProfile.bizNo}</span>} />}
           {bizProfile?.taxType && (
-            <DetailRow label="과세유형" value={TAX_TYPE_LABELS[bizProfile.taxType] ?? bizProfile.taxType} />
+            <DetailRow label="과세유형" value={TAX_TYPE_LABELS[bizProfile.taxType as TaxType] ?? bizProfile.taxType} />
           )}
-          {bizProfile?.grade && <DetailRow label="영중소구간" value={merchantTierLabel(bizProfile.grade)} />}
+          {bizProfile?.grade && (
+            <DetailRow
+              label="영중소구간"
+              value={merchantTierLabel(bizProfile.grade)}
+              badge={
+                bizProfile.gradeSource && (
+                  <span className="ml-2 text-label-small text-on-surface-variant">
+                    ({GRADE_SOURCE_LABELS[bizProfile.gradeSource as GradeSource] ?? bizProfile.gradeSource})
+                  </span>
+                )
+              }
+            />
+          )}
         </div>
       </section>
 
@@ -207,16 +233,7 @@ export default async function RfpDetailPage({
               <p className="text-label-small text-on-surface-variant">
                 첨부파일 {attachments.length}건 (다운로드는 admin에서 지원하지 않음)
               </p>
-              <ul className="list-disc list-inside space-y-0.5">
-                {attachments.map((a) => (
-                  <li key={a.id}>
-                    {a.name}{' '}
-                    <span className="text-label-small text-on-surface-variant md-numeric">
-                      ({Math.ceil(a.size / 1024)}KB · {formatDateKST(a.uploadedAt)})
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              <AttachmentList attachments={attachments} />
             </div>
           ) : (
             <p className="text-label-small text-on-surface-variant">첨부파일 없음</p>
@@ -383,16 +400,9 @@ export default async function RfpDetailPage({
           <div className="border-b border-outline-variant px-4 py-2 bg-surface-container-low">
             <h2 className="text-title-small font-medium">제안서 첨부 ({proposalAttachments.length}건)</h2>
           </div>
-          <ul className="px-4 py-3 list-disc list-inside space-y-0.5 text-body-small">
-            {proposalAttachments.map((a) => (
-              <li key={a.id}>
-                {a.name}{' '}
-                <span className="text-label-small text-on-surface-variant md-numeric">
-                  ({Math.ceil(a.size / 1024)}KB · {formatDateKST(a.uploadedAt)})
-                </span>
-              </li>
-            ))}
-          </ul>
+          <div className="px-4 py-3 text-body-small">
+            <AttachmentList attachments={proposalAttachments} />
+          </div>
         </section>
       )}
 

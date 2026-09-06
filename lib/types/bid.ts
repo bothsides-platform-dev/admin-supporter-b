@@ -1,4 +1,5 @@
 import { MERCHANT_TIERS, MERCHANT_TIER_LABELS, type MerchantTier } from './biz-profile';
+import { labelOf } from './label';
 
 // 결제수단 어휘의 단일 출처. bidit(lib/types/bid.ts)의 정식 사본 — 새 수단이
 // 추가되면 이 배열 + 아래 LABELS 를 함께 갱신한다. 어휘가 뒤처져도 화면이 죽지
@@ -39,9 +40,7 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
  * 뒤처져 있어도 빈 칸 대신 원문 키를 보여준다(fail-open).
  */
 export function paymentMethodLabel(method: string): string {
-  return Object.hasOwn(PAYMENT_METHOD_LABELS, method)
-    ? PAYMENT_METHOD_LABELS[method as PaymentMethod]
-    : method;
+  return labelOf(PAYMENT_METHOD_LABELS, method);
 }
 
 // 영세·중소가맹점 등급 어휘는 lib/types/biz-profile.ts 가 단일 출처 — 여기서는
@@ -50,9 +49,7 @@ export { MERCHANT_TIERS, MERCHANT_TIER_LABELS };
 export type { MerchantTier };
 
 export function merchantTierLabel(tier: string): string {
-  return Object.hasOwn(MERCHANT_TIER_LABELS, tier)
-    ? MERCHANT_TIER_LABELS[tier as MerchantTier]
-    : tier;
+  return labelOf(MERCHANT_TIER_LABELS, tier);
 }
 
 // 소수 요율의 구간맵 (부분 허용 — 일부 구간만 채워도 됨)

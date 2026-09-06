@@ -23,3 +23,14 @@ export function formatKRW(amount: number): string {
 export function formatPct(value: number, digits = 2): string {
   return (value * 100).toFixed(digits) + '%'
 }
+
+// 스킴 검증 없이 저장된 자유입력 URL(예: rfp.websiteUrl)을 href 에 그대로
+// 넣으면 javascript:/data: 스킴이 admin 세션에서 실행될 수 있다 — 렌더 전 반드시
+// 이 함수로 http/https 만 통과시킨다.
+export function isSafeHttpUrl(url: string): boolean {
+  try {
+    return ['http:', 'https:'].includes(new URL(url).protocol)
+  } catch {
+    return false
+  }
+}

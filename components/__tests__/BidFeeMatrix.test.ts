@@ -61,6 +61,14 @@ describe('BidFeeMatrix', () => {
     expect(text).toContain('—');
   });
 
+  it('구간이 모두 비어있는 요율 맵도 —로 표시한다 (미제출과 동일하게 fail-safe)', () => {
+    const bid = baseBid({ paymentFees: { card: {} } });
+    const text = textOf(
+      BidFeeMatrix({ bids: [bid], requiredPaymentMethods: ['card'], customPaymentMethods: [] }),
+    );
+    expect(text).toContain('—');
+  });
+
   it('같은 PG의 1차·2차 견적을 각각 별도 열로 렌더한다', () => {
     const round1 = baseBid({ id: 'bid-1', round: 1 });
     const round2 = baseBid({ id: 'bid-2', round: 2 });

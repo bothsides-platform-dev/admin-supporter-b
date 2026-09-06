@@ -1,6 +1,7 @@
 // RFP "현재 조건" 브리프의 버전드 JSONB 문서(rfps.current_terms) 표시용 타입.
 // bidit(lib/types/rfp-terms.ts)의 표시 관련 부분집합 사본 — 쓰기 경로(zod 검증,
 // migrateCurrentTerms 의 버전 홉)는 이 admin 앱이 갖지 않으므로 옮기지 않는다.
+import { labelOf } from './label';
 
 export const SOLUTION_VALUES = ['cafe24', 'imweb', 'makeshop', 'godo', 'self', 'other'] as const;
 export type SolutionValue = (typeof SOLUTION_VALUES)[number];
@@ -39,9 +40,7 @@ export const SOLUTION_LABELS: Record<SolutionValue, string> = {
  */
 export function solutionLabel(solution?: string | null): string | undefined {
   if (!solution) return undefined;
-  return Object.hasOwn(SOLUTION_LABELS, solution)
-    ? SOLUTION_LABELS[solution as SolutionValue]
-    : solution;
+  return labelOf(SOLUTION_LABELS, solution);
 }
 
 // PG에게 숨길 수 있는 필드 경로 — rfps.hidden_from_pg 에 담기는 값의 어휘.

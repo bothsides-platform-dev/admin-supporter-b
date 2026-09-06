@@ -142,27 +142,50 @@ export async function getRfpDetail(rfpId: string, db: DB = actionDb()) {
   // jsonb 컬럼이라 drizzle 이 unknown 으로 돌려준다 — 표시 전 타입 좁히기.
   const customPaymentMethods = (rfp.customPaymentMethods ?? []) as CustomPaymentMethod[];
 
-  const rawBids = await db
-    .select({
-      id: bids.id,
-      pgWsId: bids.pgWsId,
-      pgWsName: workspaces.name,
-      status: bids.status,
-      round: bids.round,
-      settleCycle: bids.settleCycle,
-      settleLimit: bids.settleLimit,
-      guaranteeInsurance: bids.guaranteeInsurance,
-      paymentFees: bids.paymentFees,
-      customFees: bids.customFees,
-      memo: bids.memo,
-      submittedByName: users.name,
-      submittedAt: bids.submittedAt,
-    })
-    .from(bids)
-    .innerJoin(workspaces, eq(bids.pgWsId, workspaces.id))
-    .leftJoin(users, eq(bids.submittedBy, users.id))
-    .where(eq(bids.rfpId, rfpId))
-    .orderBy(asc(workspaces.name), asc(bids.round)) as RawBidRow[];
+  // 아래 3개 쿼리는 서로 독립적(모두 rfpId 만으로 조회)이라 병렬로 실행한다 —
+  // proposalAttachments 만 rawBids 의 bidIds 에 의존하므로 별도로 이어서 조회.
+  const [rawBids, contractRow, rfpAttachments] = (await Promise.all([
+    db
+      .select({
+        id: bids.id,
+        pgWsId: bids.pgWsId,
+        pgWsName: workspaces.name,
+        status: bids.status,
+        round: bids.round,
+        settleCycle: bids.settleCycle,
+        settleLimit: bids.settleLimit,
+        guaranteeInsurance: bids.guaranteeInsurance,
+        paymentFees: bids.paymentFees,
+        customFees: bids.customFees,
+        memo: bids.memo,
+        submittedByName: users.name,
+        submittedAt: bids.submittedAt,
+      })
+      .from(bids)
+      .innerJoin(workspaces, eq(bids.pgWsId, workspaces.id))
+      .leftJoin(users, eq(bids.submittedBy, users.id))
+      .where(eq(bids.rfpId, rfpId))
+      .orderBy(asc(workspaces.name), asc(bids.round)),
+    db
+      .select({
+        bidId: contracts.bidId,
+        awardedAt: contracts.awardedAt,
+        awardedByName: users.name,
+      })
+      .from(contracts)
+      .leftJoin(users, eq(contracts.awardedBy, users.id))
+      .where(eq(contracts.rfpId, rfpId)),
+    db
+      .select({
+        id: attachments.id,
+        name: attachments.name,
+        size: attachments.size,
+        mimeType: attachments.mimeType,
+        uploadedAt: attachments.uploadedAt,
+      })
+      .from(attachments)
+      .where(and(eq(attachments.rfpId, rfpId), eq(attachments.status, 'ready'))),
+  ])) as [RawBidRow[], ContractRow[], AttachmentRow[]];
 
   // numeric(precision,scale) 컬럼은 drizzle 이 문자열로 돌려준다 — 표시 전 변환.
   const normalizedBids: BidDetailRow[] = rawBids.map((b: RawBidRow) => ({
@@ -174,28 +197,7 @@ export async function getRfpDetail(rfpId: string, db: DB = actionDb()) {
   }));
 
   const bidIds = normalizedBids.map((b) => b.id);
-
-  const [contractRow] = await db
-    .select({
-      bidId: contracts.bidId,
-      awardedAt: contracts.awardedAt,
-      awardedByName: users.name,
-    })
-    .from(contracts)
-    .leftJoin(users, eq(contracts.awardedBy, users.id))
-    .where(eq(contracts.rfpId, rfpId));
-  const contract: ContractRow | null = contractRow ?? null;
-
-  const rfpAttachments: AttachmentRow[] = await db
-    .select({
-      id: attachments.id,
-      name: attachments.name,
-      size: attachments.size,
-      mimeType: attachments.mimeType,
-      uploadedAt: attachments.uploadedAt,
-    })
-    .from(attachments)
-    .where(and(eq(attachments.rfpId, rfpId), eq(attachments.status, 'ready')));
+  const contract: ContractRow | null = contractRow[0] ?? null;
 
   const proposalAttachments: AttachmentRow[] = bidIds.length
     ? await db

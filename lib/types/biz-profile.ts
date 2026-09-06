@@ -20,3 +20,22 @@ export const MERCHANT_TIER_LABELS: Record<MerchantTier, string> = {
   sme3: '중소3',
   general: '일반',
 };
+
+export type TaxType = 'general' | 'simple' | 'exempt';
+
+export const TAX_TYPE_LABELS: Record<TaxType, string> = {
+  general: '일반과세',
+  simple: '간이과세',
+  exempt: '면세',
+};
+
+// biz_profiles.grade_source — 영중소구간이 어떻게 확정됐는지. admin 이 직접
+// 확인한 값(admin_confirmed)인지, 사용자가 답하거나 정정한 값인지 구분해 보여준다.
+export type GradeSource = 'user_confirmed' | 'user_overridden' | 'unset' | 'admin_confirmed';
+
+export const GRADE_SOURCE_LABELS: Record<GradeSource, string> = {
+  user_confirmed: '사용자 확인',
+  user_overridden: '사용자 정정',
+  unset: '미설정',
+  admin_confirmed: '관리자 확인',
+};
