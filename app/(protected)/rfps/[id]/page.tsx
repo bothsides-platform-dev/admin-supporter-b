@@ -94,7 +94,7 @@ export default async function RfpDetailPage({
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Link
           href="/rfps"
