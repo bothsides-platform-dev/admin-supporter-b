@@ -74,7 +74,7 @@ export async function getHotlist(db: DB = actionDb()): Promise<HotlistItem[]> {
       label: rfp.title,
       subLabel: `마감 ${hoursLeft}시간 전 · ${rfp.code}`,
       entityId: rfp.id,
-      href: `/rfps/${rfp.code}`,
+      href: `/rfps/${rfp.id}`,
     });
   }
 
