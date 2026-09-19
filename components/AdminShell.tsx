@@ -14,6 +14,7 @@ const NAV = [
   { href: '/users', label: '회원' },
   { href: '/buyers', label: '구매사' },
   { href: '/sellers', label: '판매사' },
+  { href: '/pg-recommendations', label: 'PG 추천 기준' },
   { href: '/rfps', label: 'RFP' },
   { href: '/audit-log', label: '감사 로그' },
 ] as const;
