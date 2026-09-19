@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0.0] - 2026-09-19
+
+### Added
+
+- 운영자가 업종의 이름·표시 순서와 추천 PG사를 관리할 수 있어요. PG사 한 곳은 업종 하나에만 지정할 수 있어요.
+
 ## [0.2.0.0] - 2026-09-07
 
 ### Added
