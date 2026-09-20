@@ -86,6 +86,16 @@ cd ~/admin-supporter-b && bash scripts/deploy/lightsail-deploy.sh
 
 git pull → install → build → `pm2 reload` (무중단). DB·Caddy는 건드리지 않음.
 
+### 맞춤 PG 상담 기준 변경 배포
+
+구매사 맞춤 PG 상담 기능과 함께 배포할 때는 **메인 앱의 DB 변경 → 관리자 앱 → 메인 앱** 순서로 진행한다. 관리자 `/pg-recommendations`가 새 `pg_matching_policies` 테이블을 읽으므로 DB 변경 전에 관리자 앱을 올리면 해당 화면이 열리지 않는다. 이 레포는 마이그레이션을 실행하지 않는다.
+
+1. 메인 앱 `scripts/sql/20260919-pg-matching.sql`의 추가 DDL을 공유 DB에 적용한다. 적용 전 DB와 백업을 확인한다.
+2. 이 레포를 배포하고 `/pg-recommendations`에서 업종별 접수 기준(White·Gray·Black), PG 추천 순서·사유, 확인된 영세 요율 범위·적용 조건을 저장한다. 새 정책이 없는 업종은 **미설정**으로 처리되어 신규 자동 추천을 받지 않는다. 이전 PG 연결을 자동으로 White로 바꾸지 않는다.
+3. 메인 앱을 배포한 뒤 테스트 계정으로 상담 요청 → PG 심사·거절 → 다음 PG 추천 → 견적 → 구매사 최종 선정을 확인한다. 선정 전에는 전자서명 준비가 시작되지 않아야 한다.
+
+세부 운영·복구 방법은 메인 앱의 `docs/PG_MATCHING_ROLLOUT.md`를 따른다. PG가 여러 업종의 추천 후보가 될 수 있지만, 실제 수용 가능 업종과 요율은 운영자가 확인한 값만 등록한다.
+
 ## 운영
 
 | 작업 | 명령 |
