@@ -96,6 +96,10 @@ git pull → install → build → `pm2 reload` (무중단). DB·Caddy는 건드
 
 세부 운영·복구 방법은 메인 앱의 `docs/PG_MATCHING_ROLLOUT.md`를 따른다. PG가 여러 업종의 추천 후보가 될 수 있지만, 실제 수용 가능 업종과 요율은 운영자가 확인한 값만 등록한다.
 
+### 장기합의서 표준 수수료 배포
+
+`/agreement-rates`는 메인 앱이 소유하는 `pg_agreement_rates` 테이블을 사용한다. 메인 앱의 추가 DDL을 먼저 적용하고 관리자 앱을 배포해 PG별 표준 요율을 등록한 다음, 메인 앱의 장기합의서 기능을 배포한다. 입력 규칙과 상세 순서는 [장기합의서 수수료 기준](LONG_TERM_AGREEMENT_RATES.md)을 따른다.
+
 ## 운영
 
 | 작업 | 명령 |
