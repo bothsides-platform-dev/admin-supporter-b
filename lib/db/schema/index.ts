@@ -1,4 +1,5 @@
 export * from './_enums';
+export * from './agreements';
 export * from './users';
 export * from './biz-profiles';
 export * from './workspaces';
