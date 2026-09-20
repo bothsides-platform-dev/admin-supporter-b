@@ -1,3 +1,6 @@
+import { pgMatchingPolicies } from '@/lib/db/schema';
+import type { MatchingPolicy } from '@/lib/pg-matching-policy';
+import { savePgMatchingPolicyAction } from '@/lib/server/actions/admin/pgMatchingPolicy';
 import { redirect } from 'next/navigation';
 import { ConfirmButton } from '@/components/ConfirmButton';
 import { requireAdminSession } from '@/lib/auth/admin-session';
@@ -7,7 +10,7 @@ import { listPgRecommendationGroups, type PgRecommendationGroupRow } from '@/lib
 import { listSellers } from '@/lib/server/queries/admin/sellers';
 
 const ERRORS: Record<string, string> = {
-  INVALID_INPUT: '업종 이름과 표시 순서를 확인해주세요.',
+  INVALID_INPUT: '업종·추천 사유·요율 범위와 적용 조건을 확인해주세요.',
   PG_WORKSPACE_REQUIRED: 'PG사 목록이 바뀌었어요. 새로고침 후 다시 선택해주세요.',
   GROUP_NOT_FOUND: '해당 업종을 찾을 수 없어요. 새로고침해주세요.',
   DUPLICATE_GROUP_NAME: '같은 이름의 업종이 이미 있어요.',
@@ -24,8 +27,7 @@ export default async function PgRecommendationsPage({
     listPgRecommendationGroups(),
     listSellers(),
   ]);
-  const groupNameByPg = new Map(groups.flatMap((group) =>
-    group.pgWorkspaceIds.map((id) => [id, group.name] as const)));
+  const policies: { groupId: string; policy: MatchingPolicy }[] = await actionDb().select().from(pgMatchingPolicies);
 
   async function save(formData: FormData) {
     'use server';
@@ -45,7 +47,7 @@ export default async function PgRecommendationsPage({
       <div>
         <h1 className="text-headline-small font-semibold">PG 추천 기준</h1>
         <p className="mt-1 text-body-small text-on-surface-variant">
-          업종마다 추천할 PG사를 지정해요. PG사 한 곳은 한 업종에만 속해요.
+          업종의 접수 기준과 PG 추천 순서를 정해요. 같은 PG사를 여러 업종에 연결할 수 있어요. 확인된 입점 조건과 요율만 등록해주세요.
         </p>
       </div>
 
@@ -62,7 +64,7 @@ export default async function PgRecommendationsPage({
 
       <section className="space-y-3">
         <h2 className="text-title-small font-semibold">새 업종</h2>
-        <GroupForm action={save} sellers={sellers} groupNameByPg={groupNameByPg} />
+        <GroupForm action={save} />
       </section>
 
       <section className="space-y-3">
@@ -80,12 +82,13 @@ export default async function PgRecommendationsPage({
           }
           return (
             <div key={group.id} className="rounded border border-outline-variant p-4 space-y-3">
-              <GroupForm action={save} group={group} sellers={sellers} groupNameByPg={groupNameByPg} />
+              <GroupForm action={save} group={group} />
+              <PolicyForm groupId={group.id} sellers={sellers} policy={policies.find(p => p.groupId === group.id)?.policy} />
               <div className="border-t border-outline-variant pt-3">
                 <ConfirmButton
                   action={remove}
                   label="업종 삭제"
-                  confirmMessage="이 업종을 삭제하면 PG사의 업종 지정도 풀려요. 삭제할까요?"
+                  confirmMessage="이 업종을 삭제하면 신규 추천과 다음 추천이 중단돼요. 진행 중인 상담 이력은 남아요. 삭제할까요?"
                   confirmLabel="삭제"
                   labelClassName="text-label-small text-error hover:underline"
                   confirmClassName="rounded bg-error px-3 py-1.5 text-label-small text-on-error hover:bg-error/90"
@@ -104,15 +107,10 @@ type SellerOption = Awaited<ReturnType<typeof listSellers>>[number];
 function GroupForm({
   action,
   group,
-  sellers,
-  groupNameByPg,
 }: {
   action: (formData: FormData) => Promise<void>;
   group?: PgRecommendationGroupRow;
-  sellers: SellerOption[];
-  groupNameByPg: Map<string, string>;
 }) {
-  const selected = new Set(group?.pgWorkspaceIds ?? []);
   const prefix = group?.id ?? 'new';
   return (
     <form action={action} className="rounded border border-outline-variant p-4 space-y-4">
@@ -132,27 +130,59 @@ function GroupForm({
           {group ? '변경 저장' : '업종 만들기'}
         </button>
       </div>
-      <fieldset className="space-y-2">
-        <legend className="text-label-small text-on-surface-variant">추천할 PG사</legend>
-        <p className="text-label-small text-on-surface-variant">
-          다른 업종의 PG사를 선택하면 이 업종으로 이동해요. 승인 대기 PG사는 지정할 수 있지만 구매사 추천에는 표시되지 않아요.
-        </p>
-        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {sellers.map((seller) => (
-            <label key={seller.id} className="flex items-start gap-2 rounded border border-outline-variant px-3 py-2 text-body-small cursor-pointer hover:bg-surface-container-low">
-              <input type="checkbox" name="pgWorkspaceIds" value={seller.id} defaultChecked={selected.has(seller.id)} className="mt-1" />
-              <span className="min-w-0">
-                <span className="block break-words">{seller.name}</span>
-                <span className="block text-label-small text-on-surface-variant">
-                  {seller.status === 'active' ? '승인됨' : seller.status === 'pending' ? '승인 대기' : '정지됨'}
-                  {groupNameByPg.get(seller.id) && groupNameByPg.get(seller.id) !== group?.name
-                    ? ` · 현재 ${groupNameByPg.get(seller.id)}` : ''}
-                </span>
-              </span>
-            </label>
-          ))}
-        </div>
-      </fieldset>
+      {group?.pgWorkspaceIds.map(id => <input key={id} type="hidden" name="pgWorkspaceIds" value={id} />)}
     </form>
   );
+}
+
+
+function PolicyForm({ groupId, sellers, policy = { risk: 'unconfigured', candidates: [] } }: { groupId: string; sellers: SellerOption[]; policy?: MatchingPolicy }) {
+  async function savePolicy(form: FormData) {
+    'use server';
+    const selected = form.getAll('candidate').map(String);
+    const candidates = selected.map(id => ({
+      pgWorkspaceId: id,
+      reason: String(form.get(`${id}:reason`) ?? ''),
+      feeMin: form.get(`${id}:min`) ? Number(form.get(`${id}:min`)) : null,
+      feeMax: form.get(`${id}:max`) ? Number(form.get(`${id}:max`)) : null,
+      feeNote: String(form.get(`${id}:note`) ?? ''),
+    })).sort((a, b) => Number(form.get(`${a.pgWorkspaceId}:order`)) - Number(form.get(`${b.pgWorkspaceId}:order`)));
+    const result = await savePgMatchingPolicyAction(actionDb(), { groupId, policy: { risk: String(form.get('risk')) as MatchingPolicy['risk'], candidates } });
+    if (!result.ok) redirect(`/pg-recommendations?error=${encodeURIComponent(result.error)}`);
+    redirect('/pg-recommendations?saved=1');
+  }
+  const inputClass = 'w-full rounded border border-outline-variant bg-surface px-3 py-2 text-body-small text-on-surface';
+  const ordered = [...sellers].sort((a, b) => {
+    const rank = (id: string) => { const i = policy.candidates.findIndex(c => c.pgWorkspaceId === id); return i < 0 ? 10000 : i; };
+    return rank(a.id) - rank(b.id);
+  });
+  return <form action={savePolicy} className="space-y-4 border-t border-outline-variant pt-4">
+    <label className="block space-y-1 text-body-small">접수 기준
+      <select name="risk" defaultValue={policy.risk} className={inputClass}>
+        <option value="unconfigured">미설정 — 추천 중단</option>
+        <option value="white">White · 일반 업종</option>
+        <option value="gray">Gray · 추가 검토</option>
+        <option value="black">Black · 접수 불가</option>
+      </select>
+    </label>
+    <p className="text-body-small text-on-surface-variant">미설정·접수 불가 업종에는 PG사를 추천하지 않아요. 숫자가 작은 PG사를 먼저 추천하고, 거절한 PG사는 다음 추천에서 제외해요. 승인된 PG사만 구매사에게 보여요.</p>
+    <div className="space-y-2">
+      {ordered.map((seller, index) => {
+        const candidate = policy.candidates.find(c => c.pgWorkspaceId === seller.id);
+        return <details key={seller.id} open={!!candidate} className="rounded border border-outline-variant p-3">
+          <summary className="cursor-pointer text-body-small">{seller.name} · {candidate ? '추천에 포함' : '미포함'}</summary>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="flex items-center gap-2 text-body-small"><input type="checkbox" name="candidate" value={seller.id} defaultChecked={!!candidate} />추천에 포함하기</label>
+            <label className="text-body-small">우선순위<input className={`${inputClass} md-numeric`} type="number" min={1} max={1000} name={`${seller.id}:order`} defaultValue={index + 1} /></label>
+            <label className="text-body-small sm:col-span-2">추천 사유<input className={inputClass} maxLength={300} name={`${seller.id}:reason`} defaultValue={candidate?.reason ?? ''} /></label>
+            <label className="text-body-small">영세 예상 수수료 최저 (%)<input className={`${inputClass} md-numeric`} type="number" step="0.01" min={0} max={100} name={`${seller.id}:min`} defaultValue={candidate?.feeMin ?? ''} /></label>
+            <label className="text-body-small">영세 예상 수수료 최고 (%)<input className={`${inputClass} md-numeric`} type="number" step="0.01" min={0} max={100} name={`${seller.id}:max`} defaultValue={candidate?.feeMax ?? ''} /></label>
+            <label className="text-body-small sm:col-span-2">요율 적용 조건 (요율 입력 시 필수)<input className={inputClass} maxLength={300} placeholder="부가세·결제수단·심사 조건 등" name={`${seller.id}:note`} defaultValue={candidate?.feeNote ?? ''} /></label>
+          </div>
+        </details>;
+      })}
+    </div>
+    <p className="text-body-small text-on-surface-variant">요율을 비우면 구매사에게 견적에서 안내한다고 표시해요. 신규 사업자의 영세 적용과 환급은 반기별 선정 결과에 따라 달라져요.</p>
+    <button type="submit" className="rounded bg-primary px-4 py-2 text-label-small text-on-primary hover:bg-primary/90">접수·추천 기준 저장</button>
+  </form>;
 }
