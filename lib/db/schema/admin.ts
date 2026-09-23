@@ -83,6 +83,7 @@ export const adminAuditLogs = pgTable(
     entityType: text('entity_type').notNull(),
     entityId: uuid('entity_id').notNull(),
     payloadJson: jsonb('payload_json').$type<{
+      [metadata: string]: unknown;
       before?: Record<string, unknown>;
       after?: Record<string, unknown>;
       reason?: string;

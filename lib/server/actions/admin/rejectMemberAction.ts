@@ -3,7 +3,7 @@
 import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { workspaceMembers, adminAuditLogs, users, workspaces } from '@/lib/db/schema';
-import { requireAdminSession } from '@/lib/auth/admin-session';
+import { requireAdminPermission } from '@/lib/auth/admin-session';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 import { DrizzleOutboxRepository } from '@/lib/server/repositories/drizzle/outbox';
 import { renderMembershipRejected } from '@/lib/server/outbox/templates/membershipRejected';
@@ -17,11 +17,11 @@ export async function rejectMemberAction(
   workspaceId: string,
   userId: string,
 ): Promise<Result> {
-  const session = await requireAdminSession();
+  const session = await requireAdminPermission('workspace.review');
   const outbox = new DrizzleOutboxRepository(db);
+  let alreadyProcessed = false;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await db.transaction(async (tx: any) => {
+  await db.transaction(async (tx) => {
     const updated = await tx
       .update(workspaceMembers)
       .set({ approvalStatus: 'rejected' })
@@ -34,7 +34,7 @@ export async function rejectMemberAction(
       )
       .returning({ id: workspaceMembers.userId });
 
-    if (updated.length === 0) return;
+    if (updated.length === 0) { alreadyProcessed = true; return; }
 
     await tx.insert(adminAuditLogs).values({
       actor: session.adminId,
@@ -80,5 +80,6 @@ export async function rejectMemberAction(
 
   flushAfterCommit();
   revalidatePath('/admin/pg-members');
+  if (alreadyProcessed) return { ok: false, error: 'ALREADY_PROCESSED' };
   return { ok: true };
 }

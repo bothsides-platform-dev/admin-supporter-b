@@ -2,7 +2,7 @@
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { requireAdminSession } from '@/lib/auth/admin-session';
+import { requireAdminPermission } from '@/lib/auth/admin-session';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 import { pgAgreementRates, workspaces, adminAuditLogs } from '@/lib/db/schema';
 import { AgreementRatesSchema } from '@/lib/agreement-rates';
@@ -17,7 +17,7 @@ const Input = z
 export async function saveAgreementRatesAction(
   input: unknown,
 ): Promise<{ ok: true; version: number } | { ok: false; error: string }> {
-  const session = await requireAdminSession();
+  const session = await requireAdminPermission('agreement_rates.edit');
   const parsed = Input.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'INVALID_INPUT' };
   const { pgWsId, version, rates } = parsed.data;

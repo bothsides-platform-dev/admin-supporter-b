@@ -9,42 +9,55 @@ import { GradeEditForm } from '@/components/GradeEditForm';
 import { formatDateKST } from '@/lib/utils';
 import { ConfirmButton } from '@/components/ConfirmButton';
 import { requireAdminSession } from '@/lib/auth/admin-session';
+import { hasPermission } from '@/lib/auth/permissions';
+import { listWorkspaceAuditLogs } from '@/lib/server/queries/admin/audit-log';
+import { getWorkspaceDeletionImpact } from '@/lib/server/queries/admin/deletion-impact';
+import { AdminAuditHistory } from '@/components/AdminAuditHistory';
+import { DangerousDeleteForm } from '@/components/DangerousDeleteForm';
+import { safeListReturnTo } from '@/lib/admin-return-to';
 import type { MerchantTier } from '@/lib/types/biz-profile';
+import { actionFailure, toActionState, type ActionState } from '@/lib/action-state';
 import Link from 'next/link';
 
 export default async function BuyerDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
   const { id } = await params;
-  const [detail, members, session] = await Promise.all([
+  const returnTo = safeListReturnTo((await searchParams).returnTo, '/buyers');
+  const [detail, members, session, history] = await Promise.all([
     getBuyerDetail(id),
     getWorkspaceMembers(id),
     requireAdminSession(),
+    listWorkspaceAuditLogs(id),
   ]);
   if (!detail) notFound();
 
   const { workspace, rfps, grade } = detail;
-  const isSuperAdmin = session.role === 'super_admin';
+  const canManage = hasPermission(session, 'workspace.manage');
+  const canDelete = hasPermission(session, 'workspace.delete');
+  const impact = canDelete ? await getWorkspaceDeletionImpact(id) : [];
 
-  async function doDelete() {
+  async function doDelete(_previous: ActionState, formData: FormData): Promise<ActionState> {
     'use server';
-    await deleteWorkspaceAction(workspace.id, '/buyers');
+    return deleteWorkspaceAction(workspace.id, '/buyers', String(formData.get('confirmationName') ?? ''), returnTo);
   }
 
-  async function saveGrade(formData: FormData) {
+  async function saveGrade(_prev: ActionState, formData: FormData): Promise<ActionState> {
     'use server';
     const gradeRaw = formData.get('grade');
-    if (typeof gradeRaw !== 'string' || !gradeRaw) throw new Error('GRADE_REQUIRED');
+    if (typeof gradeRaw !== 'string' || !gradeRaw) return actionFailure('GRADE_REQUIRED');
     const result = await updateWorkspaceGradeAction(workspace.id, gradeRaw as MerchantTier);
-    if (!result.ok) throw new Error(result.error);
+    return toActionState(result, '영중소구간을 저장했습니다.');
   }
 
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="space-y-1">
-        <Link href="/buyers" className="text-on-surface-variant hover:text-on-surface text-body-small">
+        <Link href={returnTo} className="text-on-surface-variant hover:text-on-surface text-body-small">
           ← 목록
         </Link>
         <div className="flex items-center gap-3">
@@ -53,24 +66,7 @@ export default async function BuyerDetailPage({
         </div>
       </div>
 
-      <GradeEditForm action={saveGrade} currentGrade={grade} />
-
-      {isSuperAdmin && (
-        <section className="rounded border border-error p-4 space-y-2">
-          <h2 className="text-title-small font-medium text-error">위험 구역</h2>
-          <p className="text-body-small text-on-surface-variant">
-            워크스페이스를 영구 삭제합니다. 멤버, RFP 등 모든 연결 데이터가 함께 삭제됩니다.
-          </p>
-          <ConfirmButton
-            action={doDelete}
-            label="워크스페이스 영구 삭제"
-            confirmMessage="정말로 이 워크스페이스를 영구 삭제하시겠습니까? 복구 불가합니다."
-            confirmLabel="영구 삭제"
-            labelClassName="rounded border border-error text-error px-4 py-2 text-label-small hover:bg-error/10"
-            confirmClassName="rounded bg-error text-on-error px-4 py-2 text-label-small hover:bg-error/90"
-          />
-        </section>
-      )}
+      {canManage && <GradeEditForm action={saveGrade} currentGrade={grade} />}
 
       <section>
         <h2 className="text-title-small font-semibold mb-3">멤버 ({members.length}명)</h2>
@@ -89,7 +85,7 @@ export default async function BuyerDetailPage({
               {members.map((m) => {
                 async function doRemove() {
                   'use server';
-                  await removeWorkspaceMemberAction(workspace.id, m.userId);
+                  return toActionState(await removeWorkspaceMemberAction(workspace.id, m.userId), '멤버를 제외했습니다.');
                 }
                 return (
                   <tr
@@ -109,7 +105,7 @@ export default async function BuyerDetailPage({
                       {formatDateKST(m.joinedAt)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <ConfirmButton
+                      {canManage && <ConfirmButton
                         action={doRemove}
                         label="제외"
                         confirmMessage="이 멤버를 제외하시겠습니까?"
@@ -117,7 +113,8 @@ export default async function BuyerDetailPage({
                         labelClassName="text-label-small text-error hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
                         confirmClassName="text-label-small text-error hover:underline"
                         disabled={m.isLastAdmin}
-                      />
+                      />}
+                      {canManage && m.isLastAdmin && <span className="ml-2 text-label-small text-on-surface-variant">마지막 관리자는 제외할 수 없습니다.</span>}
                     </td>
                   </tr>
                 );
@@ -177,6 +174,9 @@ export default async function BuyerDetailPage({
           </table>
         </div>
       </section>
+
+      <AdminAuditHistory logs={history} entityType="workspace" entityId={workspace.id} workspaceId={workspace.id} />
+      {canDelete && <DangerousDeleteForm name={workspace.name} label="워크스페이스" impact={impact} action={doDelete} />}
     </div>
   );
 }

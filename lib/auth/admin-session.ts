@@ -1,7 +1,8 @@
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 
-export type AdminRole = 'operator' | 'super_admin';
+import { hasPermission, type AdminPermission, type AdminRole } from './permissions';
+export type { AdminRole } from './permissions';
 
 export type AdminSession = {
   adminId: string;
@@ -20,11 +21,10 @@ export async function requireAdminSession(): Promise<AdminSession> {
   // When ADMIN_EMAILS is unset, parseEmailList returns [] — fail closed.
   if (!parseEmailList(process.env.ADMIN_EMAILS).includes(email)) redirect('/login?error=AccessDenied');
 
-  // ADMIN_SUPER_EMAILS must be a strict subset of ADMIN_EMAILS.
-  // An address in ADMIN_SUPER_EMAILS absent from ADMIN_EMAILS is denied at the line above.
-  const role: AdminRole = parseEmailList(process.env.ADMIN_SUPER_EMAILS).includes(email)
-    ? 'super_admin'
-    : 'operator';
+  // Current operating policy: every allowlisted administrator is a super admin.
+  // Keep role/permission checks in callers so a future role resolver can replace
+  // this assignment without changing individual pages or server actions.
+  const role: AdminRole = 'super_admin';
   return { adminId: email, role };
 }
 
@@ -32,5 +32,11 @@ export async function requireSuperAdmin(): Promise<AdminSession> {
   const session = await requireAdminSession();
   // User is authenticated but lacks super_admin role — send to dashboard, not login.
   if (session.role !== 'super_admin') redirect('/');
+  return session;
+}
+
+export async function requireAdminPermission(permission: AdminPermission): Promise<AdminSession> {
+  const session = await requireAdminSession();
+  if (!hasPermission(session, permission)) redirect('/?error=PermissionDenied');
   return session;
 }

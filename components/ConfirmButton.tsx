@@ -1,9 +1,12 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { IDLE_ACTION_STATE, type ActionState } from '@/lib/action-state';
+import { ActionMessage } from './ActionForm';
 
 type ConfirmButtonProps = {
-  action: () => Promise<void>;
+  /** ActionState를 반환하면 결과 메시지를 버튼 옆에 표시한다. redirect 하는 액션은 void. */
+  action: () => Promise<ActionState | void>;
   label: string;
   confirmMessage: string;
   confirmLabel: string;
@@ -22,25 +25,33 @@ export function ConfirmButton({
   disabled,
 }: ConfirmButtonProps) {
   const [stage, setStage] = useState<'idle' | 'confirming'>('idle');
+  const [result, setResult] = useState<ActionState>(IDLE_ACTION_STATE);
   const [isPending, startTransition] = useTransition();
 
   function handleConfirm() {
     startTransition(async () => {
-      await action();
+      const next = await action();
+      setResult(next ?? IDLE_ACTION_STATE);
       setStage('idle');
     });
   }
 
   if (stage === 'idle') {
     return (
-      <button
-        type="button"
-        onClick={() => setStage('confirming')}
-        disabled={disabled}
-        className={labelClassName}
-      >
-        {label}
-      </button>
+      <div className="inline-flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            setResult(IDLE_ACTION_STATE);
+            setStage('confirming');
+          }}
+          disabled={disabled}
+          className={labelClassName}
+        >
+          {label}
+        </button>
+        <ActionMessage state={result} />
+      </div>
     );
   }
 

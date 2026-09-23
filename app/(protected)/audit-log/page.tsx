@@ -1,91 +1,52 @@
-import { listAuditLogs } from '@/lib/server/queries/admin/audit-log';
 import Link from 'next/link';
+import { listAuditLogs, type AuditFilters } from '@/lib/server/queries/admin/audit-log';
 import { formatKST } from '@/lib/utils';
+import { AUDIT_ACTION_LABELS, AUDIT_ENTITY_LABELS, AuditLogDetails, auditEntityHref } from '@/components/AdminAuditHistory';
 
-const ACTION_LABELS: Record<string, string> = {
-  'workspace.approve': '워크스페이스 승인',
-  'workspace.reject': '워크스페이스 반려',
-  'workspace.request_more_info': '보완 요청',
-  'workspace.member.remove': '멤버 제외',
-  'user.suspend': '회원 정지',
-  'user.unsuspend': '회원 활성화',
-  'note.create': '어드민 노트 추가',
-  'note.delete': '어드민 노트 삭제',
-  'rfp.reminder.send': '리마인더 발송',
-  'bid.withdraw': '입찰 철회',
-  'rfp.extend_deadline': '마감 연장',
-};
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+const single = (value: string | string[] | undefined) => typeof value === 'string' ? value : '';
 
-const ENTITY_TYPE_LABELS: Record<string, string> = {
-  workspace: '워크스페이스',
-  user: '회원',
-  note: '노트',
-  rfp: 'RFP',
-  bid: '입찰',
-};
-
-function entityHref(entityType: string, entityId: string): string | null {
-  switch (entityType) {
-    case 'user': return `/users/${entityId}`;
-    case 'rfp': return `/rfps/${entityId}`;
-    default: return null;
-  }
-}
-
-export default async function AuditLogPage() {
-  const logs = await listAuditLogs(200);
+export default async function AuditLogPage({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams;
+  const filters: AuditFilters = {
+    page: Number(single(params.page)) || 1,
+    actor: single(params.actor).slice(0, 100),
+    entityType: single(params.entityType).slice(0, 100),
+    entityId: single(params.entityId).slice(0, 100),
+    workspaceId: single(params.workspaceId).slice(0, 100),
+    action: single(params.action).slice(0, 100),
+    from: single(params.from), to: single(params.to),
+  };
+  const { rows, total, page, pageSize, error } = await listAuditLogs(filters);
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) if (key !== 'page' && value) query.set(key, String(value));
+  const pageHref = (number: number) => `/audit-log?${new URLSearchParams([...query, ['page', String(number)]]).toString()}`;
 
   return (
     <div className="space-y-4">
       <h1 className="text-headline-small font-semibold">감사 로그</h1>
-      <div className="rounded border border-outline-variant overflow-hidden">
+      <form method="get" className="grid gap-3 rounded border border-outline-variant p-4 sm:grid-cols-2 lg:grid-cols-4">
+        <label className="text-label-small text-on-surface-variant">처리자<input name="actor" defaultValue={filters.actor} placeholder="처리자 검색" className="mt-1 w-full rounded border border-outline-variant bg-surface px-3 py-2 text-body-small text-on-surface" /></label>
+        <label className="text-label-small text-on-surface-variant">대상 유형<select name="entityType" defaultValue={filters.entityType} className="mt-1 w-full rounded border border-outline-variant bg-surface px-3 py-2 text-body-small text-on-surface"><option value="">전체</option>{Object.entries(AUDIT_ENTITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label className="text-label-small text-on-surface-variant">대상 ID<input name="entityId" defaultValue={filters.entityId} placeholder="UUID" className="mt-1 w-full rounded border border-outline-variant bg-surface px-3 py-2 text-body-small text-on-surface" /></label>
+        <label className="text-label-small text-on-surface-variant">워크스페이스 ID<input name="workspaceId" defaultValue={filters.workspaceId} placeholder="관련 심사 포함" className="mt-1 w-full rounded border border-outline-variant bg-surface px-3 py-2 text-body-small text-on-surface" /></label>
+        <label className="text-label-small text-on-surface-variant">작업<select name="action" defaultValue={filters.action} className="mt-1 w-full rounded border border-outline-variant bg-surface px-3 py-2 text-body-small text-on-surface"><option value="">전체</option>{filters.action && !(filters.action in AUDIT_ACTION_LABELS) && <option value={filters.action}>{filters.action}</option>}{Object.entries(AUDIT_ACTION_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label className="text-label-small text-on-surface-variant">시작일<input type="date" name="from" defaultValue={filters.from} className="mt-1 w-full rounded border border-outline-variant bg-surface px-3 py-2 text-body-small text-on-surface" /></label>
+        <label className="text-label-small text-on-surface-variant">종료일<input type="date" name="to" defaultValue={filters.to} className="mt-1 w-full rounded border border-outline-variant bg-surface px-3 py-2 text-body-small text-on-surface" /></label>
+        <div className="flex items-end gap-2 sm:col-span-2"><button className="rounded bg-primary px-4 py-2 text-label-small text-on-primary">검색</button><Link href="/audit-log" className="rounded border border-outline-variant px-4 py-2 text-label-small">초기화</Link></div>
+      </form>
+      <p className="text-label-small text-on-surface-variant">전체 {total}건 · {total ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, total)}건 표시</p>
+      {error && <p role="alert" className="text-body-small text-error">{error}</p>}
+      <div className="overflow-x-auto rounded border border-outline-variant">
         <table className="w-full text-body-small">
-          <thead>
-            <tr className="border-b border-outline-variant bg-surface-container-low">
-              <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">시각</th>
-              <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">액션</th>
-              <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">대상</th>
-              <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">처리자</th>
-            </tr>
-          </thead>
-          <tbody>
-            {logs.map((log) => {
-              const href = entityHref(log.entityType, log.entityId);
-              return (
-                <tr
-                  key={log.id}
-                  className="border-b border-outline-variant last:border-0 hover:bg-surface-container-low"
-                >
-                  <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant whitespace-nowrap">
-                    {formatKST(log.occurredAt)}
-                  </td>
-                  <td className="px-4 py-3 text-label-small">
-                    {ACTION_LABELS[log.action] ?? log.action}
-                  </td>
-                  <td className="px-4 py-3 text-label-small text-on-surface-variant">
-                    <span>{ENTITY_TYPE_LABELS[log.entityType] ?? log.entityType}</span>
-                    {href ? (
-                      <Link href={href} className="ml-2 md-numeric text-primary hover:underline">
-                        {log.entityId.slice(0, 8)}&hellip;
-                      </Link>
-                    ) : (
-                      <span className="ml-2 md-numeric">{log.entityId.slice(0, 8)}&hellip;</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-label-small text-on-surface-variant">{log.actor}</td>
-                </tr>
-              );
-            })}
-            {logs.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-on-surface-variant">
-                  감사 로그가 없습니다.
-                </td>
-              </tr>
-            )}
-          </tbody>
+          <thead><tr className="border-b border-outline-variant bg-surface-container-low"><th className="px-4 py-2 text-left">시각</th><th className="px-4 py-2 text-left">작업 및 변경 내용</th><th className="px-4 py-2 text-left">대상</th><th className="px-4 py-2 text-left">처리자</th></tr></thead>
+          <tbody>{rows.map(({ log, workspaceType, bidRfpId }) => {
+            const href = auditEntityHref(log, workspaceType, bidRfpId);
+            return <tr key={log.id} className="border-b border-outline-variant last:border-0 align-top"><td className="whitespace-nowrap px-4 py-3 text-label-small text-on-surface-variant md-numeric">{formatKST(log.occurredAt)}</td><td className="min-w-56 px-4 py-3"><span className="font-medium">{AUDIT_ACTION_LABELS[log.action] ?? log.action}</span><AuditLogDetails log={log} /></td><td className="px-4 py-3 text-label-small text-on-surface-variant"><span>{AUDIT_ENTITY_LABELS[log.entityType] ?? log.entityType}</span>{href ? <Link href={href} className="ml-2 text-primary hover:underline md-numeric">{log.entityId.slice(0, 8)}…</Link> : <span className="ml-2 md-numeric">{log.entityId.slice(0, 8)}…</span>}</td><td className="px-4 py-3 text-label-small text-on-surface-variant">{log.actor}</td></tr>;
+          })}{rows.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-on-surface-variant">조건에 맞는 감사 로그가 없습니다.</td></tr>}</tbody>
         </table>
       </div>
+      <nav className="flex items-center justify-end gap-3 text-label-small" aria-label="감사 로그 페이지"><span>{page} / {Math.max(1, Math.ceil(total / pageSize))} 페이지</span>{page > 1 && <Link href={pageHref(page - 1)} className="rounded border border-outline-variant px-3 py-2">이전</Link>}{page * pageSize < total && <Link href={pageHref(page + 1)} className="rounded border border-outline-variant px-3 py-2">다음</Link>}</nav>
     </div>
   );
 }

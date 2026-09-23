@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/auth/admin-session', () => ({
-  requireAdminSession: () => mocks.denied
+  requireAdminPermission: () => mocks.denied
     ? Promise.reject(new Error('UNAUTHENTICATED'))
     : Promise.resolve({ adminId: 'ops@example.com', role: 'operator' }),
 }));

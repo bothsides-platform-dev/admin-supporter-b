@@ -1,6 +1,8 @@
+import { ActionForm } from './ActionForm';
 import { SubmitButton } from './SubmitButton';
 import { MERCHANT_TIER_LABELS, MERCHANT_TIERS } from '@/lib/types/biz-profile';
 import type { MerchantTier } from '@/lib/types/biz-profile';
+import type { ActionState } from '@/lib/action-state';
 
 const ALL_GRADES: MerchantTier[] = [...MERCHANT_TIERS];
 
@@ -12,7 +14,7 @@ export function GradeEditForm({
   action,
   currentGrade,
 }: {
-  action: (formData: FormData) => void | Promise<void>;
+  action: (prev: ActionState, formData: FormData) => Promise<ActionState>;
   currentGrade?: MerchantTier | null;
 }) {
   return (
@@ -23,7 +25,7 @@ export function GradeEditForm({
           현재: {currentGrade ? MERCHANT_TIER_LABELS[currentGrade] : '미설정'}
         </span>
       </div>
-      <form action={action} className="flex flex-wrap items-end gap-3">
+      <ActionForm action={action} className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
           <label htmlFor="grade-edit-select" className="sr-only">
             영중소구간
@@ -48,7 +50,7 @@ export function GradeEditForm({
         <SubmitButton className="rounded bg-primary px-4 py-2 text-label-large text-on-primary hover:bg-primary/90">
           저장
         </SubmitButton>
-      </form>
+      </ActionForm>
     </section>
   );
 }

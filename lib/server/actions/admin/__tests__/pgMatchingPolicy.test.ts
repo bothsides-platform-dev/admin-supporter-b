@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/pglite';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { savePgMatchingPolicyAction } from '../pgMatchingPolicy';
 const auth = vi.hoisted(() => ({ denied: false }));
-vi.mock('@/lib/auth/admin-session', () => ({ requireAdminSession: async () => { if (auth.denied) throw new Error('UNAUTHENTICATED'); return { adminId: 'ops@example.com' }; } }));
+vi.mock('@/lib/auth/admin-session', () => ({ requireAdminPermission: async () => { if (auth.denied) throw new Error('UNAUTHENTICATED'); return { adminId: 'ops@example.com' }; } }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 let client: PGlite;
 const groupId = '10000000-0000-4000-8000-000000000001';

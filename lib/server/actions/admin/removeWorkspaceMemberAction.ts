@@ -2,8 +2,8 @@
 
 import { and, eq, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
-import { workspaceMembers, adminAuditLogs } from '@/lib/db/schema';
-import { requireAdminSession } from '@/lib/auth/admin-session';
+import { workspaceMembers, adminAuditLogs, workspaces } from '@/lib/db/schema';
+import { requireAdminPermission } from '@/lib/auth/admin-session';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 
 type Result = { ok: true } | { ok: false; error: string };
@@ -12,13 +12,14 @@ export async function removeWorkspaceMemberAction(
   workspaceId: string,
   userId: string,
 ): Promise<Result> {
-  const session = await requireAdminSession();
+  const session = await requireAdminPermission('workspace.manage');
   const db = actionDb();
 
   let error: string | null = null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await db.transaction(async (tx: any) => {
+  await db.transaction(async (tx) => {
+    // Serialize membership removal so two operators cannot remove the last two admins.
+    await tx.select({ id: workspaces.id }).from(workspaces).where(eq(workspaces.id, workspaceId)).for('update');
     const [memberRow] = await tx
       .select({ role: workspaceMembers.role })
       .from(workspaceMembers)
@@ -51,7 +52,7 @@ export async function removeWorkspaceMemberAction(
       action: 'workspace.member.remove',
       entityType: 'workspace',
       entityId: workspaceId,
-      payloadJson: { userId },
+      payloadJson: { before: { userId, role: memberRow.role }, after: {}, userId },
     });
   });
 

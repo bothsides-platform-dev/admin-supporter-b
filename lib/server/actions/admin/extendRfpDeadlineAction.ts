@@ -3,20 +3,20 @@
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { rfps, adminAuditLogs } from '@/lib/db/schema';
-import { requireAdminSession } from '@/lib/auth/admin-session';
+import { requireAdminPermission } from '@/lib/auth/admin-session';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 
 type DB = ReturnType<typeof actionDb>;
-type Result = { ok: true } | { ok: false; error: string };
+type Result = { ok: true; newDeadline: Date } | { ok: false; error: string };
 
 export async function extendRfpDeadlineAction(
   db: DB = actionDb(),
   rfpId: string,
   days = 7,
 ): Promise<Result> {
-  if (days < 1 || days > 30) return { ok: false, error: 'INVALID_DAYS' };
+  if (!Number.isInteger(days) || days < 1 || days > 30) return { ok: false, error: 'INVALID_DAYS' };
 
-  const session = await requireAdminSession();
+  const session = await requireAdminPermission('rfp.manage');
 
   const [rfp] = await db.select({ deadline: rfps.deadline }).from(rfps).where(eq(rfps.id, rfpId));
   if (!rfp) return { ok: false, error: 'NOT_FOUND' };
@@ -24,8 +24,7 @@ export async function extendRfpDeadlineAction(
   const oldDeadline = rfp.deadline;
   const newDeadline = new Date(new Date(oldDeadline).getTime() + days * 86_400_000);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await db.transaction(async (tx: any) => {
+  await db.transaction(async (tx) => {
     await tx.update(rfps).set({ deadline: newDeadline }).where(eq(rfps.id, rfpId));
     await tx.insert(adminAuditLogs).values({
       actor: session.adminId,
@@ -42,5 +41,5 @@ export async function extendRfpDeadlineAction(
 
   revalidatePath(`/rfps/${rfpId}`);
   revalidatePath('/rfps');
-  return { ok: true };
+  return { ok: true, newDeadline };
 }

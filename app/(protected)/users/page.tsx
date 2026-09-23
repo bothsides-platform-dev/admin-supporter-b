@@ -1,4 +1,9 @@
-import { listUsers } from '@/lib/server/queries/admin/users';
+import { listUsersPage } from '@/lib/server/queries/admin/users';
+import { AdminListControls } from '@/components/AdminListControls';
+import { AdminListPagination } from '@/components/AdminListPagination';
+import { AdminDataTable, type AdminTableColumn } from '@/components/AdminDataTable';
+import type { UserRow } from '@/lib/server/queries/admin/users';
+import { listQuery, type ListParams } from '@/lib/admin-list';
 import Link from 'next/link';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
 import { formatDateKST } from '@/lib/utils';
@@ -6,23 +11,35 @@ import { formatDateKST } from '@/lib/utils';
 export default async function UsersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string }>;
+  searchParams: Promise<ListParams>;
 }) {
-  const { q, status } = await searchParams;
-  const userList = await listUsers({ q, status });
+  const params = await searchParams;
+  const { q, status } = params;
+  const { rows: userList, total, page } = await listUsersPage(params);
+  const returnTo = `/users?${listQuery(params)}`;
+  const filtered = Boolean(q || status || params.from || params.to);
+  const columns: AdminTableColumn<UserRow>[] = [
+    { key: 'name', label: '이름', render: (u) => <Link href={`/users/${u.id}?returnTo=${encodeURIComponent(returnTo)}`} className="text-primary hover:underline">{u.name}</Link> },
+    { key: 'email', label: '이메일', render: (u) => <span className="text-on-surface-variant">{u.email}</span> },
+    { key: 'status', label: '상태', render: (u) => <AdminStatusBadge status={u.deletedAt ? 'deleted' : u.status} /> },
+    { key: 'workspaceCount', label: '소속 워크스페이스 수', render: (u) => <span className="md-numeric text-label-small text-on-surface-variant">{u.workspaceCount}개</span> },
+    { key: 'createdAt', label: '가입일', render: (u) => <span className="md-numeric text-label-small text-on-surface-variant">{formatDateKST(u.createdAt)}</span> },
+  ];
 
   return (
     <div className="space-y-4">
       <h1 className="text-headline-small font-semibold">회원</h1>
-      <form method="GET" className="flex gap-2">
+      <AdminListControls path="/users" params={params} sortOptions={[{ value: 'name', label: '이름순' }]} dateLabel="가입일">
         <input
           name="q"
+          aria-label="회원 이름 또는 이메일 검색"
           defaultValue={q ?? ''}
           placeholder="이름 또는 이메일 검색"
           className="rounded border border-outline-variant px-3 py-1.5 text-body-small bg-surface focus:outline-none focus:ring-1 focus:ring-primary w-64"
         />
         <select
           name="status"
+          aria-label="회원 상태"
           defaultValue={status ?? ''}
           className="rounded border border-outline-variant px-3 py-1.5 text-body-small bg-surface"
         >
@@ -31,61 +48,9 @@ export default async function UsersPage({
           <option value="suspended">정지</option>
           <option value="deleted">탈퇴</option>
         </select>
-        <button
-          type="submit"
-          className="rounded bg-primary text-on-primary px-3 py-1.5 text-label-small"
-        >
-          검색
-        </button>
-      </form>
-      <div className="rounded border border-outline-variant overflow-hidden">
-        <table className="w-full text-body-small">
-          <thead>
-            <tr className="border-b border-outline-variant bg-surface-container-low">
-              <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">이름</th>
-              <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">이메일</th>
-              <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">상태</th>
-              <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">소속 워크스페이스 수</th>
-              <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">가입일</th>
-            </tr>
-          </thead>
-          <tbody>
-            {userList.map((u) => (
-              <tr
-                key={u.id}
-                className="border-b border-outline-variant last:border-0 hover:bg-surface-container-low"
-              >
-                <td className="px-4 py-3">
-                  <Link href={`/users/${u.id}`} className="text-primary hover:underline">
-                    {u.name}
-                  </Link>
-                </td>
-                <td className="px-4 py-3 text-on-surface-variant">{u.email}</td>
-                <td className="px-4 py-3">
-                  {u.deletedAt ? (
-                    <AdminStatusBadge status="deleted" />
-                  ) : (
-                    <AdminStatusBadge status={u.status} />
-                  )}
-                </td>
-                <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant">
-                  {u.workspaceCount}개
-                </td>
-                <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant">
-                  {formatDateKST(u.createdAt)}
-                </td>
-              </tr>
-            ))}
-            {userList.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-on-surface-variant">
-                  유저가 없습니다.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      </AdminListControls>
+      <AdminDataTable caption="회원 목록" rows={userList} columns={columns} getKey={(u) => u.id} emptyMessage={filtered ? '검색 조건에 맞는 회원이 없습니다.' : '등록된 회원이 없습니다.'} />
+      <AdminListPagination path="/users" params={params} page={page} total={total} />
     </div>
   );
 }

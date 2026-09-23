@@ -1,14 +1,16 @@
 import { count, eq, and, lte, gt } from 'drizzle-orm';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
-import { workspaces, rfps } from '@/lib/db/schema';
+import { workspaces, rfps, verificationApplications, workspaceNameChangeRequests, workspaceMembers } from '@/lib/db/schema';
 
 type DB = ReturnType<typeof actionDb>;
 
 export interface DashboardStats {
-  /** 심사 대기 중인 워크스페이스 수 (status = 'pending') */
+  /** 신규 입점 신청 (status = 'submitted') */
   pendingReviewCount: number;
   /** 진행 중인 RFP 수 (status = 'sent') */
   activeRfpCount: number;
+  pendingNameChangeCount: number;
+  pendingMemberCount: number;
 }
 
 export interface HotlistItem {
@@ -20,23 +22,29 @@ export interface HotlistItem {
 }
 
 export async function getDashboardStats(db: DB = actionDb()): Promise<DashboardStats> {
-  const [pendingRows, activeRfpRows] = await Promise.all([
-    // 심사 대기 워크스페이스 (status = 'pending')
+  const [pendingRows, activeRfpRows, nameRows, memberRows] = await Promise.all([
+    // 목록 링크와 같은 상태를 집계한다.
     db
       .select({ count: count() })
-      .from(workspaces)
-      .where(eq(workspaces.status, 'pending')),
+      .from(verificationApplications)
+      .where(eq(verificationApplications.status, 'submitted')),
 
     // 진행 중 RFP (status = 'sent')
     db
       .select({ count: count() })
       .from(rfps)
       .where(eq(rfps.status, 'sent')),
+    db.select({ count: count() }).from(workspaceNameChangeRequests).where(eq(workspaceNameChangeRequests.status, 'pending')),
+    db.select({ count: count() }).from(workspaceMembers)
+      .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
+      .where(and(eq(workspaces.type, 'pg'), eq(workspaceMembers.approvalStatus, 'pending_approval'))),
   ]);
 
   return {
     pendingReviewCount: Number(pendingRows[0].count),
     activeRfpCount: Number(activeRfpRows[0].count),
+    pendingNameChangeCount: Number(nameRows[0].count),
+    pendingMemberCount: Number(memberRows[0].count),
   };
 }
 
@@ -79,4 +87,13 @@ export async function getHotlist(db: DB = actionDb()): Promise<HotlistItem[]> {
   }
 
   return items;
+}
+
+export async function getOldestApplications(db: DB = actionDb()) {
+  const rows = await db.select({ id: verificationApplications.id, name: workspaces.name, submittedAt: verificationApplications.submittedAt })
+    .from(verificationApplications).innerJoin(workspaces, eq(workspaces.id, verificationApplications.workspaceId))
+    .where(eq(verificationApplications.status, 'submitted'))
+    .orderBy(verificationApplications.submittedAt, verificationApplications.id).limit(5);
+  const now = Date.now();
+  return rows.map(row => ({ ...row, waitingDays: Math.max(0, Math.floor((now - row.submittedAt.getTime()) / 86400000)) }));
 }

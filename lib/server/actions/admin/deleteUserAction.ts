@@ -10,20 +10,45 @@ import {
   rfpRequoteRequests,
   attachments,
   contracts,
+  bids,
+  rfps,
+  chatMessages,
+  chatMessageTemplates,
+  bidNotes,
+  rfpTeamMessages,
+  rfpPgRequests,
 } from '@/lib/db/schema';
-import { requireSuperAdmin } from '@/lib/auth/admin-session';
+import { requireAdminPermission } from '@/lib/auth/admin-session';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
+import type { ActionState } from '@/lib/action-state';
+import { safeListReturnTo } from '@/lib/admin-return-to';
 
-export async function deleteUserAction(userId: string): Promise<void> {
-  const session = await requireSuperAdmin();
+export async function deleteUserAction(userId: string, confirmationName: string, returnTo?: string): Promise<ActionState> {
+  const session = await requireAdminPermission('user.delete');
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await actionDb().transaction(async (tx: any) => {
+  const result = await actionDb().transaction(async (tx): Promise<ActionState | null> => {
     const [userRow] = await tx
       .select({ email: users.email, name: users.name })
       .from(users)
       .where(eq(users.id, userId))
-      .limit(1);
+      .limit(1)
+      .for('update');
+
+    if (!userRow) return { status: 'error', message: '회원을 찾을 수 없습니다. 새로고침해 주세요.' };
+    if (userRow.name !== confirmationName) return { status: 'error', message: '확인 이름이 현재 회원 이름과 다릅니다.' };
+    // These records belong to other users/workspaces too. Erasing them to remove an
+    // account would destroy transaction and communication history.
+    const protectedTables = [
+      [rfps, rfps.createdBy], [bids, bids.submittedBy], [contracts, contracts.awardedBy],
+      [attachments, attachments.uploadedBy], [rfpRequoteRequests, rfpRequoteRequests.createdByUserId],
+      [chatMessages, chatMessages.authorUserId],
+      [chatMessageTemplates, chatMessageTemplates.createdBy], [bidNotes, bidNotes.authorId],
+      [rfpTeamMessages, rfpTeamMessages.authorUserId], [rfpPgRequests, rfpPgRequests.createdByUserId],
+    ] as const;
+    for (const [table, column] of protectedTables) {
+      const existing = await tx.select({ id: column }).from(table).where(eq(column, userId)).limit(1);
+      if (existing.length) return { status: 'error', message: '이 회원과 연결된 보존 대상 업무 기록이 있어 삭제할 수 없습니다.' };
+    }
 
     await tx.insert(adminAuditLogs).values({
       actor: session.adminId,
@@ -51,22 +76,11 @@ export async function deleteUserAction(userId: string): Promise<void> {
     // bid_quote_templates.created_by — NOT NULL, 해당 템플릿 삭제
     await tx.delete(bidQuoteTemplates).where(eq(bidQuoteTemplates.createdBy, userId));
 
-    // rfp_requote_requests.created_by_user_id — NOT NULL, 해당 행 삭제
-    await tx
-      .delete(rfpRequoteRequests)
-      .where(eq(rfpRequoteRequests.createdByUserId, userId));
-
-    // attachments.uploaded_by — NOT NULL, 해당 첨부파일 삭제
-    // (바이트는 Cloudflare R2에 있음 — 이 delete는 DB row만 지우며 R2 객체는
-    // 정리되지 않고 고아로 남는다. R2 정리는 별도 인프라 작업 필요.)
-    await tx.delete(attachments).where(eq(attachments.uploadedBy, userId));
-
-    // contracts.awarded_by — NOT NULL, 해당 계약 삭제
-    await tx.delete(contracts).where(eq(contracts.awardedBy, userId));
-
     // 유저 삭제 (workspace_members, notifications 등 cascade FK는 DB가 처리)
     await tx.delete(users).where(eq(users.id, userId));
+    return null;
   });
 
-  redirect('/users');
+  if (result) return result;
+  redirect(safeListReturnTo(returnTo, '/users'));
 }

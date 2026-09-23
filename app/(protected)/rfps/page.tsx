@@ -1,4 +1,9 @@
-import { listAllRfps } from '@/lib/server/queries/admin/rfps';
+import { listAllRfpsPage } from '@/lib/server/queries/admin/rfps';
+import { AdminListControls } from '@/components/AdminListControls';
+import { AdminListPagination } from '@/components/AdminListPagination';
+import { AdminDataTable, type AdminTableColumn } from '@/components/AdminDataTable';
+import type { RfpListRow } from '@/lib/server/queries/admin/rfps';
+import { listQuery, type ListParams } from '@/lib/admin-list';
 import Link from 'next/link';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
 import { formatDateKST } from '@/lib/utils';
@@ -6,23 +11,35 @@ import { formatDateKST } from '@/lib/utils';
 export default async function RfpsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; status?: string }>;
+  searchParams: Promise<ListParams>;
 }) {
-  const { q, status } = await searchParams;
-  const rfpList = await listAllRfps({ q, status });
+  const params = await searchParams;
+  const { q, status } = params;
+  const { rows: rfpList, total, page } = await listAllRfpsPage(params);
+  const returnTo = `/rfps?${listQuery(params)}`;
+  const filtered = Boolean(q || status || params.from || params.to);
+  const columns: AdminTableColumn<RfpListRow>[] = [
+    { key: 'code', label: '코드', render: (rfp) => <span className="md-numeric text-label-small text-on-surface-variant">{rfp.code}</span> },
+    { key: 'title', label: '제목', render: (rfp) => <Link href={`/rfps/${rfp.id}?returnTo=${encodeURIComponent(returnTo)}`} className="text-primary hover:underline">{rfp.title}</Link> },
+    { key: 'buyerName', label: '구매사', render: (rfp) => <Link href={`/buyers/${rfp.buyerWsId}`} className="text-on-surface hover:underline">{rfp.buyerName}</Link> },
+    { key: 'status', label: '상태', render: (rfp) => <AdminStatusBadge status={rfp.status} /> },
+    { key: 'deadline', label: '마감', render: (rfp) => <span className="md-numeric text-label-small text-on-surface-variant">{formatDateKST(rfp.deadline)}</span> },
+  ];
 
   return (
     <div className="space-y-4">
       <h1 className="text-headline-small font-semibold">RFP 전체 목록</h1>
-      <form method="GET" className="flex gap-2">
+      <AdminListControls path="/rfps" params={params} sortOptions={[{ value: 'deadline', label: '마감 임박순' }]} dateLabel="마감일">
         <input
           name="q"
+          aria-label="RFP 제목 또는 코드 검색"
           defaultValue={q ?? ''}
           placeholder="제목 또는 코드 검색"
           className="rounded border border-outline-variant px-3 py-1.5 text-body-small bg-surface focus:outline-none focus:ring-1 focus:ring-primary w-64"
         />
         <select
           name="status"
+          aria-label="RFP 상태"
           defaultValue={status ?? ''}
           className="rounded border border-outline-variant px-3 py-1.5 text-body-small bg-surface"
         >
@@ -33,61 +50,9 @@ export default async function RfpsPage({
           <option value="cancelled">취소</option>
           <option value="awarded">낙찰</option>
         </select>
-        <button
-          type="submit"
-          className="rounded bg-primary text-on-primary px-3 py-1.5 text-label-small"
-        >
-          검색
-        </button>
-      </form>
-      <div className="rounded border border-outline-variant overflow-hidden">
-        <table className="w-full text-body-small">
-          <thead>
-            <tr className="border-b border-outline-variant bg-surface-container-low">
-              <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">코드</th>
-              <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">제목</th>
-              <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">구매사</th>
-              <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">상태</th>
-              <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">마감</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rfpList.map((rfp) => (
-              <tr
-                key={rfp.id}
-                className="border-b border-outline-variant last:border-0 hover:bg-surface-container-low"
-              >
-                <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant">
-                  {rfp.code}
-                </td>
-                <td className="px-4 py-3">
-                  <Link href={`/rfps/${rfp.id}`} className="text-primary hover:underline">
-                    {rfp.title}
-                  </Link>
-                </td>
-                <td className="px-4 py-3">
-                  <Link href={`/buyers/${rfp.buyerWsId}`} className="text-on-surface hover:underline">
-                    {rfp.buyerName}
-                  </Link>
-                </td>
-                <td className="px-4 py-3">
-                  <AdminStatusBadge status={rfp.status} />
-                </td>
-                <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant">
-                  {formatDateKST(rfp.deadline)}
-                </td>
-              </tr>
-            ))}
-            {rfpList.length === 0 && (
-              <tr>
-                <td colSpan={5} className="px-4 py-8 text-center text-on-surface-variant">
-                  등록된 RFP가 없습니다.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      </AdminListControls>
+      <AdminDataTable caption="RFP 목록" rows={rfpList} columns={columns} getKey={(rfp) => rfp.id} emptyMessage={filtered ? '검색 조건에 맞는 RFP가 없습니다.' : '등록된 RFP가 없습니다.'} />
+      <AdminListPagination path="/rfps" params={params} page={page} total={total} />
     </div>
   );
 }

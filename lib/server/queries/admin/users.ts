@@ -1,4 +1,5 @@
-import { and, desc, eq, ilike, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
+import { ADMIN_PAGE_SIZE, dateBounds, pageNumber, type ListParams } from '@/lib/admin-list';
 import { users, workspaceMembers, workspaces } from '@/lib/db/schema';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 
@@ -62,6 +63,26 @@ export async function listUsers(
     .groupBy(users.id, users.name, users.email, users.status, users.deletedAt, users.createdAt)
     .orderBy(desc(users.createdAt));
   return rows as UserRow[];
+}
+
+export async function listUsersPage(opts: ListParams = {}) {
+  const { fromDate, toDate } = dateBounds(opts.from, opts.to);
+  const where = and(
+    opts.status === 'deleted' ? isNotNull(users.deletedAt) : isNull(users.deletedAt),
+    opts.q ? or(ilike(users.name, `%${opts.q}%`), ilike(users.email, `%${opts.q}%`)) : undefined,
+    opts.status === 'active' || opts.status === 'suspended' ? eq(users.status, opts.status) : undefined,
+    fromDate ? gte(users.createdAt, fromDate) : undefined,
+    toDate ? lt(users.createdAt, toDate) : undefined,
+  );
+  const db = actionDb();
+  const [{ total }] = await db.select({ total: sql<number>`cast(count(*) as int)` }).from(users).where(where);
+  const page = Math.min(pageNumber(opts.page), Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE)));
+  const order = opts.sort === 'oldest' ? [asc(users.createdAt), asc(users.id)] : opts.sort === 'name' ? [asc(users.name), asc(users.id)] : [desc(users.createdAt), desc(users.id)];
+  const rows = await db.select({ id: users.id, name: users.name, email: users.email, status: users.status, deletedAt: users.deletedAt, workspaceCount: sql<number>`cast(count(${workspaceMembers.userId}) as int)`, createdAt: users.createdAt })
+    .from(users).leftJoin(workspaceMembers, eq(workspaceMembers.userId, users.id)).where(where)
+    .groupBy(users.id, users.name, users.email, users.status, users.deletedAt, users.createdAt)
+    .orderBy(...order).limit(ADMIN_PAGE_SIZE).offset((page - 1) * ADMIN_PAGE_SIZE);
+  return { rows: rows as UserRow[], total, page };
 }
 
 export async function getUserDetail(userId: string): Promise<UserDetailResult | null> {

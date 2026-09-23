@@ -1,3 +1,4 @@
+import { hasPermission } from '@/lib/auth/permissions';
 import { eq } from 'drizzle-orm';
 import { requireAdminSession } from '@/lib/auth/admin-session';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
@@ -10,7 +11,8 @@ export default async function AgreementRatesPage({
 }: {
   searchParams: Promise<{ pg?: string }>;
 }) {
-  await requireAdminSession();
+  const session = await requireAdminSession();
+  const canEdit = hasPermission(session, 'agreement_rates.edit');
   const [params, sellers] = await Promise.all([searchParams, listSellers()]);
   const selected = sellers.find((pg) => pg.id === params.pg);
   const [policy] = selected
@@ -54,12 +56,15 @@ export default async function AgreementRatesPage({
       {selected ? (
         <section className="space-y-4">
           <h2 className="text-title-medium">{selected.name}</h2>
+          {!canEdit && <p className="text-body-small text-on-surface-variant">조회 전용입니다. 변경은 수수료 담당자에게 요청해 주세요.</p>}
+          <fieldset disabled={!canEdit} className="disabled:opacity-75">
           <AgreementRatesForm
             key={`${selected.id}-${policy?.version ?? 0}`}
             pgWsId={selected.id}
             version={policy?.version ?? 0}
             rates={policy?.rates ?? []}
           />
+          </fieldset>
         </section>
       ) : (
         <p className="rounded border border-outline-variant p-6 text-on-surface-variant">

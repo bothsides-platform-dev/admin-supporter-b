@@ -4,7 +4,7 @@ import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { workspaces, bizProfiles, adminAuditLogs } from '@/lib/db/schema';
-import { requireAdminSession } from '@/lib/auth/admin-session';
+import { requireAdminPermission } from '@/lib/auth/admin-session';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 import { MERCHANT_TIERS } from '@/lib/types/biz-profile';
 import type { MerchantTier } from '@/lib/types/biz-profile';
@@ -29,26 +29,25 @@ export async function updateWorkspaceGradeAction(
 ): Promise<Result> {
   if (!VALID_GRADES.includes(grade)) return { ok: false, error: 'INVALID_GRADE' };
 
-  const session = await requireAdminSession();
+  const session = await requireAdminPermission('workspace.manage');
   const db = actionDb();
   const now = new Date();
 
   let error: string | null = null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await db.transaction(async (tx: any) => {
+  await db.transaction(async (tx) => {
     const [ws] = await tx
       .select()
       .from(workspaces)
       .where(eq(workspaces.id, workspaceId))
-      .limit(1);
+      .limit(1).for('update');
     if (!ws) { error = 'WORKSPACE_NOT_FOUND'; return; }
 
     // 기존 biz_profile 필드 복사 + 현재 등급(before) 확보
     let prevGrade: MerchantTier | null = null;
     let existingBizNo: string | null = null;
-    let existingTaxType: string | null = null;
-    let existingStatus: string | null = null;
+    let existingTaxType: typeof bizProfiles.$inferSelect.taxType = null;
+    let existingStatus: typeof bizProfiles.$inferSelect.status = null;
     if (ws.bizProfileId) {
       const [existing] = await tx
         .select()

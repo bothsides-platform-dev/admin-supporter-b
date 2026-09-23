@@ -2,7 +2,12 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { SubmitButton } from '@/components/SubmitButton';
 import { formatKST } from '@/lib/utils';
-import { listWorkspaceNameChangeRequests } from '@/lib/server/queries/admin/workspaceNameChanges';
+import { listWorkspaceNameChangeRequestsPage } from '@/lib/server/queries/admin/workspaceNameChanges';
+import { AdminListControls } from '@/components/AdminListControls';
+import { AdminListPagination } from '@/components/AdminListPagination';
+import { listQuery, type ListParams } from '@/lib/admin-list';
+import { requireAdminSession } from '@/lib/auth/admin-session';
+import { hasPermission } from '@/lib/auth/permissions';
 import { approveWorkspaceNameChangeAction, rejectWorkspaceNameChangeAction } from '@/lib/server/actions/admin/reviewWorkspaceNameChangeAction';
 
 const STATUS_LABEL: Record<string, string> = { pending: '확인 중', approved: '승인', rejected: '거절' };
@@ -12,31 +17,25 @@ const ERROR_LABEL: Record<string, string> = {
   WORKSPACE_NOT_ACTIVE: '워크스페이스 상태나 현재 이름이 달라 승인할 수 없어요.',
 };
 
-function redirectWithError(status: string, code: string): never {
-  const params = new URLSearchParams();
-  if (status) params.set('status', status);
-  params.set('error', code);
-  redirect(`/name-change-requests?${params.toString()}`);
-}
-
-function redirectToList(status: string): never {
-  redirect(status ? `/name-change-requests?status=${encodeURIComponent(status)}` : '/name-change-requests');
-}
-
 export default async function WorkspaceNameChangeRequestsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; error?: string }>;
+  searchParams: Promise<ListParams & { error?: string }>;
 }) {
-  const { status, error } = await searchParams;
+  const params = await searchParams;
+  const { status, error } = params;
   const selectedStatus = status ?? 'pending';
-  const requests = await listWorkspaceNameChangeRequests({ status: selectedStatus });
+  const { rows: requests, total, page } = await listWorkspaceNameChangeRequestsPage({ ...params, status: selectedStatus });
+  const canReview = hasPermission(await requireAdminSession(), 'workspace.review');
+  const returnTo = `/name-change-requests?${listQuery({ ...params, status: selectedStatus })}`;
+  const filtered = Boolean((status !== undefined && status !== 'pending') || params.q || params.from || params.to);
 
   async function approve(formData: FormData) {
     'use server';
     const result = await approveWorkspaceNameChangeAction(undefined, String(formData.get('requestId')));
-    if (!result.ok) redirectWithError(selectedStatus, result.error);
-    else redirectToList(selectedStatus);
+    const next = new URLSearchParams(listQuery({ ...params, status: selectedStatus }));
+    if (!result.ok) next.set('error', result.error);
+    redirect(`/name-change-requests?${next.toString()}`);
   }
   async function reject(formData: FormData) {
     'use server';
@@ -45,8 +44,9 @@ export default async function WorkspaceNameChangeRequestsPage({
       String(formData.get('requestId')),
       String(formData.get('reason') ?? ''),
     );
-    if (!result.ok) redirectWithError(selectedStatus, result.error);
-    else redirectToList(selectedStatus);
+    const next = new URLSearchParams(listQuery({ ...params, status: selectedStatus }));
+    if (!result.ok) next.set('error', result.error);
+    redirect(`/name-change-requests?${next.toString()}`);
   }
 
   return (
@@ -60,15 +60,15 @@ export default async function WorkspaceNameChangeRequestsPage({
           {ERROR_LABEL[error]}
         </p>
       )}
-      <form method="GET" className="flex gap-2">
-        <select name="status" defaultValue={selectedStatus} className="rounded border border-outline-variant px-3 py-1.5 text-body-small bg-surface">
+      <AdminListControls path="/name-change-requests" params={params} dateLabel="요청일">
+        <input name="q" defaultValue={params.q ?? ''} placeholder="회사명 검색" aria-label="회사명 검색" className="rounded border border-outline-variant bg-surface px-3 py-1.5 text-body-small" />
+        <select name="status" aria-label="이름 변경 요청 상태" defaultValue={selectedStatus} className="rounded border border-outline-variant px-3 py-1.5 text-body-small bg-surface">
           <option value="pending">확인 중</option>
           <option value="approved">승인</option>
           <option value="rejected">거절</option>
           <option value="">전체</option>
         </select>
-        <button type="submit" className="rounded bg-primary text-on-primary px-3 py-1.5 text-label-small">검색</button>
-      </form>
+      </AdminListControls>
       <div className="space-y-3">
         {requests.map((request) => (
           <section key={request.id} className="rounded border border-outline-variant bg-surface p-4 space-y-3">
@@ -77,14 +77,14 @@ export default async function WorkspaceNameChangeRequestsPage({
                 <p className="text-label-small text-on-surface-variant">{request.workspaceType === 'buyer' ? '구매사' : request.workspaceType === 'pg' ? 'PG사' : '삭제된 워크스페이스'} · {STATUS_LABEL[request.status] ?? request.status}</p>
                 <p className="mt-1 text-body-large"><span className="text-on-surface-variant line-through">{request.currentName}</span><span className="mx-2">→</span><strong>{request.requestedName}</strong></p>
               </div>
-              {request.workspaceType && <Link href={request.workspaceType === 'buyer' ? `/buyers/${request.workspaceId}` : `/sellers/${request.workspaceId}`} className="text-primary text-label-small hover:underline">회사 보기</Link>}
+              {request.workspaceType && <Link href={`${request.workspaceType === 'buyer' ? `/buyers/${request.workspaceId}` : `/sellers/${request.workspaceId}`}?returnTo=${encodeURIComponent(returnTo)}`} className="text-primary text-label-small hover:underline">회사 보기</Link>}
             </div>
             <dl className="grid gap-1 text-body-small text-on-surface-variant sm:grid-cols-2">
               <div><dt className="inline">요청자 </dt><dd className="inline text-on-surface">{request.requesterName && request.requesterEmail ? `${request.requesterName} · ${request.requesterEmail}` : '탈퇴한 사용자'}</dd></div>
               <div><dt className="inline">요청일 </dt><dd className="inline md-numeric text-on-surface">{formatKST(request.submittedAt)}</dd></div>
               {request.reason && <div className="sm:col-span-2"><dt className="inline">거절 사유 </dt><dd className="inline text-on-surface">{request.reason}</dd></div>}
             </dl>
-            {request.status === 'pending' && (
+            {canReview && request.status === 'pending' && (
               <div className="flex flex-col gap-2 border-t border-outline-variant pt-3 sm:flex-row sm:items-end">
                 <form action={reject} className="flex flex-1 gap-2">
                   <input type="hidden" name="requestId" value={request.id} />
@@ -100,8 +100,9 @@ export default async function WorkspaceNameChangeRequestsPage({
             )}
           </section>
         ))}
-        {requests.length === 0 && <p className="rounded border border-outline-variant px-4 py-8 text-center text-body-small text-on-surface-variant">이름 변경 요청이 없습니다.</p>}
+        {requests.length === 0 && <p className="rounded border border-outline-variant px-4 py-8 text-center text-body-small text-on-surface-variant">{filtered ? '검색 조건에 맞는 이름 변경 요청이 없습니다.' : '이름 변경 요청이 없습니다.'}</p>}
       </div>
+      <AdminListPagination path="/name-change-requests" params={{ ...params, status: selectedStatus }} page={page} total={total} />
     </div>
   );
 }

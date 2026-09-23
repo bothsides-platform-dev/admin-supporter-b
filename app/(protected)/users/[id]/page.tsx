@@ -9,41 +9,55 @@ import { unsuspendUserAction } from '@/lib/server/actions/admin/unsuspendUserAct
 import { deleteUserAction } from '@/lib/server/actions/admin/deleteUserAction';
 import { formatDateKST } from '@/lib/utils';
 import { removeWorkspaceMemberAction } from '@/lib/server/actions/admin/removeWorkspaceMemberAction';
+import { ActionForm } from '@/components/ActionForm';
+import { toActionState, type ActionState } from '@/lib/action-state';
 import { requireAdminSession } from '@/lib/auth/admin-session';
+import { hasPermission } from '@/lib/auth/permissions';
+import { listEntityAuditLogs } from '@/lib/server/queries/admin/audit-log';
+import { getUserDeletionImpact } from '@/lib/server/queries/admin/deletion-impact';
+import { AdminAuditHistory } from '@/components/AdminAuditHistory';
+import { DangerousDeleteForm } from '@/components/DangerousDeleteForm';
+import { safeListReturnTo } from '@/lib/admin-return-to';
 
 export default async function UserDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
   const { id } = await params;
-  const [detail, session] = await Promise.all([getUserDetail(id), requireAdminSession()]);
+  const returnTo = safeListReturnTo((await searchParams).returnTo, '/users');
+  const [detail, session, history] = await Promise.all([getUserDetail(id), requireAdminSession(), listEntityAuditLogs('user', id)]);
   if (!detail) notFound();
 
   const { user, memberships } = detail;
   const isSuspended = user.status === 'suspended';
   const isDeleted = user.deletedAt != null;
-  const isSuperAdmin = session.role === 'super_admin';
+  const canManageUser = hasPermission(session, 'user.manage');
+  const canManageWorkspace = hasPermission(session, 'workspace.manage');
+  const canDelete = hasPermission(session, 'user.delete');
+  const impact = canDelete ? await getUserDeletionImpact(id) : [];
 
   async function doSuspend() {
     'use server';
-    await suspendUserAction(user.id);
+    return toActionState(await suspendUserAction(user.id), '계정을 정지했습니다.');
   }
 
-  async function doUnsuspend() {
+  async function doUnsuspend(): Promise<ActionState> {
     'use server';
-    await unsuspendUserAction(user.id);
+    return toActionState(await unsuspendUserAction(user.id), '계정을 활성화했습니다.');
   }
 
-  async function doDelete() {
+  async function doDelete(_previous: ActionState, formData: FormData): Promise<ActionState> {
     'use server';
-    await deleteUserAction(user.id);
+    return deleteUserAction(user.id, String(formData.get('confirmationName') ?? ''), returnTo);
   }
 
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="space-y-1">
-        <Link href="/users" className="text-on-surface-variant hover:text-on-surface text-body-small">
+        <Link href={returnTo} className="text-on-surface-variant hover:text-on-surface text-body-small">
           ← 목록
         </Link>
         <div className="flex items-center gap-3">
@@ -75,14 +89,14 @@ export default async function UserDetailPage({
         </div>
       </section>
 
-      <section>
+      {canManageUser && !isDeleted && <section>
         <h2 className="text-title-small font-semibold mb-3">계정 상태</h2>
         {isSuspended ? (
-          <form action={doUnsuspend}>
+          <ActionForm action={doUnsuspend} className="space-y-2">
             <SubmitButton className="rounded border border-primary text-primary px-4 py-2 text-label-small hover:bg-primary/10">
               계정 활성화
             </SubmitButton>
-          </form>
+          </ActionForm>
         ) : (
           <ConfirmButton
             action={doSuspend}
@@ -93,24 +107,7 @@ export default async function UserDetailPage({
             confirmClassName="rounded border border-error text-error px-3 py-1.5 text-label-small hover:bg-error/10"
           />
         )}
-      </section>
-
-      {isSuperAdmin && (
-        <section className="rounded border border-error p-4 space-y-2">
-          <h2 className="text-title-small font-medium text-error">위험 구역</h2>
-          <p className="text-body-small text-on-surface-variant">
-            유저를 영구 삭제합니다. 이 작업은 되돌릴 수 없습니다.
-          </p>
-          <ConfirmButton
-            action={doDelete}
-            label="유저 영구 삭제"
-            confirmMessage="정말로 이 유저를 영구 삭제하시겠습니까? 복구 불가합니다."
-            confirmLabel="영구 삭제"
-            labelClassName="rounded border border-error text-error px-4 py-2 text-label-small hover:bg-error/10"
-            confirmClassName="rounded bg-error text-on-error px-4 py-2 text-label-small hover:bg-error/90"
-          />
-        </section>
-      )}
+      </section>}
 
       <section>
         <h2 className="text-title-small font-semibold mb-3">
@@ -131,14 +128,14 @@ export default async function UserDetailPage({
               {memberships.map((m) => {
                 async function doRemove() {
                   'use server';
-                  await removeWorkspaceMemberAction(m.workspaceId, user.id);
+                  return toActionState(await removeWorkspaceMemberAction(m.workspaceId, user.id), '멤버를 제외했습니다.');
                 }
                 return (
                   <tr
                     key={m.workspaceId}
                     className="border-b border-outline-variant last:border-0"
                   >
-                    <td className="px-4 py-3">{m.workspaceName}</td>
+                    <td className="px-4 py-3"><Link href={`${m.workspaceType === 'buyer' ? '/buyers' : '/sellers'}/${m.workspaceId}`} className="text-primary hover:underline">{m.workspaceName}</Link></td>
                     <td className="px-4 py-3 text-label-small text-on-surface-variant">
                       {m.workspaceType === 'buyer' ? '구매사' : 'PG사'}
                     </td>
@@ -149,7 +146,7 @@ export default async function UserDetailPage({
                       {formatDateKST(m.joinedAt)}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <ConfirmButton
+                      {canManageWorkspace && <ConfirmButton
                         action={doRemove}
                         label="제외"
                         confirmMessage="이 멤버를 제외하시겠습니까?"
@@ -157,7 +154,8 @@ export default async function UserDetailPage({
                         labelClassName="text-label-small text-error hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
                         confirmClassName="text-label-small text-error hover:underline"
                         disabled={m.isLastAdmin}
-                      />
+                      />}
+                      {canManageWorkspace && m.isLastAdmin && <span className="ml-2 text-label-small text-on-surface-variant">마지막 관리자는 제외할 수 없습니다.</span>}
                     </td>
                   </tr>
                 );
@@ -173,6 +171,9 @@ export default async function UserDetailPage({
           </table>
         </div>
       </section>
+
+      <AdminAuditHistory logs={history} entityType="user" entityId={user.id} />
+      {canDelete && <DangerousDeleteForm name={user.name} label="회원" impact={impact} action={doDelete} />}
     </div>
   );
 }

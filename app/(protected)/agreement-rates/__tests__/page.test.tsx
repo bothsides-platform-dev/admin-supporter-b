@@ -16,7 +16,7 @@ import AgreementRatesPage from '../page';
 const pgId = '20000000-0000-4000-8000-000000000001';
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.requireAdminSession.mockResolvedValue({ adminId: 'ops@example.com' });
+  mocks.requireAdminSession.mockResolvedValue({ adminId: 'ops@example.com', role: 'operator' });
   mocks.listSellers.mockResolvedValue([{ id: pgId, name: '테스트 PG' }]);
   mocks.actionDb.mockReturnValue({
     select: () => ({ from: () => ({ where: async () => [{ version: 3, rates: [{ key: 'bank_transfer', rate: 0.025 }] }] }) }),

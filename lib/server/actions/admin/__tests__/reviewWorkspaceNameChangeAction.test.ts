@@ -8,7 +8,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/auth/admin-session', () => ({
-  requireAdminSession: () => mocks.sessionError
+  requireAdminPermission: () => mocks.sessionError
     ? Promise.reject(mocks.sessionError)
     : Promise.resolve({ adminId: 'ops@example.com' }),
 }));

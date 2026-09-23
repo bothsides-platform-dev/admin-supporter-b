@@ -1,3 +1,4 @@
+import { hasPermission } from '@/lib/auth/permissions';
 import { pgMatchingPolicies } from '@/lib/db/schema';
 import type { MatchingPolicy } from '@/lib/pg-matching-policy';
 import { savePgMatchingPolicyAction } from '@/lib/server/actions/admin/pgMatchingPolicy';
@@ -21,7 +22,8 @@ export default async function PgRecommendationsPage({
 }: {
   searchParams: Promise<{ error?: string; saved?: string }>;
 }) {
-  await requireAdminSession();
+  const session = await requireAdminSession();
+  const canEdit = hasPermission(session, 'recommendation.edit');
   const [{ error, saved }, groups, sellers] = await Promise.all([
     searchParams,
     listPgRecommendationGroups(),
@@ -62,10 +64,11 @@ export default async function PgRecommendationsPage({
         </p>
       )}
 
-      <section className="space-y-3">
+      {canEdit && <section className="space-y-3">
         <h2 className="text-title-small font-semibold">새 업종</h2>
         <GroupForm action={save} />
-      </section>
+      </section>}
+      {!canEdit && <p className="text-body-small text-on-surface-variant">조회 전용입니다. 변경은 수수료 담당자에게 요청해 주세요.</p>}
 
       <section className="space-y-3">
         <h2 className="text-title-small font-semibold">등록된 업종 ({groups.length}개)</h2>
@@ -81,7 +84,7 @@ export default async function PgRecommendationsPage({
             redirect('/pg-recommendations?saved=1');
           }
           return (
-            <div key={group.id} className="rounded border border-outline-variant p-4 space-y-3">
+            <fieldset disabled={!canEdit} key={group.id} className="rounded border border-outline-variant p-4 space-y-3 disabled:opacity-75">
               <GroupForm action={save} group={group} />
               <PolicyForm groupId={group.id} sellers={sellers} policy={policies.find(p => p.groupId === group.id)?.policy} />
               <div className="border-t border-outline-variant pt-3">
@@ -94,7 +97,7 @@ export default async function PgRecommendationsPage({
                   confirmClassName="rounded bg-error px-3 py-1.5 text-label-small text-on-error hover:bg-error/90"
                 />
               </div>
-            </div>
+            </fieldset>
           );
         })}
       </section>

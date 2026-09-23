@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, ilike, inArray, or } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, inArray, lt, or, sql } from 'drizzle-orm';
+import { ADMIN_PAGE_SIZE, dateBounds, pageNumber, type ListParams } from '@/lib/admin-list';
 import {
   rfps,
   workspaces,
@@ -143,6 +144,23 @@ export async function listAllRfps(
       ),
     )
     .orderBy(desc(rfps.createdAt)) as Promise<RfpListRow[]>;
+}
+
+export async function listAllRfpsPage(opts: ListParams = {}, db: DB = actionDb()): Promise<{ rows: RfpListRow[]; total: number; page: number }> {
+  const { fromDate, toDate } = dateBounds(opts.from, opts.to);
+  const where = and(
+    opts.q ? or(ilike(rfps.title, `%${opts.q}%`), ilike(rfps.code, `%${opts.q}%`)) : undefined,
+    ['draft', 'sent', 'closed', 'cancelled', 'awarded'].includes(opts.status ?? '') ? eq(rfps.status, opts.status as RfpListRow['status']) : undefined,
+    fromDate ? gte(rfps.deadline, fromDate) : undefined,
+    toDate ? lt(rfps.deadline, toDate) : undefined,
+  );
+  const [{ total }] = await db.select({ total: sql<number>`cast(count(*) as int)` }).from(rfps).innerJoin(workspaces, eq(rfps.buyerWsId, workspaces.id)).where(where) as { total: number }[];
+  const page = Math.min(pageNumber(opts.page), Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE)));
+  const order = opts.sort === 'oldest' ? [asc(rfps.createdAt), asc(rfps.id)] : opts.sort === 'deadline' ? [asc(rfps.deadline), asc(rfps.id)] : [desc(rfps.createdAt), desc(rfps.id)];
+  const rows = await db.select({ id: rfps.id, code: rfps.code, title: rfps.title, status: rfps.status, deadline: rfps.deadline, buyerName: workspaces.name, buyerWsId: rfps.buyerWsId })
+    .from(rfps).innerJoin(workspaces, eq(rfps.buyerWsId, workspaces.id)).where(where)
+    .orderBy(...order).limit(ADMIN_PAGE_SIZE).offset((page - 1) * ADMIN_PAGE_SIZE) as RfpListRow[];
+  return { rows, total, page };
 }
 
 export async function getRfpDetail(rfpId: string, db: DB = actionDb()) {

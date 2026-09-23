@@ -5,7 +5,7 @@ import { and, eq, inArray, notInArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { adminAuditLogs, pgRecommendationGroups, pgRecommendationMembers, workspaces } from '@/lib/db/schema';
-import { requireAdminSession } from '@/lib/auth/admin-session';
+import { requireAdminPermission } from '@/lib/auth/admin-session';
 
 const SaveInput = z.object({
   id: z.string().uuid().optional(),
@@ -24,7 +24,7 @@ export async function savePgRecommendationGroupAction(
   db: DB,
   input: z.input<typeof SaveInput>,
 ): Promise<SaveResult> {
-  const session = await requireAdminSession();
+  const session = await requireAdminPermission('recommendation.edit');
   const parsed = SaveInput.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'INVALID_INPUT' };
   const { id: inputId, name, sortOrder } = parsed.data;
@@ -92,7 +92,7 @@ export async function savePgRecommendationGroupAction(
 }
 
 export async function deletePgRecommendationGroupAction(db: DB, groupId: string): Promise<DeleteResult> {
-  const session = await requireAdminSession();
+  const session = await requireAdminPermission('recommendation.edit');
   if (!z.string().uuid().safeParse(groupId).success) return { ok: false, error: 'INVALID_INPUT' };
 
   const result: DeleteResult = await db.transaction(async (tx: DB) => {

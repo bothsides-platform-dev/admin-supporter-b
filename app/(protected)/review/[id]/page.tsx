@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
 import { getApplicationDetail } from '@/lib/server/queries/admin/review';
 import { getAdminNotes } from '@/lib/server/queries/admin/adminNotes';
@@ -9,58 +9,96 @@ import { approveWorkspaceAction } from '@/lib/server/actions/admin/approveWorksp
 import { rejectWorkspaceAction } from '@/lib/server/actions/admin/rejectWorkspaceAction';
 import { requestMoreInfoAction } from '@/lib/server/actions/admin/requestMoreInfoAction';
 import { createAdminNoteAction } from '@/lib/server/actions/admin/createAdminNoteAction';
+import { ActionForm } from '@/components/ActionForm';
+import { toActionState, type ActionState } from '@/lib/action-state';
 import { deleteAdminNoteAction } from '@/lib/server/actions/admin/deleteAdminNoteAction';
 import { MERCHANT_TIER_LABELS, MERCHANT_TIERS } from '@/lib/types/biz-profile';
 import type { MerchantTier } from '@/lib/types/biz-profile';
 import { formatKST } from '@/lib/utils';
+import { requireAdminSession } from '@/lib/auth/admin-session';
+import { hasPermission } from '@/lib/auth/permissions';
+import { getNextReviewApplicationId } from '@/lib/server/queries/admin/nextReview';
+import { getApplicationReviewHistory } from '@/lib/server/queries/admin/reviewHistory';
+import type { ReviewSnapshot } from '@/lib/server/actions/admin/reviewApplication';
 
 const ALL_GRADES: MerchantTier[] = [...MERCHANT_TIERS];
 
 export default async function ReviewDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
   const { id } = await params;
+  const { returnTo: rawReturnTo } = await searchParams;
+  const returnTo = typeof rawReturnTo === 'string' &&
+    (rawReturnTo === '/review' || rawReturnTo.startsWith('/review?'))
+    ? rawReturnTo : '/review';
+  const session = await requireAdminSession();
+  const canReview = hasPermission(session, 'workspace.review');
+  const canWriteNotes = hasPermission(session, 'notes.write');
   const detail = await getApplicationDetail(id);
 
   if (!detail) notFound();
 
   const { application, workspace, pgProfile, bizProfile, ownerContact } = detail;
   const notes = await getAdminNotes('workspace', workspace.id);
+  const reviewHistory = await getApplicationReviewHistory(id);
 
   const canAct =
-    application.status === 'submitted' || application.status === 'needs_more_info';
+    canReview && ['submitted', 'review_pending', 'needs_more_info'].includes(application.status);
+  const reviewSnapshot: ReviewSnapshot = {
+    status: application.status as ReviewSnapshot['status'],
+    reviewedAt: application.reviewedAt?.toISOString() ?? null,
+    reason: application.reason,
+  };
 
-  async function approveAction(formData: FormData) {
+  async function goToNextIfRequested(formData: FormData) {
+    'use server';
+    if (formData.get('next') !== '1') return;
+    const nextId = await getNextReviewApplicationId(id, returnTo);
+    redirect(nextId ? `/review/${nextId}?returnTo=${encodeURIComponent(returnTo)}` : returnTo);
+  }
+
+  async function approveAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
     'use server';
     const gradeRaw = formData.get('grade');
     const grade = gradeRaw ? (gradeRaw as MerchantTier) : undefined;
-    await approveWorkspaceAction(undefined, workspace.id, grade);
+    const result = await approveWorkspaceAction(undefined, application.id, grade, reviewSnapshot);
+    if (result.ok) await goToNextIfRequested(formData);
+    return toActionState(result, '승인했습니다.');
   }
 
-  async function rejectAction(formData: FormData) {
+  async function rejectAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
     'use server';
     const reason = String(formData.get('reason') ?? '').trim();
-    await rejectWorkspaceAction(undefined, workspace.id, reason);
+    const result = await rejectWorkspaceAction(undefined, application.id, reason, reviewSnapshot);
+    if (result.ok) await goToNextIfRequested(formData);
+    return toActionState(result, '반려했습니다.');
   }
 
-  async function moreInfoAction(formData: FormData) {
+  async function moreInfoAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
     'use server';
     const reason = String(formData.get('reason') ?? '').trim();
-    await requestMoreInfoAction(undefined, workspace.id, reason);
+    const result = await requestMoreInfoAction(undefined, application.id, reason, reviewSnapshot);
+    if (result.ok) await goToNextIfRequested(formData);
+    return toActionState(result, '보완 요청을 보냈습니다.');
   }
 
-  async function saveNote(formData: FormData) {
+  async function saveNote(_prev: ActionState, formData: FormData): Promise<ActionState> {
     'use server';
     const body = String(formData.get('body') ?? '').trim();
-    await createAdminNoteAction(undefined, 'workspace', workspace.id, body, `/review/${id}`);
+    return toActionState(
+      await createAdminNoteAction(undefined, 'workspace', workspace.id, body, `/review/${id}`),
+      '메모를 저장했습니다.',
+    );
   }
 
   return (
     <div className="space-y-6 max-w-3xl">
       <div className="flex items-center gap-3">
-        <Link href="/review" className="text-on-surface-variant hover:text-on-surface text-body-small">
+        <Link href={returnTo} className="text-on-surface-variant hover:text-on-surface text-body-small">
           ← 목록
         </Link>
         <h1 className="text-headline-small font-semibold">{workspace.name}</h1>
@@ -97,7 +135,7 @@ export default async function ReviewDetailPage({
           {/* 승인 카드 */}
           <div className="rounded border border-primary p-4 space-y-3">
             <h3 className="text-body-medium font-medium text-primary">승인</h3>
-            <form action={approveAction} className="space-y-3">
+            <ActionForm action={approveAction} className="space-y-3">
               {application.orgType === 'buyer' && (
                 <div className="space-y-1">
                   <label
@@ -125,13 +163,14 @@ export default async function ReviewDetailPage({
               <SubmitButton className="rounded bg-primary px-4 py-2 text-label-large text-on-primary hover:bg-primary/90">
                 승인
               </SubmitButton>
-            </form>
+              <button type="submit" name="next" value="1" className="ml-2 rounded border border-primary px-4 py-2 text-label-large text-primary">승인 후 다음 대기 건</button>
+            </ActionForm>
           </div>
 
           {/* 반려 카드 */}
           <div className="rounded border border-error p-4 space-y-3">
             <h3 className="text-body-medium font-medium text-error">반려</h3>
-            <form action={rejectAction} className="space-y-2">
+            <ActionForm action={rejectAction} className="space-y-2">
               <label className="block text-body-small text-on-surface-variant">반려 사유</label>
               <textarea
                 name="reason"
@@ -143,7 +182,8 @@ export default async function ReviewDetailPage({
               <SubmitButton className="rounded border border-error px-4 py-2 text-label-large text-error hover:bg-error-container">
                 반려
               </SubmitButton>
-            </form>
+              <button type="submit" name="next" value="1" className="ml-2 rounded border border-error px-4 py-2 text-label-large text-error">반려 후 다음 대기 건</button>
+            </ActionForm>
           </div>
 
           {/* 보완 요청 / 재요청 카드 */}
@@ -151,7 +191,7 @@ export default async function ReviewDetailPage({
             <h3 className="text-body-medium font-medium text-on-surface">
               {application.status === 'needs_more_info' ? '재요청' : '보완 요청'}
             </h3>
-            <form action={moreInfoAction} className="space-y-2">
+            <ActionForm action={moreInfoAction} className="space-y-2">
               <label className="block text-body-small text-on-surface-variant">요청 사유</label>
               <textarea
                 name="reason"
@@ -163,7 +203,8 @@ export default async function ReviewDetailPage({
               <SubmitButton className="rounded border border-outline px-4 py-2 text-label-large text-on-surface hover:bg-surface-container-low">
                 {application.status === 'needs_more_info' ? '재요청' : '보완 요청'}
               </SubmitButton>
-            </form>
+              <button type="submit" name="next" value="1" className="ml-2 rounded border border-outline px-4 py-2 text-label-large">요청 후 다음 대기 건</button>
+            </ActionForm>
           </div>
         </section>
       )}
@@ -189,40 +230,26 @@ export default async function ReviewDetailPage({
         </div>
       </section>
 
-      {/* 처리 이력 — needs_more_info 또는 rejected 상태일 때 표시 */}
-      {(application.status === 'needs_more_info' || application.status === 'rejected') && (
-        <section className="rounded border border-outline-variant">
-          <div className="border-b border-outline-variant px-4 py-2 bg-surface-container-low">
-            <h2 className="text-title-small font-medium">처리 이력</h2>
-          </div>
-          <div className="px-4 py-3 grid grid-cols-2 gap-3 text-body-small">
-            <div>
-              <span className="text-on-surface-variant">처리 상태</span>
-              <span className="ml-3"><AdminStatusBadge status={application.status} /></span>
-            </div>
-            {application.reviewedAt && (
-              <div>
-                <span className="text-on-surface-variant">처리일</span>
-                <span className="ml-3 md-numeric">
-                  {formatKST(application.reviewedAt)}
-                </span>
-              </div>
-            )}
-            {application.reviewedBy && (
-              <div className="col-span-2">
-                <span className="text-on-surface-variant">처리자</span>
-                <span className="ml-3">{application.reviewedBy}</span>
-              </div>
-            )}
-            {application.reason && (
-              <div className="col-span-2">
-                <span className="text-on-surface-variant">사유</span>
-                <span className="ml-3">{application.reason}</span>
-              </div>
-            )}
-          </div>
-        </section>
-      )}
+      <section className="rounded border border-outline-variant">
+        <div className="border-b border-outline-variant px-4 py-2 bg-surface-container-low">
+          <h2 className="text-title-small font-medium">처리 이력</h2>
+        </div>
+        {reviewHistory.length === 0 ? (
+          <p className="px-4 py-3 text-body-small text-on-surface-variant">기록된 처리 이력이 없습니다.</p>
+        ) : (
+          <ol className="divide-y divide-outline-variant">
+            {reviewHistory.map((entry) => (
+              <li key={entry.id} className="px-4 py-3 space-y-1 text-body-small">
+                <div className="flex flex-wrap items-center gap-2">
+                  <AdminStatusBadge status={String(entry.payloadJson?.after?.status ?? '')} />
+                  <span className="text-on-surface-variant">{entry.actor} · {formatKST(entry.occurredAt)}</span>
+                </div>
+                {entry.payloadJson?.reason && <p className="whitespace-pre-wrap">사유: {entry.payloadJson.reason}</p>}
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
 
       {/* Buyer biz profile (구매사 only) */}
       {application.orgType === 'buyer' && bizProfile && (
@@ -398,7 +425,7 @@ export default async function ReviewDetailPage({
             {notes.map((note) => {
               async function doDeleteNote() {
                 'use server';
-                await deleteAdminNoteAction(note.id, `/review/${id}`);
+                return toActionState(await deleteAdminNoteAction(note.id, `/review/${id}`), '노트를 삭제했습니다.');
               }
               return (
                 <div key={note.id} className="px-4 py-3 space-y-1">
@@ -406,14 +433,14 @@ export default async function ReviewDetailPage({
                     <span className="text-label-small text-on-surface-variant">
                       {note.createdBy} · {formatKST(note.createdAt)}
                     </span>
-                    <ConfirmButton
+                    {canWriteNotes && <ConfirmButton
                       action={doDeleteNote}
                       label="삭제"
                       confirmMessage="이 노트를 삭제하시겠습니까?"
                       confirmLabel="삭제"
                       labelClassName="text-label-small text-error hover:underline"
                       confirmClassName="text-label-small text-error hover:underline"
-                    />
+                    />}
                   </div>
                   <p className="text-body-small whitespace-pre-wrap">{note.body}</p>
                 </div>
@@ -422,7 +449,7 @@ export default async function ReviewDetailPage({
           </div>
         )}
 
-        <form action={saveNote} className="space-y-2">
+        {canWriteNotes && <ActionForm action={saveNote} className="space-y-2">
           <textarea
             name="body"
             rows={3}
@@ -433,7 +460,7 @@ export default async function ReviewDetailPage({
           <SubmitButton className="rounded border border-outline px-4 py-2 text-label-large text-on-surface hover:bg-surface-container-low">
             저장
           </SubmitButton>
-        </form>
+        </ActionForm>}
       </section>
     </div>
   );

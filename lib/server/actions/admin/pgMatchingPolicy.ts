@@ -3,7 +3,7 @@
 import { eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
-import { requireAdminSession } from '@/lib/auth/admin-session';
+import { requireAdminPermission } from '@/lib/auth/admin-session';
 import { pgMatchingPolicies, pgRecommendationGroups, workspaces, adminAuditLogs } from '@/lib/db/schema';
 import { matchingPolicySchema } from '@/lib/pg-matching-policy';
 
@@ -12,7 +12,7 @@ const Input = z.object({ groupId: z.string().uuid(), policy: matchingPolicySchem
 type DB = any;
 
 export async function savePgMatchingPolicyAction(db: DB, input: z.input<typeof Input>): Promise<{ ok: true } | { ok: false; error: string }> {
-  const session = await requireAdminSession();
+  const session = await requireAdminPermission('recommendation.edit');
   const parsed = Input.safeParse(input);
   if (!parsed.success) return { ok: false, error: 'INVALID_INPUT' };
   const { groupId, policy } = parsed.data;

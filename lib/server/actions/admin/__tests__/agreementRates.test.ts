@@ -3,7 +3,7 @@ import { drizzle } from 'drizzle-orm/pglite';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({ denied: false, db: undefined as unknown }));
 vi.mock('@/lib/auth/admin-session', () => ({
-  requireAdminSession: async () => {
+  requireAdminPermission: async () => {
     if (mocks.denied) throw new Error('UNAUTHENTICATED');
     return { adminId: 'ops@example.com' };
   },

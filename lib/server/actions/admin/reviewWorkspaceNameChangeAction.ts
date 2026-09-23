@@ -4,7 +4,7 @@ import { and, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { adminAuditLogs, workspaceNameChangeRequests, workspaces } from '@/lib/db/schema';
-import { requireAdminSession } from '@/lib/auth/admin-session';
+import { requireAdminPermission } from '@/lib/auth/admin-session';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 
 // Admin actions accept an injected handle to keep the transaction boundary testable.
@@ -40,7 +40,7 @@ export async function approveWorkspaceNameChangeAction(
   db: DB = actionDb(),
   requestId: string,
 ): Promise<WorkspaceNameChangeReviewResult> {
-  const session = await requireAdminSession();
+  const session = await requireAdminPermission('workspace.review');
   const parsedId = RequestId.safeParse(requestId);
   if (!parsedId.success) return { ok: false, error: 'INVALID_INPUT' };
   const now = new Date();
@@ -92,7 +92,7 @@ export async function rejectWorkspaceNameChangeAction(
   requestId: string,
   reason: string,
 ): Promise<WorkspaceNameChangeReviewResult> {
-  const session = await requireAdminSession();
+  const session = await requireAdminPermission('workspace.review');
   const parsed = RejectInput.safeParse({ requestId, reason });
   if (!parsed.success) return { ok: false, error: 'INVALID_INPUT' };
   const now = new Date();

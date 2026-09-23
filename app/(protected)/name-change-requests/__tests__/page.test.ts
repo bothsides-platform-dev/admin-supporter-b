@@ -10,8 +10,10 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/server/queries/admin/workspaceNameChanges', () => ({
-  listWorkspaceNameChangeRequests: mocks.list,
+  listWorkspaceNameChangeRequestsPage: mocks.list,
 }));
+vi.mock('@/lib/auth/admin-session', () => ({ requireAdminSession: vi.fn().mockResolvedValue({ adminId: 'ops@example.com', role: 'operator' }) }));
+vi.mock('@/lib/auth/permissions', () => ({ hasPermission: vi.fn().mockReturnValue(true) }));
 vi.mock('@/lib/server/actions/admin/reviewWorkspaceNameChangeAction', () => ({
   approveWorkspaceNameChangeAction: mocks.approve,
   rejectWorkspaceNameChangeAction: mocks.reject,
@@ -67,7 +69,7 @@ beforeEach(() => {
 
 describe('WorkspaceNameChangeRequestsPage', () => {
   it('기본 pending 필터와 빈 상태를 표시한다', async () => {
-    mocks.list.mockResolvedValue([]);
+    mocks.list.mockResolvedValue({ rows: [], total: 0, page: 1 });
     const tree = await WorkspaceNameChangeRequestsPage({ searchParams: Promise.resolve({}) });
 
     expect(mocks.list).toHaveBeenCalledWith({ status: 'pending' });
@@ -75,7 +77,7 @@ describe('WorkspaceNameChangeRequestsPage', () => {
   });
 
   it('대기 구매사 요청의 승인·거절 폼을 실제 액션 인자로 연결한다', async () => {
-    mocks.list.mockResolvedValue([request()]);
+    mocks.list.mockResolvedValue({ rows: [request()], total: 1, page: 1 });
     const tree = await WorkspaceNameChangeRequestsPage({ searchParams: Promise.resolve({ status: 'pending' }) });
     const actionForms: Array<(data: FormData) => Promise<void>> = [];
     const hrefs: unknown[] = [];
@@ -93,7 +95,7 @@ describe('WorkspaceNameChangeRequestsPage', () => {
     });
 
     expect(textOf(tree)).toContain('구매사 · 확인 중');
-    expect(hrefs).toContain('/buyers/10000000-0000-4000-8000-000000000001');
+    expect(hrefs).toContain('/buyers/10000000-0000-4000-8000-000000000001?returnTo=%2Fname-change-requests%3Fstatus%3Dpending');
     expect(actionForms).toHaveLength(2);
     expect(submitButtons).toHaveLength(2);
     expect(reasonInput?.id).toBe('name-change-reject-reason-20000000-0000-4000-8000-000000000001');
@@ -112,7 +114,7 @@ describe('WorkspaceNameChangeRequestsPage', () => {
   });
 
   it('중복·정지 오류를 주소 상태로 돌려 복구 안내를 표시한다', async () => {
-    mocks.list.mockResolvedValue([request()]);
+    mocks.list.mockResolvedValue({ rows: [request()], total: 1, page: 1 });
     mocks.approve.mockResolvedValue({ ok: false, error: 'REQUEST_NOT_PENDING' });
     const tree = await WorkspaceNameChangeRequestsPage({
       searchParams: Promise.resolve({ status: 'pending', error: 'WORKSPACE_NOT_ACTIVE' }),
@@ -134,7 +136,7 @@ describe('WorkspaceNameChangeRequestsPage', () => {
   });
 
   it('이전 오류 주소에서 승인·거절이 성공하면 오류를 제거한 목록으로 이동한다', async () => {
-    mocks.list.mockResolvedValue([request()]);
+    mocks.list.mockResolvedValue({ rows: [request()], total: 1, page: 1 });
     const tree = await WorkspaceNameChangeRequestsPage({
       searchParams: Promise.resolve({ status: 'pending', error: 'WORKSPACE_NOT_ACTIVE' }),
     });
@@ -158,11 +160,11 @@ describe('WorkspaceNameChangeRequestsPage', () => {
   });
 
   it('처리된 PG 요청은 사유를 표시하고 처리 폼을 숨긴다', async () => {
-    mocks.list.mockResolvedValue([request({
+    mocks.list.mockResolvedValue({ rows: [request({
       workspaceType: 'pg',
       status: 'rejected',
       reason: '사업자 확인이 필요합니다.',
-    })]);
+    })], total: 1, page: 1 });
     const tree = await WorkspaceNameChangeRequestsPage({ searchParams: Promise.resolve({ status: 'rejected' }) });
     let actionFormCount = 0;
     const hrefs: unknown[] = [];
@@ -173,12 +175,12 @@ describe('WorkspaceNameChangeRequestsPage', () => {
 
     expect(textOf(tree)).toContain('PG사 · 거절');
     expect(textOf(tree)).toContain('사업자 확인이 필요합니다.');
-    expect(hrefs).toContain('/sellers/10000000-0000-4000-8000-000000000001');
+    expect(hrefs).toContain('/sellers/10000000-0000-4000-8000-000000000001?returnTo=%2Fname-change-requests%3Fstatus%3Drejected');
     expect(actionFormCount).toBe(0);
   });
 
   it('삭제된 워크스페이스 요청은 이력을 표시하되 회사 링크를 만들지 않는다', async () => {
-    mocks.list.mockResolvedValue([request({ workspaceType: null })]);
+    mocks.list.mockResolvedValue({ rows: [request({ workspaceType: null })], total: 1, page: 1 });
     const tree = await WorkspaceNameChangeRequestsPage({ searchParams: Promise.resolve({ status: '' }) });
     const hrefs: unknown[] = [];
     walk(tree, (props) => {

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { adminNotes, adminAuditLogs } from '@/lib/db/schema';
-import { requireAdminSession } from '@/lib/auth/admin-session';
+import { requireAdminPermission } from '@/lib/auth/admin-session';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 
 type DB = ReturnType<typeof actionDb>;
@@ -17,10 +17,9 @@ export async function createAdminNoteAction(
 ): Promise<Result> {
   if (!body?.trim()) return { ok: false, error: 'BODY_REQUIRED' };
 
-  const session = await requireAdminSession();
+  const session = await requireAdminPermission('notes.write');
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  await (db as ReturnType<typeof actionDb>).transaction(async (tx: any) => {
+  await (db as ReturnType<typeof actionDb>).transaction(async (tx) => {
     await tx.insert(adminNotes).values({
       entityType,
       entityId,

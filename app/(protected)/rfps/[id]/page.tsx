@@ -4,6 +4,10 @@ import { getRfpDetail } from '@/lib/server/queries/admin/rfps';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
 import { BidFeeMatrix } from '@/components/BidFeeMatrix';
 import { extendRfpDeadlineAction } from '@/lib/server/actions/admin/extendRfpDeadlineAction';
+import { ExtendDeadlineForm } from '@/components/ExtendDeadlineForm';
+import { ActionForm } from '@/components/ActionForm';
+import { SubmitButton } from '@/components/SubmitButton';
+import { actionFailure, actionSuccess, toActionState, type ActionState } from '@/lib/action-state';
 import { formatKST, formatDateKST, formatKRW, isSafeHttpUrl } from '@/lib/utils';
 import { hideQuoteAction } from '@/lib/server/actions/admin/hideQuoteAction';
 import { sendReminderAction } from '@/lib/server/actions/admin/sendReminderAction';
@@ -11,6 +15,11 @@ import { paymentMethodLabel, merchantTierLabel } from '@/lib/types/bid';
 import { CONTRACT_TYPE_LABELS, STRIP_PATH_FEE_RATE, solutionLabel } from '@/lib/types/rfp-terms';
 import { taxTypeLabel, gradeSourceLabel } from '@/lib/types/biz-profile';
 import { Chip } from '@/components/primitives/Chip';
+import { requireAdminSession } from '@/lib/auth/admin-session';
+import { hasPermission } from '@/lib/auth/permissions';
+import { listEntityAuditLogs } from '@/lib/server/queries/admin/audit-log';
+import { AdminAuditHistory } from '@/components/AdminAuditHistory';
+import { safeListReturnTo } from '@/lib/admin-return-to';
 
 function DetailRow({ label, value, badge }: { label: string; value: React.ReactNode; badge?: React.ReactNode }) {
   if (value === null || value === undefined || value === '') return null;
@@ -48,12 +57,16 @@ function PgHiddenBadge() {
 
 export default async function RfpDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ returnTo?: string }>;
 }) {
   const { id } = await params;
-  const detail = await getRfpDetail(id);
+  const returnTo = safeListReturnTo((await searchParams).returnTo, '/rfps');
+  const [detail, session, history] = await Promise.all([getRfpDetail(id), requireAdminSession(), listEntityAuditLogs('rfp', id)]);
   if (!detail) notFound();
+  const canManage = hasPermission(session, 'rfp.manage');
 
   const {
     rfp,
@@ -81,10 +94,16 @@ export default async function RfpDetailPage({
   // (낙찰 칩은 아래 견적 목록에서 rfp.awardedBidId 를 직접 비교한다.)
   const contractBid = contract ? bids.find((b) => b.id === contract.bidId) : undefined;
 
-  async function extendAction(formData: FormData) {
+  async function extendAction(
+    _prev: ActionState,
+    formData: FormData,
+  ): Promise<ActionState> {
     'use server';
     const days = Number(formData.get('days') ?? 7);
-    await extendRfpDeadlineAction(undefined, rfp.id, days);
+    const result = await extendRfpDeadlineAction(undefined, rfp.id, days);
+    return result.ok
+      ? actionSuccess(`마감이 ${days}일 연장되었습니다. 새 마감: ${formatKST(result.newDeadline)}`)
+      : actionFailure(result.error);
   }
 
   async function reminderAction() {
@@ -97,7 +116,7 @@ export default async function RfpDetailPage({
     <div className="space-y-6">
       <div className="flex items-center gap-3">
         <Link
-          href="/rfps"
+          href={returnTo}
           className="text-on-surface-variant hover:text-on-surface text-body-small"
         >
           ← 목록
@@ -242,35 +261,13 @@ export default async function RfpDetailPage({
       </section>
 
       {/* Extend deadline */}
-      <section className="rounded border border-outline-variant">
-        <div className="border-b border-outline-variant px-4 py-2 bg-surface-container-low">
-          <h2 className="text-title-small font-medium">마감 연장</h2>
-        </div>
-        <form action={extendAction} className="px-4 py-3 flex items-center gap-3">
-          <label className="text-body-small text-on-surface-variant">연장 일수</label>
-          <input
-            name="days"
-            type="number"
-            min={1}
-            max={30}
-            defaultValue={7}
-            className="w-20 rounded border border-outline px-2 py-1 text-body-small bg-surface md-numeric focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-          <span className="text-body-small text-on-surface-variant">일</span>
-          <button
-            type="submit"
-            className="rounded bg-primary px-4 py-1.5 text-label-medium text-on-primary hover:bg-primary/90"
-          >
-            연장
-          </button>
-        </form>
-      </section>
+      {canManage && <ExtendDeadlineForm action={extendAction} />}
 
       {/* Bid list */}
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-title-small font-semibold">견적 목록 ({bids.length}건)</h2>
-          {bids.length > 0 && (
+          {canManage && bids.length > 0 && (
             <form action={reminderAction}>
               <button
                 type="submit"
@@ -300,10 +297,10 @@ export default async function RfpDetailPage({
               {bids.map((bid) => {
                 const isAwarded = rfp.awardedBidId === bid.id;
 
-                async function hideBidAction(formData: FormData) {
+                async function hideBidAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
                   'use server';
                   const reason = String(formData.get('reason') ?? '').trim();
-                  await hideQuoteAction(undefined, bid.id, reason);
+                  return toActionState(await hideQuoteAction(undefined, bid.id, reason), '견적을 철회했습니다.');
                 }
 
                 return (
@@ -329,8 +326,8 @@ export default async function RfpDetailPage({
                       {formatDateKST(bid.submittedAt)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {bid.status === 'submitted' && (
-                        <form action={hideBidAction} className="flex items-center gap-2">
+                      {canManage && bid.status === 'submitted' && (
+                        <ActionForm action={hideBidAction} className="flex items-center gap-2">
                           <input
                             name="reason"
                             type="text"
@@ -338,13 +335,10 @@ export default async function RfpDetailPage({
                             placeholder="철회 사유"
                             className="rounded border border-outline px-2 py-1 text-body-small bg-surface focus:outline-none focus:ring-1 focus:ring-primary w-40"
                           />
-                          <button
-                            type="submit"
-                            className="rounded border border-error px-2 py-1 text-label-small text-error hover:bg-error-container"
-                          >
+                          <SubmitButton className="rounded border border-error px-2 py-1 text-label-small text-error hover:bg-error-container">
                             철회
-                          </button>
-                        </form>
+                          </SubmitButton>
+                        </ActionForm>
                       )}
                     </td>
                   </tr>
@@ -430,6 +424,7 @@ export default async function RfpDetailPage({
           </p>
         )}
       </section>
+      <AdminAuditHistory logs={history} entityType="rfp" entityId={rfp.id} />
     </div>
   );
 }

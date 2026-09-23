@@ -25,9 +25,71 @@
   --color-surface-container-low: var(--md-sys-color-surface-container-low);
   --color-surface-container-highest: var(--md-sys-color-surface-container-highest);
   --color-error: var(--md-sys-color-error);
+  --color-on-error: var(--md-sys-color-on-error);
+  --color-error-container: var(--md-sys-color-error-container);
+  --color-on-error-container: var(--md-sys-color-on-error-container);
   --color-warning: var(--md-sys-color-warning);
   --color-tertiary: var(--md-sys-color-tertiary);
-  --font-sans: var(--font-sans);
+  --text-display-large: var(--md-typescale-display-large-size);
+  --text-display-large--line-height: var(--md-typescale-display-large-line-height);
+  --text-display-large--letter-spacing: var(--md-typescale-display-large-tracking);
+  --text-display-large--font-weight: var(--md-typescale-display-large-weight);
+  --text-display-medium: var(--md-typescale-display-medium-size);
+  --text-display-medium--line-height: var(--md-typescale-display-medium-line-height);
+  --text-display-medium--letter-spacing: var(--md-typescale-display-medium-tracking);
+  --text-display-medium--font-weight: var(--md-typescale-display-medium-weight);
+  --text-display-small: var(--md-typescale-display-small-size);
+  --text-display-small--line-height: var(--md-typescale-display-small-line-height);
+  --text-display-small--letter-spacing: var(--md-typescale-display-small-tracking);
+  --text-display-small--font-weight: var(--md-typescale-display-small-weight);
+  --text-headline-large: var(--md-typescale-headline-large-size);
+  --text-headline-large--line-height: var(--md-typescale-headline-large-line-height);
+  --text-headline-large--letter-spacing: var(--md-typescale-headline-large-tracking);
+  --text-headline-large--font-weight: var(--md-typescale-headline-large-weight);
+  --text-headline-medium: var(--md-typescale-headline-medium-size);
+  --text-headline-medium--line-height: var(--md-typescale-headline-medium-line-height);
+  --text-headline-medium--letter-spacing: var(--md-typescale-headline-medium-tracking);
+  --text-headline-medium--font-weight: var(--md-typescale-headline-medium-weight);
+  --text-headline-small: var(--md-typescale-headline-small-size);
+  --text-headline-small--line-height: var(--md-typescale-headline-small-line-height);
+  --text-headline-small--letter-spacing: var(--md-typescale-headline-small-tracking);
+  --text-headline-small--font-weight: var(--md-typescale-headline-small-weight);
+  --text-title-large: var(--md-typescale-title-large-size);
+  --text-title-large--line-height: var(--md-typescale-title-large-line-height);
+  --text-title-large--letter-spacing: var(--md-typescale-title-large-tracking);
+  --text-title-large--font-weight: var(--md-typescale-title-large-weight);
+  --text-title-medium: var(--md-typescale-title-medium-size);
+  --text-title-medium--line-height: var(--md-typescale-title-medium-line-height);
+  --text-title-medium--letter-spacing: var(--md-typescale-title-medium-tracking);
+  --text-title-medium--font-weight: var(--md-typescale-title-medium-weight);
+  --text-title-small: var(--md-typescale-title-small-size);
+  --text-title-small--line-height: var(--md-typescale-title-small-line-height);
+  --text-title-small--letter-spacing: var(--md-typescale-title-small-tracking);
+  --text-title-small--font-weight: var(--md-typescale-title-small-weight);
+  --text-body-large: var(--md-typescale-body-large-size);
+  --text-body-large--line-height: var(--md-typescale-body-large-line-height);
+  --text-body-large--letter-spacing: var(--md-typescale-body-large-tracking);
+  --text-body-large--font-weight: var(--md-typescale-body-large-weight);
+  --text-body-medium: var(--md-typescale-body-medium-size);
+  --text-body-medium--line-height: var(--md-typescale-body-medium-line-height);
+  --text-body-medium--letter-spacing: var(--md-typescale-body-medium-tracking);
+  --text-body-medium--font-weight: var(--md-typescale-body-medium-weight);
+  --text-body-small: var(--md-typescale-body-small-size);
+  --text-body-small--line-height: var(--md-typescale-body-small-line-height);
+  --text-body-small--letter-spacing: var(--md-typescale-body-small-tracking);
+  --text-body-small--font-weight: var(--md-typescale-body-small-weight);
+  --text-label-large: var(--md-typescale-label-large-size);
+  --text-label-large--line-height: var(--md-typescale-label-large-line-height);
+  --text-label-large--letter-spacing: var(--md-typescale-label-large-tracking);
+  --text-label-large--font-weight: var(--md-typescale-label-large-weight);
+  --text-label-medium: var(--md-typescale-label-medium-size);
+  --text-label-medium--line-height: var(--md-typescale-label-medium-line-height);
+  --text-label-medium--letter-spacing: var(--md-typescale-label-medium-tracking);
+  --text-label-medium--font-weight: var(--md-typescale-label-medium-weight);
+  --text-label-small: var(--md-typescale-label-small-size);
+  --text-label-small--line-height: var(--md-typescale-label-small-line-height);
+  --text-label-small--letter-spacing: var(--md-typescale-label-small-tracking);
+  --text-label-small--font-weight: var(--md-typescale-label-small-weight);
 }
 
 :root {
@@ -45,6 +107,16 @@
     line-height: var(--md-typescale-body-large-line-height, 1.5);
     background-color: var(--md-sys-color-background);
     color: var(--md-sys-color-on-background);
+  }
+
+  :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 2px solid var(--md-sys-color-primary);
+    outline-offset: 3px;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
   }
 
   .md-numeric {
