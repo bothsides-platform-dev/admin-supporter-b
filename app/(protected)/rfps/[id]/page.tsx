@@ -20,6 +20,9 @@ import { hasPermission } from '@/lib/auth/permissions';
 import { listEntityAuditLogs } from '@/lib/server/queries/admin/audit-log';
 import { AdminAuditHistory } from '@/components/AdminAuditHistory';
 import { safeListReturnTo } from '@/lib/admin-return-to';
+import { deleteRfpAction } from '@/lib/server/actions/admin/deleteRfpAction';
+import { getRfpDeletionImpact } from '@/lib/server/queries/admin/deletion-impact';
+import { DangerousDeleteForm } from '@/components/DangerousDeleteForm';
 
 function DetailRow({ label, value, badge }: { label: string; value: React.ReactNode; badge?: React.ReactNode }) {
   if (value === null || value === undefined || value === '') return null;
@@ -67,6 +70,8 @@ export default async function RfpDetailPage({
   const [detail, session, history] = await Promise.all([getRfpDetail(id), requireAdminSession(), listEntityAuditLogs('rfp', id)]);
   if (!detail) notFound();
   const canManage = hasPermission(session, 'rfp.manage');
+  const canDelete = hasPermission(session, 'rfp.delete');
+  const deletionImpact = canDelete ? await getRfpDeletionImpact(id) : [];
 
   const {
     rfp,
@@ -110,6 +115,11 @@ export default async function RfpDetailPage({
     'use server';
     const allPgWsIds = bids.map((b) => b.pgWsId);
     await sendReminderAction(undefined, rfp.id, allPgWsIds);
+  }
+
+  async function doDelete(_previous: ActionState, formData: FormData): Promise<ActionState> {
+    'use server';
+    return deleteRfpAction(rfp.id, String(formData.get('confirmationName') ?? ''), returnTo);
   }
 
   return (
@@ -425,6 +435,7 @@ export default async function RfpDetailPage({
         )}
       </section>
       <AdminAuditHistory logs={history} entityType="rfp" entityId={rfp.id} />
+      {canDelete && <DangerousDeleteForm name={rfp.title} label="RFP" impact={deletionImpact} action={doDelete} />}
     </div>
   );
 }

@@ -20,6 +20,8 @@ describe('역할별 권한', () => {
     expect(hasPermission({ role: 'finance' }, 'workspace.review')).toBe(false);
     expect(hasPermission({ role: 'finance' }, 'agreement_rates.edit')).toBe(true);
     expect(hasPermission({ role: 'operator' }, 'user.delete')).toBe(false);
+    expect(hasPermission({ role: 'operator' }, 'rfp.delete')).toBe(false);
+    expect(hasPermission({ role: 'super_admin' }, 'rfp.delete')).toBe(true);
     expect(hasPermission({ role: 'super_admin' }, 'user.delete')).toBe(true);
   });
   it('향후 역할 파서는 미지정 계정을 운영자로, 잘못된 설정을 조회로 제한한다', () => {

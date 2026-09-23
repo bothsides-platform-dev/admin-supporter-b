@@ -9,6 +9,25 @@ import { actionDb } from '@/lib/server/actions/auth/_shared';
 
 export type ImpactItem = { label: string; count: number; kind: 'deleted' | 'blocked' };
 
+export async function getRfpDeletionImpact(id: string): Promise<ImpactItem[]> {
+  const db = actionDb();
+  const bidIds = db.select({ id: bids.id }).from(bids).where(eq(bids.rfpId, id));
+  const noteIds = db.select({ id: bidNotes.id }).from(bidNotes).where(inArray(bidNotes.bidId, bidIds));
+  const teamMessageIds = db.select({ id: rfpTeamMessages.id }).from(rfpTeamMessages).where(eq(rfpTeamMessages.rfpId, id));
+  const queries = [
+    ['입찰', db.select({ total: count() }).from(bids).where(eq(bids.rfpId, id))],
+    ['계약', db.select({ total: count() }).from(contracts).where(or(eq(contracts.rfpId, id), inArray(contracts.bidId, bidIds)))],
+    ['RFP 초대', db.select({ total: count() }).from(rfpInvitations).where(eq(rfpInvitations.rfpId, id))],
+    ['RFP 참여 요청', db.select({ total: count() }).from(rfpPgRequests).where(eq(rfpPgRequests.rfpId, id))],
+    ['재견적 요청', db.select({ total: count() }).from(rfpRequoteRequests).where(eq(rfpRequoteRequests.rfpId, id))],
+    ['RFP 팀 메시지', db.select({ total: count() }).from(rfpTeamMessages).where(eq(rfpTeamMessages.rfpId, id))],
+    ['입찰 메모', db.select({ total: count() }).from(bidNotes).where(inArray(bidNotes.bidId, bidIds))],
+    ['첨부파일', db.select({ total: count() }).from(attachments).where(or(eq(attachments.rfpId, id), inArray(attachments.bidId, bidIds), inArray(attachments.bidNoteId, noteIds), inArray(attachments.rfpTeamMessageId, teamMessageIds)))],
+  ] as const;
+  const counts = await Promise.all(queries.map(async ([label, query]) => ({ label, count: Number((await query)[0]?.total ?? 0) })));
+  return counts.filter(item => item.count > 0).map(item => ({ ...item, kind: 'deleted' as const }));
+}
+
 export async function getWorkspaceDeletionImpact(id: string): Promise<ImpactItem[]> {
   const db = actionDb();
   const rfpIds = db.select({ id: rfps.id }).from(rfps).where(eq(rfps.buyerWsId, id));

@@ -3,7 +3,8 @@ import { drizzle } from 'drizzle-orm/pglite';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { deleteWorkspaceAction } from '../deleteWorkspaceAction';
 import { deleteUserAction } from '../deleteUserAction';
-import { getUserDeletionImpact, getWorkspaceDeletionImpact } from '@/lib/server/queries/admin/deletion-impact';
+import { deleteRfpAction } from '../deleteRfpAction';
+import { getRfpDeletionImpact, getUserDeletionImpact, getWorkspaceDeletionImpact } from '@/lib/server/queries/admin/deletion-impact';
 
 let client: PGlite;
 let db: ReturnType<typeof drizzle>;
@@ -26,7 +27,7 @@ beforeEach(async () => {
     CREATE TABLE admin_audit_logs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), actor text NOT NULL, action text NOT NULL, entity_type text NOT NULL, entity_id uuid NOT NULL, payload_json jsonb, occurred_at timestamptz DEFAULT now());
     CREATE TABLE users (id uuid PRIMARY KEY, email text NOT NULL, name text NOT NULL);
     CREATE TABLE biz_profiles (grade_confirmed_by uuid);
-    CREATE TABLE rfps (id uuid PRIMARY KEY, buyer_ws_id uuid NOT NULL REFERENCES workspaces(id), created_by uuid);
+    CREATE TABLE rfps (id uuid PRIMARY KEY, code text NOT NULL, title text NOT NULL, status text NOT NULL, buyer_ws_id uuid NOT NULL REFERENCES workspaces(id), created_by uuid);
     CREATE TABLE rfp_invitations (id uuid PRIMARY KEY, rfp_id uuid REFERENCES rfps(id) ON DELETE CASCADE, pg_ws_id uuid REFERENCES workspaces(id));
     CREATE TABLE bids (id uuid PRIMARY KEY, rfp_id uuid NOT NULL REFERENCES rfps(id) ON DELETE CASCADE, pg_ws_id uuid NOT NULL REFERENCES workspaces(id), invitation_id uuid REFERENCES rfp_invitations(id), submitted_by uuid);
     CREATE TABLE contracts (id uuid PRIMARY KEY, rfp_id uuid REFERENCES rfps(id) ON DELETE CASCADE, bid_id uuid REFERENCES bids(id), awarded_by uuid);
@@ -50,7 +51,7 @@ beforeEach(async () => {
     CREATE TABLE chat_message_templates (created_by uuid);
     INSERT INTO users VALUES ('${user}', 'member@example.com', '테스트 회원');
     INSERT INTO workspaces VALUES ('${buyer}', '테스트 구매사', 'buyer', 'active'), ('${seller}', '테스트 PG', 'pg', 'active');
-    INSERT INTO rfps (id, buyer_ws_id) VALUES ('${rfp}', '${buyer}');
+    INSERT INTO rfps (id, code, title, status, buyer_ws_id) VALUES ('${rfp}', 'P-TEST-1', '테스트 RFP', 'sent', '${buyer}');
     INSERT INTO rfp_invitations VALUES ('${invitation}', '${rfp}', '${seller}');
     INSERT INTO bids (id, rfp_id, pg_ws_id, invitation_id) VALUES ('${bid}', '${rfp}', '${seller}', '${invitation}');
     INSERT INTO contracts (id, rfp_id, bid_id) VALUES (gen_random_uuid(), '${rfp}', '${bid}');
@@ -76,6 +77,34 @@ it('확인 이름이 다르면 삭제와 감사 로그 기록을 모두 막는�
   expect(await deleteWorkspaceAction(buyer, '/buyers', '다른 회사')).toMatchObject({ status: 'error' });
   expect((await client.query('SELECT id FROM workspaces WHERE id = $1', [buyer])).rows).toHaveLength(1);
   expect((await client.query('SELECT * FROM admin_audit_logs')).rows).toHaveLength(0);
+});
+
+it('RFP 삭제 시 연결 기록을 미리 보여주고 제목 확인 뒤 관련 행과 감사 로그를 처리한다', async () => {
+  expect(await getRfpDeletionImpact(rfp)).toEqual(expect.arrayContaining([
+    { label: '입찰', count: 1, kind: 'deleted' },
+    { label: '계약', count: 1, kind: 'deleted' },
+    { label: '첨부파일', count: 1, kind: 'deleted' },
+  ]));
+  expect(await deleteRfpAction(rfp, '틀린 제목')).toMatchObject({ status: 'error' });
+  expect((await client.query('SELECT * FROM admin_audit_logs')).rows).toHaveLength(0);
+
+  await expect(deleteRfpAction(rfp, '테스트 RFP', '/rfps?status=sent')).rejects.toThrow('REDIRECT:/rfps?status=sent');
+  expect((await client.query('SELECT * FROM rfps')).rows).toHaveLength(0);
+  expect((await client.query('SELECT * FROM bids')).rows).toHaveLength(0);
+  expect((await client.query('SELECT * FROM contracts')).rows).toHaveLength(0);
+  expect((await client.query('SELECT * FROM admin_audit_logs')).rows).toMatchObject([
+    { action: 'rfp.hard_delete', entity_type: 'rfp', entity_id: rfp },
+  ]);
+});
+
+it('RFP 삭제가 실패하면 감사 로그와 연결 기록을 롤백한다', async () => {
+  await client.exec(`CREATE FUNCTION deny_rfp_delete() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'blocked'; END $$;
+    CREATE TRIGGER deny_delete BEFORE DELETE ON rfps FOR EACH ROW EXECUTE FUNCTION deny_rfp_delete();`);
+  await expect(deleteRfpAction(rfp, '테스트 RFP')).rejects.toThrow('Failed query');
+  expect((await client.query('SELECT * FROM admin_audit_logs')).rows).toHaveLength(0);
+  expect((await client.query('SELECT * FROM rfps')).rows).toHaveLength(1);
+  expect((await client.query('SELECT * FROM bids')).rows).toHaveLength(1);
+  expect((await client.query('SELECT * FROM contracts')).rows).toHaveLength(1);
 });
 
 it('연쇄 삭제될 RFP, 입찰, 계약, 첨부파일을 미리 센다', async () => {

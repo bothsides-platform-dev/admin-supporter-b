@@ -13,7 +13,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'user.suspend': '회원 정지', 'user.unsuspend': '회원 활성화', 'user.hard_delete': '회원 영구 삭제',
   'note.create': '어드민 노트 추가', 'note.delete': '어드민 노트 삭제',
   'reminder.send': '리마인더 발송', 'bid.hide': '입찰 철회',
-  'rfp.extend': '마감 연장', 'pg_matching.policy_save': 'PG 매칭 정책 저장',
+  'rfp.extend': '마감 연장', 'rfp.hard_delete': 'RFP 영구 삭제', 'pg_matching.policy_save': 'PG 매칭 정책 저장',
   'agreement_rates.saved': '수수료 기준 변경',
   'membership.approve': '멤버 승인', 'membership.reject': '멤버 반려',
   'pg_recommendation.group_save': 'PG 추천 그룹 저장', 'pg_recommendation.group_delete': 'PG 추천 그룹 삭제',
