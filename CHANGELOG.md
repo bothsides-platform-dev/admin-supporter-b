@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.6.0.0] - 2026-09-24
+
+### Added
+
+- 운영자가 Visa MCC 표준 업종을 검색하고 여러 업종을 한 번에 등록할 수 있어요. 기존 업종의 분류와 설정은 유지돼요.
+- Gray 업종마다 기본 PG사를 정할 수 있고, 활성 상태인 PG사만 선택할 수 있어요.
+
+### Changed
+
+- 업종 코드와 분류 판본을 저장하고 구매사 기본 PG 정책과 공유하도록 데이터베이스를 확장했어요.
+
 ## [0.5.0.0] - 2026-09-21
 
 ### Added

@@ -9,6 +9,8 @@ export type PgRecommendationGroupRow = {
   id: string;
   name: string;
   sortOrder: number;
+  mccCode: string | null;
+  mccVersion: string | null;
   pgWorkspaceIds: string[];
 };
 
@@ -19,6 +21,8 @@ export async function listPgRecommendationGroups(
     id: pgRecommendationGroups.id,
     name: pgRecommendationGroups.name,
     sortOrder: pgRecommendationGroups.sortOrder,
+    mccCode: pgRecommendationGroups.mccCode,
+    mccVersion: pgRecommendationGroups.mccVersion,
   }).from(pgRecommendationGroups)
     .orderBy(asc(pgRecommendationGroups.sortOrder), asc(pgRecommendationGroups.name));
 
@@ -36,7 +40,7 @@ export async function listPgRecommendationGroups(
     idsByGroup.set(member.groupId, ids);
   }
 
-  return (groups as { id: string; name: string; sortOrder: number }[]).map((group) => ({
+  return (groups as Omit<PgRecommendationGroupRow, 'pgWorkspaceIds'>[]).map((group) => ({
     ...group,
     pgWorkspaceIds: idsByGroup.get(group.id) ?? [],
   }));

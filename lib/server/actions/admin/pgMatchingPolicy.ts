@@ -4,12 +4,29 @@ import { eq, inArray } from 'drizzle-orm';
 import { z } from 'zod';
 import { revalidatePath } from 'next/cache';
 import { requireAdminPermission } from '@/lib/auth/admin-session';
-import { pgMatchingPolicies, pgRecommendationGroups, workspaces, adminAuditLogs } from '@/lib/db/schema';
+import { pgMatchingDefaults, pgMatchingPolicies, pgRecommendationGroups, workspaces, adminAuditLogs } from '@/lib/db/schema';
 import { matchingPolicySchema } from '@/lib/pg-matching-policy';
 
 const Input = z.object({ groupId: z.string().uuid(), policy: matchingPolicySchema }).strict();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DB = any;
+
+export async function savePgMatchingDefaultsAction(db: DB, input: unknown): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await requireAdminPermission('recommendation.edit');
+  const parsed = matchingPolicySchema.safeParse(input);
+  if (!parsed.success || parsed.data.risk !== 'gray' || parsed.data.candidates.length === 0) return { ok: false, error: 'INVALID_INPUT' };
+  const policy = parsed.data;
+  const result = await db.transaction(async (tx: DB) => {
+    const ids = policy.candidates.map(c => c.pgWorkspaceId);
+    const pgs = await tx.select({ id: workspaces.id, type: workspaces.type, status: workspaces.status }).from(workspaces).where(inArray(workspaces.id, ids));
+    if (pgs.length !== ids.length || pgs.some((p: { type: string; status: string }) => p.type !== 'pg' || p.status !== 'active')) return { ok: false as const, error: 'PG_WORKSPACE_REQUIRED' };
+    await tx.insert(pgMatchingDefaults).values({ id: 'default', policy }).onConflictDoUpdate({ target: pgMatchingDefaults.id, set: { policy, updatedAt: new Date() } });
+    await tx.insert(adminAuditLogs).values({ actor: session.adminId, action: 'pg_matching.defaults_save', entityType: 'pg_matching_defaults', entityId: '00000000-0000-4000-8000-000000000000', payloadJson: { after: policy } });
+    return { ok: true as const };
+  });
+  if (result.ok) revalidatePath('/pg-recommendations');
+  return result;
+}
 
 export async function savePgMatchingPolicyAction(db: DB, input: z.input<typeof Input>): Promise<{ ok: true } | { ok: false; error: string }> {
   const session = await requireAdminPermission('recommendation.edit');
