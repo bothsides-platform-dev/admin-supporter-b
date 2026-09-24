@@ -14,7 +14,7 @@ vi.mock('@/lib/auth/admin-session', () => ({
 }));
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidatePath }));
 
-import { savePgRecommendationGroupAction, deletePgRecommendationGroupAction } from '../pgRecommendationGroups';
+import { savePgRecommendationGroupAction, deletePgRecommendationGroupAction, importMccIndustriesAction } from '../pgRecommendationGroups';
 
 let client: PGlite;
 let db: ReturnType<typeof drizzle>;
@@ -32,6 +32,7 @@ beforeEach(async () => {
     CREATE TABLE workspaces (id uuid PRIMARY KEY, type text NOT NULL, name text NOT NULL, status text NOT NULL);
     CREATE TABLE pg_recommendation_groups (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL UNIQUE, sort_order integer NOT NULL DEFAULT 0,
+      mcc_code text UNIQUE, mcc_version text,
       created_at timestamptz NOT NULL DEFAULT now(), updated_at timestamptz NOT NULL DEFAULT now()
     );
     CREATE TABLE pg_recommendation_members (
@@ -104,5 +105,33 @@ describe('PG 추천 업종 관리', () => {
       name: '여행', sortOrder: 0, pgWorkspaceIds: [PG_A],
     })).rejects.toThrow('UNAUTHENTICATED');
     expect((await client.query('SELECT * FROM pg_recommendation_groups')).rows).toEqual([]);
+  });
+});
+
+describe('표준 업종 일괄 등록', () => {
+  it('선택한 MCC의 서버 기준 이름과 판본을 저장하며 재등록해도 기존 업종을 보존한다', async () => {
+    expect(await importMccIndustriesAction(db, ['5651', '5977'])).toEqual({ ok: true, added: 2, skipped: 0 });
+    const rows = (await client.query('SELECT id, name, mcc_code, mcc_version FROM pg_recommendation_groups ORDER BY mcc_code')).rows;
+    expect(rows).toEqual([
+      { id: expect.any(String), name: '종합 의류 판매', mcc_code: '5651', mcc_version: 'visa-2026-04' },
+      { id: expect.any(String), name: '화장품 판매', mcc_code: '5977', mcc_version: 'visa-2026-04' },
+    ]);
+    expect(await importMccIndustriesAction(db, ['5651'])).toEqual({ ok: true, added: 0, skipped: 1 });
+    expect((await client.query('SELECT id, name, mcc_code, mcc_version FROM pg_recommendation_groups ORDER BY mcc_code')).rows).toEqual(rows);
+    expect((await client.query("SELECT * FROM admin_audit_logs WHERE action='pg_recommendation.mcc_import'")).rows).toHaveLength(2);
+  });
+  it('알 수 없는 코드와 빈 선택을 거부하고 일부만 등록하지 않는다', async () => {
+    for (const codes of [[], ['5651', '0000'], ['잘못된 코드']]) expect(await importMccIndustriesAction(db, codes)).toEqual({ ok: false, error: 'INVALID_INPUT' });
+    expect((await client.query('SELECT * FROM pg_recommendation_groups')).rows).toEqual([]);
+  });
+  it('같은 이름의 기존 업종을 덮어쓰거나 표준 코드에 임의로 연결하지 않는다', async () => {
+    await savePgRecommendationGroupAction(db, { name: '종합 의류 판매', sortOrder: 7, pgWorkspaceIds: [PG_A] });
+    expect(await importMccIndustriesAction(db, ['5651'])).toEqual({ ok: true, added: 0, skipped: 1 });
+    expect((await client.query('SELECT sort_order, mcc_code FROM pg_recommendation_groups')).rows).toEqual([{ sort_order: 7, mcc_code: null }]);
+    expect((await client.query('SELECT pg_ws_id FROM pg_recommendation_members')).rows).toEqual([{ pg_ws_id: PG_A }]);
+  });
+  it('일괄 등록에도 변경 권한을 요구한다', async () => {
+    mocks.denied = true;
+    await expect(importMccIndustriesAction(db, ['5651'])).rejects.toThrow('UNAUTHENTICATED');
   });
 });

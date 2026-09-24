@@ -1,5 +1,6 @@
 'use server';
 
+import { MCC_INDUSTRIES, MCC_VERSION } from '@/lib/mcc-catalog';
 import { randomUUID } from 'node:crypto';
 import { and, eq, inArray, notInArray } from 'drizzle-orm';
 import { z } from 'zod';
@@ -110,5 +111,27 @@ export async function deletePgRecommendationGroupAction(db: DB, groupId: string)
     return { ok: true };
   });
   if (result.ok) revalidatePath('/pg-recommendations');
+  return result;
+}
+
+export async function importMccIndustriesAction(db: DB, input: unknown): Promise<{ ok: true; added: number; skipped: number } | { ok: false; error: string }> {
+  const session = await requireAdminPermission('recommendation.edit');
+  const parsed = z.array(z.string().regex(/^\d{4}$/)).min(1).max(100).safeParse(input);
+  if (!parsed.success) return { ok: false, error: 'INVALID_INPUT' };
+  const codes = [...new Set(parsed.data)];
+  const rows = codes.map(code => MCC_INDUSTRIES.find(item => item.code === code));
+  if (rows.some(row => !row)) return { ok: false, error: 'INVALID_INPUT' };
+  const result = await db.transaction(async (tx: DB) => {
+    const inserted = await tx.insert(pgRecommendationGroups).values(rows.map(row => ({
+      id: randomUUID(), name: row!.name, mccCode: row!.code, mccVersion: MCC_VERSION,
+      sortOrder: MCC_INDUSTRIES.findIndex(item => item.code === row!.code),
+    }))).onConflictDoNothing().returning({ id: pgRecommendationGroups.id, code: pgRecommendationGroups.mccCode });
+    if (inserted.length) await tx.insert(adminAuditLogs).values(inserted.map((row: { id: string; code: string }) => ({
+      actor: session.adminId, action: 'pg_recommendation.mcc_import', entityType: 'pg_recommendation_group', entityId: row.id,
+      payloadJson: { after: { mccCode: row.code, mccVersion: MCC_VERSION } },
+    })));
+    return { ok: true as const, added: inserted.length, skipped: codes.length - inserted.length };
+  });
+  revalidatePath('/pg-recommendations');
   return result;
 }
