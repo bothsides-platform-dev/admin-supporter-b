@@ -1,3 +1,4 @@
+import { RegisteredIndustryBrowser } from '@/components/RegisteredIndustryBrowser';
 import { MccIndustryPicker } from '@/components/MccIndustryPicker';
 import { hasPermission } from '@/lib/auth/permissions';
 import { pgMatchingDefaults, pgMatchingPolicies } from '@/lib/db/schema';
@@ -98,16 +99,16 @@ export default async function PgRecommendationsPage({
           <p className="rounded border border-outline-variant px-4 py-8 text-center text-body-small text-on-surface-variant">
             등록된 업종이 없어요. 업종을 만들고 PG사를 지정해주세요.
           </p>
-        ) : groups.map((group) => {
+        ) : <RegisteredIndustryBrowser entries={groups.map((group) => {
           async function remove() {
             'use server';
             const result = await deletePgRecommendationGroupAction(actionDb(), group.id);
             if (!result.ok) redirect(`/pg-recommendations?error=${encodeURIComponent(result.error)}`);
             redirect('/pg-recommendations?saved=1');
           }
-          return (
+          return { id: group.id, name: group.name, mccCode: group.mccCode, content: (
             <fieldset disabled={!canEdit} key={group.id} className="rounded border border-outline-variant p-4 space-y-3 disabled:opacity-75">
-              {group.mccCode && <p className="text-body-small text-on-surface-variant">상담용 MCC <span className="md-numeric">{group.mccCode}</span> · {group.mccVersion}</p>}
+              {group.mccCode && <details className="text-body-small text-on-surface-variant"><summary className="cursor-pointer">분류 정보</summary><p>상담용 MCC <span className="md-numeric">{group.mccCode}</span> · {group.mccVersion}</p></details>}
               <GroupForm action={save} group={group} />
               <PolicyForm groupId={group.id} sellers={sellers} policy={policies.find(p => p.groupId === group.id)?.policy} />
               <div className="border-t border-outline-variant pt-3">
@@ -121,8 +122,8 @@ export default async function PgRecommendationsPage({
                 />
               </div>
             </fieldset>
-          );
-        })}
+          ) };
+        })} />}
       </section>
     </div>
   );
