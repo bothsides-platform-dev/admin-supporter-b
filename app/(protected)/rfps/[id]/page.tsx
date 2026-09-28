@@ -42,7 +42,7 @@ function AttachmentList({ attachments }: { attachments: { id: string; name: stri
         <li key={a.id}>
           {a.name}{' '}
           <span className="text-label-small text-on-surface-variant md-numeric">
-            ({Math.ceil(a.size / 1024)}KB · {formatDateKST(a.uploadedAt)})
+            ({Math.ceil(a.size / 1024)}KB, {formatDateKST(a.uploadedAt)})
           </span>
         </li>
       ))}
@@ -211,7 +211,7 @@ export default async function RfpDetailPage({
             <DetailRow label="정산한도" value={currentTerms.settlementLimit} />
             <DetailRow label="보증보험" value={currentTerms.guaranteeInsurance} />
             <DetailRow label="정산주기" value={currentTerms.settlementCycle} />
-            <DetailRow label="배송·서비스 주기" value={currentTerms.deliveryServicePeriod} />
+            <DetailRow label="배송 또는 서비스 주기" value={currentTerms.deliveryServicePeriod} />
             <DetailRow
               label="솔루션"
               value={
@@ -390,7 +390,7 @@ export default async function RfpDetailPage({
               .map((b) => (
                 <div key={b.id} className="px-4 py-3 text-body-small space-y-1">
                   <p className="text-label-small text-on-surface-variant">
-                    {b.pgWsName} · {b.round}차
+                    {b.pgWsName}, {b.round}차
                   </p>
                   <p className="whitespace-pre-wrap">{b.memo}</p>
                 </div>

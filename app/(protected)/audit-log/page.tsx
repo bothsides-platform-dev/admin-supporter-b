@@ -35,7 +35,7 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Sea
         <label className="text-label-small text-on-surface-variant">종료일<input type="date" name="to" defaultValue={filters.to} className="mt-1 w-full rounded border border-outline-variant bg-surface px-3 py-2 text-body-small text-on-surface" /></label>
         <div className="flex items-end gap-2 sm:col-span-2"><button className="rounded bg-primary px-4 py-2 text-label-small text-on-primary">검색</button><Link href="/audit-log" className="rounded border border-outline-variant px-4 py-2 text-label-small">초기화</Link></div>
       </form>
-      <p className="text-label-small text-on-surface-variant">전체 {total}건 · {total ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, total)}건 표시</p>
+      <p className="text-label-small text-on-surface-variant">전체 {total}건, {total ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, total)}건 표시</p>
       {error && <p role="alert" className="text-body-small text-error">{error}</p>}
       <div className="overflow-x-auto rounded border border-outline-variant">
         <table className="w-full text-body-small">

@@ -49,7 +49,7 @@ export default async function PgMembersPage({
     <div className="space-y-4">
       <h1 className="text-headline-small font-semibold">PG 담당자 승인</h1>
       <AdminListControls path="/admin/pg-members" params={params} sortOptions={[{ value: 'name', label: '이름순' }]} dateLabel="합류일">
-        <input name="q" defaultValue={params.q ?? ''} placeholder="담당자·회사 검색" aria-label="담당자 또는 회사 검색" className="rounded border border-outline-variant bg-surface px-3 py-1.5 text-body-small" />
+        <input name="q" defaultValue={params.q ?? ''} placeholder="담당자 또는 회사 검색" aria-label="담당자 또는 회사 검색" className="rounded border border-outline-variant bg-surface px-3 py-1.5 text-body-small" />
         <select
           name="status"
           aria-label="PG 담당자 승인 상태"

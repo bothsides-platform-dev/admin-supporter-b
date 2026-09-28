@@ -13,10 +13,10 @@ const tiered = new Set(['card', 'naver_pay', 'kakao_pay', 'toss_pay', 'apple_pay
 export const AGREEMENT_RATE_OPTIONS = PAYMENT_METHODS.flatMap((method) =>
   tiered.has(method)
     ? [
-        { key: method, label: `${PAYMENT_METHOD_LABELS[method]} · 단일요율`, flat: false },
+        { key: method, label: `${PAYMENT_METHOD_LABELS[method]} 단일요율`, flat: false },
         ...MERCHANT_TIERS.map((tier) => ({
           key: `${method}:${tier}`,
-          label: `${PAYMENT_METHOD_LABELS[method]} · ${MERCHANT_TIER_LABELS[tier]}`,
+          label: `${PAYMENT_METHOD_LABELS[method]} ${MERCHANT_TIER_LABELS[tier]} 가맹점`,
           flat: false,
         })),
       ]

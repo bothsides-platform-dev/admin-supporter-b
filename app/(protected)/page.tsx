@@ -28,7 +28,7 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
       {hotlist.length > 0 && (
         <section>
           <h2 className="text-title-medium font-semibold mb-1">마감 임박 RFP</h2>
-          <p className="text-body-small text-on-surface-variant mb-3">앞으로 48시간 안에 마감하는 진행 중 RFP · 최대 10건</p>
+          <p className="text-body-small text-on-surface-variant mb-3">앞으로 48시간 안에 마감하는 진행 중 RFP, 최대 10건</p>
           <div className="rounded border border-outline-variant overflow-hidden">
             {hotlist.map((item) => (
               <Link
