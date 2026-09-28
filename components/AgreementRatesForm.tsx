@@ -72,11 +72,11 @@ export function AgreementRatesForm({
         <div className="overflow-x-auto rounded border border-outline-variant">
           <table className="w-full text-left text-body-small">
             <caption className="p-3 text-left text-on-surface-variant">
-              부가세 별도 · 최종 수수료는 구매사가 선정한 견적을 사용해요.
+              부가세는 별도예요. 최종 수수료는 구매사가 선정한 견적을 사용해요.
             </caption>
             <thead>
               <tr className="border-b border-outline-variant">
-                <th className="p-3">결제수단·등급</th>
+                <th className="p-3">결제수단과 등급</th>
                 <th className="p-3">표준 수수료</th>
               </tr>
             </thead>

@@ -242,7 +242,7 @@ export default async function ReviewDetailPage({
               <li key={entry.id} className="px-4 py-3 space-y-1 text-body-small">
                 <div className="flex flex-wrap items-center gap-2">
                   <AdminStatusBadge status={String(entry.payloadJson?.after?.status ?? '')} />
-                  <span className="text-on-surface-variant">{entry.actor} · {formatKST(entry.occurredAt)}</span>
+                  <span className="text-on-surface-variant">{entry.actor}, {formatKST(entry.occurredAt)}</span>
                 </div>
                 {entry.payloadJson?.reason && <p className="whitespace-pre-wrap">사유: {entry.payloadJson.reason}</p>}
               </li>
@@ -274,7 +274,7 @@ export default async function ReviewDetailPage({
               <div className="col-span-2 flex flex-wrap items-center gap-2">
                 <span className="text-on-surface-variant">담당자</span>
                 <span>
-                  {ownerContact.name} · {ownerContact.email} · {ownerContact.phone ?? '—'}
+                  {ownerContact.name}, {ownerContact.email}, {ownerContact.phone ?? '—'}
                 </span>
                 {ownerContact.emailVerified ? (
                   <span className="rounded bg-tertiary/15 px-2 py-0.5 text-label-small text-tertiary">
@@ -326,7 +326,7 @@ export default async function ReviewDetailPage({
               <div className="col-span-2 flex flex-wrap items-center gap-2">
                 <span className="text-on-surface-variant">담당자</span>
                 <span>
-                  {ownerContact.name} · {ownerContact.email} · {ownerContact.phone ?? '—'}
+                  {ownerContact.name}, {ownerContact.email}, {ownerContact.phone ?? '—'}
                 </span>
                 {ownerContact.emailVerified ? (
                   <span className="rounded bg-tertiary/15 px-2 py-0.5 text-label-small text-tertiary">
@@ -431,7 +431,7 @@ export default async function ReviewDetailPage({
                 <div key={note.id} className="px-4 py-3 space-y-1">
                   <div className="flex items-center justify-between">
                     <span className="text-label-small text-on-surface-variant">
-                      {note.createdBy} · {formatKST(note.createdAt)}
+                      {note.createdBy}, {formatKST(note.createdAt)}
                     </span>
                     {canWriteNotes && <ConfirmButton
                       action={doDeleteNote}

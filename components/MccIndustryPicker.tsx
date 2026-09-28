@@ -44,7 +44,7 @@ export function MccIndustryPicker({ action, registered }: {
     </fieldset>
     {selectedAvailable.map(code => <input key={code} type="hidden" name="mccCodes" value={code} />)}
     <div className="flex flex-wrap items-center justify-between gap-3">
-      <details className="text-body-small text-on-surface-variant"><summary className="cursor-pointer">분류 정보</summary><p>{MCC_VERSION}</p>{MCC_INDUSTRIES.map(item => <p key={item.code}><span className="md-numeric">{item.code}</span> · {item.name}</p>)}<a href={MCC_SOURCE} target="_blank" rel="noreferrer" className="underline">Visa 2026년 4월 기준</a> · 전체 MCC 목록의 일부이며 실제 가맹점 코드 확정은 별도예요.</details>
+      <details className="text-body-small text-on-surface-variant"><summary className="cursor-pointer">분류 정보</summary><p>{MCC_VERSION}</p>{MCC_INDUSTRIES.map(item => <p key={item.code}><span className="md-numeric">{item.code}</span>, {industryDisplay({ name: item.name, mccCode: item.code }).displayName}</p>)}<a href={MCC_SOURCE} target="_blank" rel="noreferrer" className="underline">Visa 2026년 4월 기준</a>. 전체 MCC 목록의 일부이며 실제 가맹점 코드 확정은 별도예요.</details>
       <ImportButton count={selectedAvailable.length} />
     </div>
   </form>;

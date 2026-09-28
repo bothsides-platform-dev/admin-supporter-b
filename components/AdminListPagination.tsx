@@ -9,7 +9,7 @@ export function AdminListPagination({ path, params, page, total }: { path: strin
   const href = (target: number) => `${path}?${listQuery({ ...params, page: String(target) })}`;
   return (
     <nav aria-label="목록 페이지" className="flex flex-wrap items-center justify-between gap-3 text-body-small text-on-surface-variant">
-      <span>전체 {total.toLocaleString()}건 · {firstRow.toLocaleString()}–{lastRow.toLocaleString()}건 표시</span>
+      <span>전체 {total.toLocaleString()}건, {firstRow.toLocaleString()}–{lastRow.toLocaleString()}건 표시</span>
       <div className="flex items-center gap-2">
         {current > 1 ? <Link href={href(current - 1)} className="rounded border border-outline-variant px-3 py-1.5 hover:bg-surface-container-low">이전</Link> : <span className="rounded border border-outline-variant px-3 py-1.5 opacity-40">이전</span>}
         <span className="md-numeric px-2">{current} / {last}</span>

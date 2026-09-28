@@ -21,7 +21,7 @@ export function DangerousDeleteForm({
     <section className="rounded border border-error p-4 space-y-3">
       <h2 className="text-title-small font-medium text-error">위험 구역</h2>
       <p className="text-body-small text-on-surface-variant">{label} <strong>{name}</strong>을(를) 영구 삭제합니다. 되돌릴 수 없습니다.</p>
-      {impact.length > 0 && <div className="text-body-small"><p className="font-medium">연결 데이터</p><ul className="mt-1 list-disc pl-5">{impact.map(item => <li key={item.label}>{item.kind === 'blocked' ? '보존 대상 · ' : '삭제됨 · '}{item.label} {item.count}건</li>)}</ul></div>}
+      {impact.length > 0 && <div className="text-body-small"><p className="font-medium">연결 데이터</p><ul className="mt-1 list-disc pl-5">{impact.map(item => <li key={item.label}>{item.kind === 'blocked' ? '보존 대상: ' : '삭제됨: '}{item.label} {item.count}건</li>)}</ul></div>}
       {blocked && <p className="text-body-small text-error">보존 대상 업무 기록이 있어 현재 삭제할 수 없습니다. 계정 정지를 사용하거나 기록 보존 정책을 먼저 결정해 주세요.</p>}
       {!open ? <button type="button" disabled={blocked} onClick={() => setOpen(true)} className="rounded border border-error px-4 py-2 text-label-small text-error hover:bg-error/10 disabled:cursor-not-allowed disabled:opacity-40">{label} 영구 삭제</button> :
         <form action={formAction} className="space-y-3">

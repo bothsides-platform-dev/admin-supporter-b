@@ -80,7 +80,7 @@ export async function getHotlist(db: DB = actionDb()): Promise<HotlistItem[]> {
     items.push({
       type: 'deadline_approaching',
       label: rfp.title,
-      subLabel: `마감 ${hoursLeft}시간 전 · ${rfp.code}`,
+      subLabel: `마감 ${hoursLeft}시간 전, ${rfp.code}`,
       entityId: rfp.id,
       href: `/rfps/${rfp.id}`,
     });

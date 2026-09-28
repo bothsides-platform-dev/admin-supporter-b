@@ -101,7 +101,7 @@ export function BidFeeMatrix({ bids, requiredPaymentMethods, customPaymentMethod
               <th key={b.id} className="px-4 py-2 text-left text-label-small font-medium whitespace-nowrap">
                 <div className="flex items-center gap-2">
                   <span className="text-on-surface">
-                    {b.pgWsName} · {b.round}차
+                    {b.pgWsName}, {b.round}차
                   </span>
                   <AdminStatusBadge status={b.status} />
                 </div>

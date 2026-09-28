@@ -192,7 +192,7 @@ export default async function SellerDetailPage({
                       className="text-primary hover:underline text-label-small"
                     >
                       {bid.rfpCode ? (
-                        <><span className="md-numeric">{bid.rfpCode}</span>{bid.rfpTitle && <span className="text-on-surface-variant ml-1">· {bid.rfpTitle}</span>}</>
+                        <><span className="md-numeric">{bid.rfpCode}</span>{bid.rfpTitle && <span className="text-on-surface-variant ml-1">, {bid.rfpTitle}</span>}</>
                       ) : (
                         <span className="md-numeric">{bid.rfpId.slice(0, 8)}…</span>
                       )}

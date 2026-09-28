@@ -74,13 +74,13 @@ export default async function WorkspaceNameChangeRequestsPage({
           <section key={request.id} className="rounded border border-outline-variant bg-surface p-4 space-y-3">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="text-label-small text-on-surface-variant">{request.workspaceType === 'buyer' ? '구매사' : request.workspaceType === 'pg' ? 'PG사' : '삭제된 워크스페이스'} · {STATUS_LABEL[request.status] ?? request.status}</p>
+                <p className="text-label-small text-on-surface-variant">{request.workspaceType === 'buyer' ? '구매사' : request.workspaceType === 'pg' ? 'PG사' : '삭제된 워크스페이스'}, {STATUS_LABEL[request.status] ?? request.status}</p>
                 <p className="mt-1 text-body-large"><span className="text-on-surface-variant line-through">{request.currentName}</span><span className="mx-2">→</span><strong>{request.requestedName}</strong></p>
               </div>
               {request.workspaceType && <Link href={`${request.workspaceType === 'buyer' ? `/buyers/${request.workspaceId}` : `/sellers/${request.workspaceId}`}?returnTo=${encodeURIComponent(returnTo)}`} className="text-primary text-label-small hover:underline">회사 보기</Link>}
             </div>
             <dl className="grid gap-1 text-body-small text-on-surface-variant sm:grid-cols-2">
-              <div><dt className="inline">요청자 </dt><dd className="inline text-on-surface">{request.requesterName && request.requesterEmail ? `${request.requesterName} · ${request.requesterEmail}` : '탈퇴한 사용자'}</dd></div>
+              <div><dt className="inline">요청자 </dt><dd className="inline text-on-surface">{request.requesterName && request.requesterEmail ? `${request.requesterName}, ${request.requesterEmail}` : '탈퇴한 사용자'}</dd></div>
               <div><dt className="inline">요청일 </dt><dd className="inline md-numeric text-on-surface">{formatKST(request.submittedAt)}</dd></div>
               {request.reason && <div className="sm:col-span-2"><dt className="inline">거절 사유 </dt><dd className="inline text-on-surface">{request.reason}</dd></div>}
             </dl>

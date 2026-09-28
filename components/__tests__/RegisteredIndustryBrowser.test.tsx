@@ -32,21 +32,21 @@ it('등록 업종을 저장 이름·예시·MCC 코드로 검색하고 빈 결�
  const search=screen.getByRole('searchbox');
  for(const query of ['서적 판매','종이책','5942']) {
   fireEvent.change(search,{target:{value:query}});
-  expect(screen.getByRole('heading',{name:'책·도서'})).toBeTruthy();
+  expect(screen.getByRole('heading',{name:'서점과 도서'})).toBeTruthy();
  }
  fireEvent.change(search,{target:{value:'해당하지 않는 업종'}});
  expect(screen.getByRole('status').textContent).toContain('검색 결과가 없어요');
- expect(screen.queryByRole('heading',{name:'책·도서'})).toBeNull();
+ expect(screen.queryByRole('heading',{name:'서점과 도서'})).toBeNull();
 });
 
 it('카테고리 안에서 다른 카테고리 업종을 검색하고 초기화하면 원래 목록으로 돌아온다', () => {
  const Component = Browser.RegisteredIndustryBrowser;
  const entries=[{id:'book',name:'서적 판매',mccCode:'5942',content:<input aria-label="책 메모" defaultValue="" />},{id:'learn',name:'원격 교육',mccCode:'8241',content:<input aria-label="교육 메모" defaultValue="" />}];
  render(<Component entries={entries} />);
- fireEvent.click(screen.getByRole('button',{name:'책·문구·취미'}));
+ fireEvent.click(screen.getByRole('button',{name:'책과 문구, 취미용품'}));
  fireEvent.change(screen.getByRole('searchbox'),{target:{value:'원격 교육'}});
  expect(screen.getByRole('heading',{name:'온라인 교육'})).toBeTruthy();
  fireEvent.click(screen.getByRole('button',{name:'검색 초기화'}));
- expect(screen.getByRole('heading',{name:'책·도서'})).toBeTruthy();
+ expect(screen.getByRole('heading',{name:'서점과 도서'})).toBeTruthy();
  expect(screen.queryByRole('heading',{name:'온라인 교육'})).toBeNull();
 });

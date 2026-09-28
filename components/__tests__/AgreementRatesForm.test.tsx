@@ -8,7 +8,7 @@ it('관리자 입력은 표준 요율만 받고 퍼센트·정액 단위를 구�
   );
   expect(html).toContain('기준 저장하기');
   expect(html).toContain('원/건');
-  expect(html).toContain('카드 · 일반');
+  expect(html).toContain('카드 일반 가맹점');
   expect(html).toContain('value="2"');
   expect(html).toContain('미등록');
   expect(html).not.toContain('최종 수수료 입력');

@@ -94,7 +94,7 @@ describe('WorkspaceNameChangeRequestsPage', () => {
       if (type === 'label' && textOf(props.children) === '거절 사유') reasonLabel = props;
     });
 
-    expect(textOf(tree)).toContain('구매사 · 확인 중');
+    expect(textOf(tree)).toContain('구매사, 확인 중');
     expect(hrefs).toContain('/buyers/10000000-0000-4000-8000-000000000001?returnTo=%2Fname-change-requests%3Fstatus%3Dpending');
     expect(actionForms).toHaveLength(2);
     expect(submitButtons).toHaveLength(2);
@@ -173,7 +173,7 @@ describe('WorkspaceNameChangeRequestsPage', () => {
       if ('href' in props) hrefs.push(props.href);
     });
 
-    expect(textOf(tree)).toContain('PG사 · 거절');
+    expect(textOf(tree)).toContain('PG사, 거절');
     expect(textOf(tree)).toContain('사업자 확인이 필요합니다.');
     expect(hrefs).toContain('/sellers/10000000-0000-4000-8000-000000000001?returnTo=%2Fname-change-requests%3Fstatus%3Drejected');
     expect(actionFormCount).toBe(0);
@@ -188,7 +188,7 @@ describe('WorkspaceNameChangeRequestsPage', () => {
     });
 
     expect(mocks.list).toHaveBeenCalledWith({ status: '' });
-    expect(textOf(tree)).toContain('삭제된 워크스페이스 · 확인 중');
+    expect(textOf(tree)).toContain('삭제된 워크스페이스, 확인 중');
     expect(hrefs.some((href) => String(href).startsWith('/buyers/') || String(href).startsWith('/sellers/'))).toBe(false);
   });
 });
