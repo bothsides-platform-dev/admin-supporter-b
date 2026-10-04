@@ -34,7 +34,27 @@ export default async function ReviewListPage({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-headline-small font-semibold">입점 심사</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-headline-small font-semibold">입점 심사</h1>
+        <div className="flex items-center gap-2">
+          <a
+            href="https://bizno.net/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded border border-outline px-2 py-1 text-label-small hover:bg-surface-container-high"
+          >
+            비즈노(사업자정보 조회)
+          </a>
+          <a
+            href="https://www.pay2pay.co.kr/board/view?bId=faq&wr_id=3779"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded border border-outline px-2 py-1 text-label-small hover:bg-surface-container-high"
+          >
+            페이투페이(사업자 등급 조회)
+          </a>
+        </div>
+      </div>
       {params.bulkResult && <p role="status" className="rounded border border-outline-variant bg-surface-container-low px-3 py-2 text-body-small">{params.bulkResult}</p>}
       <AdminListControls path="/review" params={params} sortOptions={[{ value: 'name', label: '회사명순' }]} dateLabel="신청일">
         <input name="q" defaultValue={params.q ?? ''} placeholder="회사명 검색" aria-label="회사명 검색" className="rounded border border-outline-variant bg-surface px-3 py-1.5 text-body-small" />
