@@ -22,31 +22,6 @@ export type RfpRow = {
 
 export type WorkspaceFullRow = typeof workspaces.$inferSelect;
 
-export async function listBuyers(
-  opts: { q?: string; status?: string } = {},
-): Promise<BuyerRow[]> {
-  const { q, status } = opts;
-  const rows = await actionDb()
-    .select({
-      id: workspaces.id,
-      name: workspaces.name,
-      status: workspaces.status,
-      createdAt: workspaces.createdAt,
-    })
-    .from(workspaces)
-    .where(
-      and(
-        eq(workspaces.type, 'buyer'),
-        q ? ilike(workspaces.name, `%${q}%`) : undefined,
-        status && status !== 'all'
-          ? eq(workspaces.status, status as 'pending' | 'active' | 'suspended')
-          : undefined,
-      ),
-    )
-    .orderBy(desc(workspaces.createdAt));
-  return rows as BuyerRow[];
-}
-
 export async function listBuyersPage(opts: ListParams = {}) {
   const { fromDate, toDate } = dateBounds(opts.from, opts.to);
   const where = and(eq(workspaces.type, 'buyer'), opts.q ? ilike(workspaces.name, `%${opts.q}%`) : undefined,

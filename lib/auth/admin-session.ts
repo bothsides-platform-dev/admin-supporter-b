@@ -28,13 +28,6 @@ export async function requireAdminSession(): Promise<AdminSession> {
   return { adminId: email, role };
 }
 
-export async function requireSuperAdmin(): Promise<AdminSession> {
-  const session = await requireAdminSession();
-  // User is authenticated but lacks super_admin role — send to dashboard, not login.
-  if (session.role !== 'super_admin') redirect('/');
-  return session;
-}
-
 export async function requireAdminPermission(permission: AdminPermission): Promise<AdminSession> {
   const session = await requireAdminSession();
   if (!hasPermission(session, permission)) redirect('/?error=PermissionDenied');
