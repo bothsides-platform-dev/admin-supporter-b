@@ -35,36 +35,6 @@ export type UserDetailResult = {
   memberships: UserMembershipRow[];
 };
 
-export async function listUsers(
-  opts: { q?: string; status?: string } = {},
-): Promise<UserRow[]> {
-  const { q, status } = opts;
-  // status='deleted' 는 탈퇴 유저만, 그 외에는 deletedAt IS NULL 로 탈퇴 유저 제외
-  const deletedFilter = status === 'deleted' ? isNotNull(users.deletedAt) : isNull(users.deletedAt);
-  const rows = await actionDb()
-    .select({
-      id: users.id,
-      name: users.name,
-      email: users.email,
-      status: users.status,
-      deletedAt: users.deletedAt,
-      workspaceCount: sql<number>`cast(count(${workspaceMembers.userId}) as int)`,
-      createdAt: users.createdAt,
-    })
-    .from(users)
-    .leftJoin(workspaceMembers, eq(workspaceMembers.userId, users.id))
-    .where(
-      and(
-        deletedFilter,
-        q ? or(ilike(users.name, `%${q}%`), ilike(users.email, `%${q}%`)) : undefined,
-        status && status !== 'all' && status !== 'deleted' ? eq(users.status, status) : undefined,
-      ),
-    )
-    .groupBy(users.id, users.name, users.email, users.status, users.deletedAt, users.createdAt)
-    .orderBy(desc(users.createdAt));
-  return rows as UserRow[];
-}
-
 export async function listUsersPage(opts: ListParams = {}) {
   const { fromDate, toDate } = dateBounds(opts.from, opts.to);
   const where = and(

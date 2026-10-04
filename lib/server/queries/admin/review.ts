@@ -16,45 +16,6 @@ export interface PendingApplicationRow {
   reviewedAt: Date | null;
 }
 
-export async function listApplications(
-  opts: { status?: string; type?: string } = {},
-  db: DB = actionDb(),
-): Promise<PendingApplicationRow[]> {
-  const { status, type } = opts;
-  const rows = await db
-    .select({
-      applicationId: verificationApplications.id,
-      workspaceId: workspaces.id,
-      workspaceName: workspaces.name,
-      orgType: verificationApplications.orgType,
-      status: verificationApplications.status,
-      submittedAt: verificationApplications.submittedAt,
-      reviewedAt: verificationApplications.reviewedAt,
-    })
-    .from(verificationApplications)
-    .innerJoin(workspaces, eq(verificationApplications.workspaceId, workspaces.id))
-    .where(
-      and(
-        status && status !== 'all'
-          ? eq(
-              verificationApplications.status,
-              status as
-                | 'submitted'
-                | 'review_pending'
-                | 'needs_more_info'
-                | 'approved'
-                | 'rejected',
-            )
-          : undefined,
-        type && type !== 'all'
-          ? eq(verificationApplications.orgType, type)
-          : undefined,
-      ),
-    )
-    .orderBy(desc(verificationApplications.submittedAt));
-  return rows as PendingApplicationRow[];
-}
-
 export async function listApplicationsPage(opts: ListParams = {}, db: DB = actionDb()) {
   const { fromDate, toDate } = dateBounds(opts.from, opts.to);
   const validStatus = ['submitted', 'review_pending', 'needs_more_info', 'approved', 'rejected'];
