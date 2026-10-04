@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.3.0] - 2026-10-05
+
+### Added
+
+- 입점 심사 목록 우측 상단에서 비즈노(사업자정보 조회)와 페이투페이(사업자 등급 조회)로 바로 이동할 수 있어요.
+
 ## [0.7.2.0] - 2026-10-04
 
 ### Fixed
