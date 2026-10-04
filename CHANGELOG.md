@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.7.2.0] - 2026-10-04
+
+### Fixed
+
+- 기존 입점 심사 알림 링크로 심사 화면을 열 수 있어요. 로그인이 필요하면 로그인 후 원래 심사 화면으로 돌아와요.
+
 ## [0.7.1.0] - 2026-09-28
 
 ### Changed

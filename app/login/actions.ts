@@ -1,5 +1,6 @@
 'use server';
 
+import { safeLoginDestination } from '@/lib/auth/login-destination';
 import { cookies } from 'next/headers';
 import { signIn, signOut } from '@/auth';
 
@@ -27,7 +28,7 @@ function authCookieNames(base: string): string[] {
   return names;
 }
 
-export async function googleSignInAction() {
+export async function googleSignInAction(formData: FormData) {
   // Clear stale Auth.js cookies before starting the OAuth flow so that
   // leftover state/pkce/csrf cookies from a previous (abandoned) login
   // attempt don't cause InvalidCheck / UntrustedHost failures.
@@ -38,7 +39,7 @@ export async function googleSignInAction() {
       if (jar.has(name)) jar.delete(name);
     }
   }
-  await signIn('google', { redirectTo: '/' });
+  await signIn('google', { redirectTo: safeLoginDestination(formData.get('callbackUrl')) });
 }
 
 export async function logoutAction() {

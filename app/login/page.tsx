@@ -1,3 +1,4 @@
+import { safeLoginDestination } from '@/lib/auth/login-destination';
 import { googleSignInAction } from './actions';
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -12,9 +13,9 @@ const ERROR_MESSAGES: Record<string, string> = {
 export default async function AdminLoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; callbackUrl?: string | string[] }>;
 }) {
-  const { error } = await searchParams;
+  const { error, callbackUrl } = await searchParams;
   const errorMessage = error ? (ERROR_MESSAGES[error] ?? ERROR_MESSAGES.Default) : null;
 
   return (
@@ -25,6 +26,7 @@ export default async function AdminLoginPage({
           <p className="text-body-small text-error">{errorMessage}</p>
         )}
         <form action={googleSignInAction}>
+          <input type="hidden" name="callbackUrl" value={safeLoginDestination(callbackUrl)} />
           <button
             type="submit"
             className="w-full rounded bg-primary px-4 py-2 text-label-large text-on-primary"

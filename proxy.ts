@@ -2,7 +2,10 @@ import { auth } from '@/auth';
 
 export default auth((req) => {
   if (!req.auth) {
-    return Response.redirect(new URL('/login', req.url));
+    const requested = new URL(req.url);
+    const login = new URL('/login', requested);
+    login.searchParams.set('callbackUrl', requested.pathname + requested.search);
+    return Response.redirect(login);
   }
 });
 
