@@ -1,8 +1,9 @@
+import { MERCHANT_TIERS, MERCHANT_TIER_LABELS } from '@/lib/types/bid';
 import { RegisteredIndustryBrowser } from '@/components/RegisteredIndustryBrowser';
 import { MccIndustryPicker } from '@/components/MccIndustryPicker';
 import { hasPermission } from '@/lib/auth/permissions';
 import { pgMatchingDefaults, pgMatchingPolicies } from '@/lib/db/schema';
-import type { MatchingPolicy } from '@/lib/pg-matching-policy';
+import { storedMatchingPolicySchema, parseMatchingFeesForm, type MatchingPolicy } from '@/lib/pg-matching-policy';
 import { savePgMatchingPolicyAction, savePgMatchingDefaultsAction } from '@/lib/server/actions/admin/pgMatchingPolicy';
 import { redirect } from 'next/navigation';
 import { ConfirmButton } from '@/components/ConfirmButton';
@@ -13,7 +14,7 @@ import { listPgRecommendationGroups, type PgRecommendationGroupRow } from '@/lib
 import { listSellers } from '@/lib/server/queries/admin/sellers';
 
 const ERRORS: Record<string, string> = {
-  INVALID_INPUT: '업종, 추천 사유, 요율 범위와 적용 조건을 확인해주세요.',
+  INVALID_INPUT: '업종, 추천 사유, 등급별 요율과 적용 조건을 확인해주세요.',
   PG_WORKSPACE_REQUIRED: 'PG사 목록이 바뀌었어요. 새로고침 후 다시 선택해주세요.',
   GROUP_NOT_FOUND: '해당 업종을 찾을 수 없어요. 새로고침해주세요.',
   DUPLICATE_GROUP_NAME: '같은 이름의 업종이 이미 있어요.',
@@ -31,7 +32,8 @@ export default async function PgRecommendationsPage({
     listPgRecommendationGroups(),
     listSellers(),
   ]);
-  const policies: { groupId: string; policy: MatchingPolicy }[] = await actionDb().select().from(pgMatchingPolicies);
+  const rows = await actionDb().select().from(pgMatchingPolicies);
+  const policies = rows.map((row: { groupId: string; policy: unknown }) => ({ ...row, policy: storedMatchingPolicySchema.parse(row.policy) }));
 
   const [defaults] = await actionDb().select({ policy: pgMatchingDefaults.policy }).from(pgMatchingDefaults);
 
@@ -80,7 +82,7 @@ export default async function PgRecommendationsPage({
         <p className="text-body-small text-on-surface-variant">업종별 추천이 미설정이거나 상담 가능한 후보가 없으면 아래 PG사를 추천해요. 접수 불가 업종은 제외하고, 이전에 상담한 PG사는 다시 추천하지 않아요. 구매사가 한 곳을 골라 상담을 요청해요.</p>
         {!defaults && <p role="status" className="text-body-small text-error">기본 추천 PG를 먼저 설정해주세요. 미설정 상태에서는 업종별 후보가 없는 상담을 접수할 수 없어요.</p>}
         <fieldset disabled={!canEdit} className="rounded border border-outline-variant p-4 disabled:opacity-75">
-          <PolicyForm sellers={sellers} policy={defaults?.policy} />
+          <PolicyForm sellers={sellers} policy={defaults ? storedMatchingPolicySchema.parse(defaults.policy) : undefined} />
         </fieldset>
       </section>
       {canEdit && <section className="space-y-3">
@@ -170,8 +172,7 @@ function PolicyForm({ groupId, sellers, policy = { risk: 'unconfigured', candida
     const candidates = selected.map(id => ({
       pgWorkspaceId: id,
       reason: String(form.get(`${id}:reason`) ?? ''),
-      feeMin: form.get(`${id}:min`) ? Number(form.get(`${id}:min`)) : null,
-      feeMax: form.get(`${id}:max`) ? Number(form.get(`${id}:max`)) : null,
+      feesByTier: parseMatchingFeesForm(form, id),
       feeNote: String(form.get(`${id}:note`) ?? ''),
     })).sort((a, b) => Number(form.get(`${a.pgWorkspaceId}:order`)) - Number(form.get(`${b.pgWorkspaceId}:order`)));
     const result = groupId
@@ -204,14 +205,13 @@ function PolicyForm({ groupId, sellers, policy = { risk: 'unconfigured', candida
             <label className="flex items-center gap-2 text-body-small"><input type="checkbox" name="candidate" value={seller.id} disabled={!groupId && seller.status !== 'active'} defaultChecked={!!candidate} />추천에 포함하기</label>
             <label className="text-body-small">우선순위<input className={`${inputClass} md-numeric`} type="number" min={1} max={1000} name={`${seller.id}:order`} defaultValue={index + 1} /></label>
             <label className="text-body-small sm:col-span-2">추천 사유<input className={inputClass} maxLength={300} name={`${seller.id}:reason`} defaultValue={candidate?.reason ?? ''} /></label>
-            <label className="text-body-small">영세 예상 수수료 최저 (%)<input className={`${inputClass} md-numeric`} type="number" step="0.01" min={0} max={100} name={`${seller.id}:min`} defaultValue={candidate?.feeMin ?? ''} /></label>
-            <label className="text-body-small">영세 예상 수수료 최고 (%)<input className={`${inputClass} md-numeric`} type="number" step="0.01" min={0} max={100} name={`${seller.id}:max`} defaultValue={candidate?.feeMax ?? ''} /></label>
+            {MERCHANT_TIERS.map(tier => <label key={tier} className="text-body-small">{MERCHANT_TIER_LABELS[tier]} 판가 수수료 (%)<input className={`${inputClass} md-numeric`} type="number" step="any" min={0} max={100} name={`${seller.id}:${tier}`} defaultValue={candidate?.feesByTier[tier] ?? ''} /></label>)}
             <label className="text-body-small sm:col-span-2">요율 적용 조건 (요율 입력 시 필수)<input className={inputClass} maxLength={300} placeholder="부가세, 결제수단, 심사 조건 등" name={`${seller.id}:note`} defaultValue={candidate?.feeNote ?? ''} /></label>
           </div>
         </details>;
       })}
     </div>
-    <p className="text-body-small text-on-surface-variant">요율을 비우면 구매사에게 견적에서 안내한다고 표시해요. 신규 사업자의 영세 적용과 환급은 반기별 선정 결과에 따라 달라져요.</p>
+    <p className="text-body-small text-on-surface-variant">구매사의 현재 등급에 해당하는 판가만 안내해요. 해당 요율을 비우면 수수료는 견적에서 안내한다고 표시해요.</p>
     <button type="submit" className="rounded bg-primary px-4 py-2 text-label-small text-on-primary hover:bg-primary/90">{groupId ? '접수 및 추천 기준 저장' : '기본 추천 PG 저장'}</button>
   </form>;
 }
