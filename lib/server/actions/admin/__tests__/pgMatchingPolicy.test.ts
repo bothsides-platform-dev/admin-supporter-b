@@ -9,7 +9,7 @@ let client: PGlite;
 const groupId = '10000000-0000-4000-8000-000000000001';
 const pg = '20000000-0000-4000-8000-000000000001';
 const buyer = '20000000-0000-4000-8000-000000000002';
-const candidate = { pgWorkspaceId: pg, reason: '온라인 판매 검토', feeMin: 0.8, feeMax: 0.9, feeNote: '부가세 별도' };
+const candidate = { pgWorkspaceId: pg, reason: '온라인 판매 검토', feesByTier: { sole: 0, sme1: 1.2, sme2: 1.5, sme3: 2, general: 100 }, feeNote: '부가세 별도' };
 beforeEach(async () => {
   auth.denied = false;
   client = new PGlite();
@@ -31,7 +31,7 @@ it('관리자 분류와 PG 순서·요율 조건을 저장하고 감사 기록�
   expect((await client.query('SELECT action FROM admin_audit_logs')).rows).toEqual([{ action: 'pg_matching.policy_save' }]);
 });
 it('잘못된 요율·구매사 후보·중복 PG는 저장하지 않는다', async () => {
-  for (const candidates of [[{ ...candidate, feeMax: 0.1 }], [{ ...candidate, pgWorkspaceId: buyer }], [candidate, candidate]]) {
+  for (const candidates of [[{ ...candidate, feesByTier: { ...candidate.feesByTier, sole: -1 } }], [{ ...candidate, pgWorkspaceId: buyer }], [candidate, candidate]]) {
     expect((await savePgMatchingPolicyAction(drizzle(client), { groupId, policy: { risk: 'white', candidates } })).ok).toBe(false);
   }
   expect((await client.query('SELECT * FROM pg_matching_policies')).rows).toEqual([]);
@@ -58,4 +58,24 @@ it('기본 PG에는 활성 PG만 넣고 최소 한 곳과 추가 검토 분류�
 it('기본 PG 변경에도 관리자 권한을 요구한다', async () => {
   auth.denied = true;
   await expect(savePgMatchingDefaultsAction(drizzle(client), { risk: 'gray', candidates: [candidate] })).rejects.toThrow('UNAUTHENTICATED');
+});
+
+it.each([null, 0, 1.2, 100])('기본·업종 정책은 등급별 %s 요율을 저장하고 다시 읽는다', async fee => {
+  const policy = { risk: 'gray' as const, candidates: [{ ...candidate, feesByTier: { sole: fee, sme1: fee, sme2: fee, sme3: fee, general: fee } }] };
+  expect(await savePgMatchingPolicyAction(drizzle(client), { groupId, policy })).toEqual({ ok: true });
+  expect(await savePgMatchingDefaultsAction(drizzle(client), policy)).toEqual({ ok: true });
+  for (const table of ['pg_matching_policies', 'pg_matching_defaults']) {
+    expect((await client.query(`SELECT policy FROM ${table}`)).rows).toEqual([{ policy }]);
+  }
+});
+it.each([-1, 100.01, NaN, Infinity])('범위 밖 요율 %s는 저장하지 않는다', async fee => {
+  const policy = { risk: 'gray' as const, candidates: [{ ...candidate, feesByTier: { ...candidate.feesByTier, sme2: fee } }] };
+  expect((await savePgMatchingPolicyAction(drizzle(client), { groupId, policy })).ok).toBe(false);
+  expect((await savePgMatchingDefaultsAction(drizzle(client), policy)).ok).toBe(false);
+});
+it('0%도 적용 조건이 필수이며 모두 비우면 조건 없이 저장한다', async () => {
+  const feesByTier = { sole: null, sme1: null, sme2: null, sme3: null, general: null };
+  const policy = { risk: 'gray' as const, candidates: [{ ...candidate, feesByTier, feeNote: '' }] };
+  expect(await savePgMatchingDefaultsAction(drizzle(client), policy)).toEqual({ ok: true });
+  expect((await savePgMatchingDefaultsAction(drizzle(client), { ...policy, candidates: [{ ...policy.candidates[0], feesByTier: { ...feesByTier, sme1: 0 } }] })).ok).toBe(false);
 });

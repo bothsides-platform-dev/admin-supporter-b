@@ -84,7 +84,7 @@ journalctl -u caddy -f          # admin 서브도메인 인증서 발급 확인
 cd ~/admin-supporter-b && bash scripts/deploy/lightsail-deploy.sh
 ```
 
-git pull → install → build → `pm2 reload` (무중단). DB·Caddy는 건드리지 않음.
+git pull → install → build → PM2 프로세스 삭제·재시작 순서로 진행하며, 재시작 중에는 잠시 접속이 끊길 수 있다. DB·Caddy는 건드리지 않음.
 
 ### 입점 심사 알림 링크 복구
 
@@ -133,3 +133,9 @@ DB 변경이나 기존 알림 재발송은 필요하지 않다. 배포 후 기�
 - **TLS 안 됨**: `dig +short admin.<도메인>`이 고정 IP를 가리키는지, `journalctl -u caddy`의 ACME 에러 확인.
 - **DB 접속 실패**: bidit의 Postgres 컨테이너가 떠 있는지(`docker compose -f ~/supporter-b/docker-compose.prod.yml ps`),
   `DATABASE_URL` 자격증명이 bidit의 `POSTGRES_*`와 일치하는지 확인.
+
+### 등급별 단일 판가 전환 (2026-10-08)
+
+등급별 판가 입력·저장은 별도 활성화 설정 없이 바로 동작한다. 배포 중에는 관리자 서비스를 잠시 중지하고 메인 앱의 호환 리더를 먼저 배포한다. 대상 DB 백업 후 메인 앱 `scripts/sql/20261008-pg-tier-fees.sql`을 실행하고 마이그레이션 기록과 구형 요율 키 제거를 확인한 다음 새 관리자 앱을 시작한다. 전환 SQL이 새로 입력한 판가를 초기화하지 않도록 데이터 전환을 관리자 서비스 재개 전에 마친다.
+
+기본·업종별 정책의 5개 등급 판가는 모두 미입력으로 시작한다. 후보·순서·사유·공통 조건은 보존하고 상담 이력·감사 로그에는 쓰지 않는다. 재실행은 새 판가를 지우지 않는다. 상세 절차와 복구 기준은 메인 앱 `docs/PG_MATCHING_ROLLOUT.md`의 2026-10-08 절을 따른다. 신형 정책을 읽지 못하는 구형 앱으로 롤백하지 않는다.
