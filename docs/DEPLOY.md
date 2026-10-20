@@ -88,7 +88,7 @@ git pull → install → build → PM2 프로세스 삭제·재시작 순서로 
 
 ### 영세 확인 구매사 자동 승인
 
-메인 앱의 `scripts/migrations/20261020-buyer-auto-approval.sql`을 공유 DB에 실행하고 커밋한 뒤 **관리자 앱 → 메인 앱** 순서로 배포한다. 최초 배포는 메인 앱의 `BUYER_SOLE_AUTO_APPROVAL_ENABLED=false`를 유지한다. 표시 방식과 활성화 전 확인 조건은 [영세 확인 구매사 자동 승인 표시](BUYER_AUTO_APPROVAL.md)를 따른다.
+메인 앱의 `scripts/migrations/20261020-buyer-auto-approval.sql`을 공유 DB에 실행하고 커밋한 뒤 **관리자 앱 → 메인 앱** 순서로 배포한다. 메인 앱 배포부터 별도 활성화 플래그 없이 신규 구매사 조회·판정을 실행한다. 표시 방식과 운영 확인 과제는 [영세 확인 구매사 자동 승인 표시](BUYER_AUTO_APPROVAL.md)를 따른다.
 
 ### 입점 심사 알림 링크 복구
 
