@@ -9,13 +9,13 @@ import type { getApplicationDetail } from '@/lib/server/queries/admin/review';
 import { createAdminNoteAction } from '@/lib/server/actions/admin/createAdminNoteAction';
 import { deleteAdminNoteAction } from '@/lib/server/actions/admin/deleteAdminNoteAction';
 import { toActionState, type ActionState } from '@/lib/action-state';
-import { MERCHANT_TIER_LABELS, type MerchantTier } from '@/lib/types/biz-profile';
+import { MERCHANT_TIER_LABELS, gradeSourceLabel, type MerchantTier } from '@/lib/types/biz-profile';
 import { formatKST } from '@/lib/utils';
 
 type Detail = NonNullable<Awaited<ReturnType<typeof getApplicationDetail>>>;
 type Props = {
   workspace: Pick<Detail['workspace'], 'id' | 'type' | 'status'>;
-  bizProfile: Pick<NonNullable<Detail['bizProfile']>, 'bizNo' | 'grade'> | null;
+  bizProfile: Pick<NonNullable<Detail['bizProfile']>, 'bizNo' | 'grade'> & { gradeSource?: string } | null;
   ownerContact: Detail['ownerContact'];
   application: Pick<Detail['application'], 'id' | 'status' | 'submittedAt'> | null;
   pgProfile?: Detail['pgProfile'];
@@ -76,8 +76,18 @@ export async function WorkspaceReviewInfo({
               <li key={entry.id} className="px-4 py-3 space-y-1 text-body-small">
                 <div className="flex flex-wrap items-center gap-2">
                   <AdminStatusBadge status={String(entry.payloadJson?.after?.status ?? '')} />
+                  {entry.action === 'workspace.auto_approve' && <span>자동 승인 완료</span>}
                   <span className="text-on-surface-variant">{entry.actor}, {formatKST(entry.occurredAt)}</span>
                 </div>
+                {entry.action === 'workspace.auto_approve' && entry.payloadJson?.after && (
+                  <p className="text-on-surface-variant">
+                    조회 공급자: {String(entry.payloadJson.after.provider ?? '—')} · 사업자번호: {String(entry.payloadJson.after.bizNo ?? '—')}
+                    <br />
+                    조회 시각: <span className="md-numeric">{String(entry.payloadJson.after.checkedAt ?? '—')}</span> · 적용 기준일: <span className="md-numeric">{String(entry.payloadJson.after.effectiveDate ?? '—')}</span>
+                    <br />
+                    판정: {entry.payloadJson.after.outcome === 'sole_confirmed' ? '영세 확인' : '확인 필요'}
+                  </p>
+                )}
                 {entry.payloadJson?.reason && <p className="whitespace-pre-wrap">사유: {entry.payloadJson.reason}</p>}
               </li>
             ))}
@@ -102,6 +112,7 @@ export async function WorkspaceReviewInfo({
               <div>
                 <span className="text-on-surface-variant">현재 등급</span>
                 <span className="ml-3">{MERCHANT_TIER_LABELS[bizProfile.grade as MerchantTier]}</span>
+                {bizProfile.gradeSource && <span className="ml-2 text-on-surface-variant">({gradeSourceLabel(bizProfile.gradeSource)})</span>}
               </div>
             )}
             {ownerContact && (
