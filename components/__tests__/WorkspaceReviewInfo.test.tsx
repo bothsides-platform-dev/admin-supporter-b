@@ -9,6 +9,7 @@ vi.mock('@/lib/server/actions/admin/deleteAdminNoteAction', () => ({ deleteAdmin
 
 import { WorkspaceReviewInfo } from '../WorkspaceReviewInfo';
 import { ActionForm } from '../ActionForm';
+import { BusinessNumber } from '../BusinessNumber';
 
 type Props = ComponentProps<typeof WorkspaceReviewInfo>;
 const props: Props = {
@@ -31,6 +32,7 @@ function textOf(node: ReactNode): string {
   if (typeof node === 'string' || typeof node === 'number') return String(node);
   if (Array.isArray(node)) return node.map(textOf).join('');
   if (!isValidElement<{ children?: ReactNode }>(node)) return '';
+  if (node.type === BusinessNumber) return (node.props as ComponentProps<typeof BusinessNumber>).value;
   return textOf(node.props.children);
 }
 

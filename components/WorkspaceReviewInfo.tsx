@@ -1,3 +1,4 @@
+import { BusinessNumber } from '@/components/BusinessNumber';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
 import { ActionForm } from '@/components/ActionForm';
 import { ConfirmButton } from '@/components/ConfirmButton';
@@ -94,7 +95,7 @@ export async function WorkspaceReviewInfo({
             {bizProfile.bizNo && (
               <div>
                 <span className="text-on-surface-variant">사업자번호</span>
-                <span className="ml-3 md-numeric">{bizProfile.bizNo}</span>
+                <BusinessNumber value={bizProfile.bizNo} />
               </div>
             )}
             {bizProfile.grade && (
@@ -134,7 +135,7 @@ export async function WorkspaceReviewInfo({
             {pgProfile.bizNo && (
               <div>
                 <span className="text-on-surface-variant">사업자번호</span>
-                <span className="ml-3 md-numeric">{pgProfile.bizNo}</span>
+                <BusinessNumber value={pgProfile.bizNo} />
               </div>
             )}
             {pgProfile.slaDays != null && (
