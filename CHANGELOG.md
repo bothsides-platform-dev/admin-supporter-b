@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.1.1] - 2026-10-20
+
+### Changed
+
+- 구매사 자동 승인 운영 문서를 별도 활성화 플래그 없이 배포부터 조회·판정하는 방식에 맞췄어요. 국세청 정상 영업과 영세 확인 조건, 기존 승인 이력 보존은 유지해요.
+
 ## [0.8.1.0] - 2026-10-20
 
 ### Added
