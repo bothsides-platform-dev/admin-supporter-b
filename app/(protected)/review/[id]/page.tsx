@@ -36,7 +36,12 @@ export default async function ReviewDetailPage({
 
   if (!detail) notFound();
 
-  const { application, workspace, bizProfile } = detail;
+  const { application, workspace, bizProfile, pgProfile } = detail;
+  const bizNo = (application.orgType === 'buyer' ? bizProfile?.bizNo : pgProfile?.bizNo)
+    ?.replace(/[-\s]/g, '');
+  const moneypinUrl = bizNo && /^\d{10}$/.test(bizNo)
+    ? `https://moneypin.biz/bizno/detail/${bizNo}/`
+    : null;
 
   const canAct =
     canReview && ['submitted', 'review_pending', 'needs_more_info'].includes(application.status);
@@ -94,9 +99,9 @@ export default async function ReviewDetailPage({
       {/* Actions — submitted 또는 needs_more_info 상태에서만 표시 (위로 이동) */}
       {canAct && (
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-title-small font-medium">심사 처리</h2>
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="shrink-0 text-title-small font-medium">심사 처리</h2>
+            <div className="flex flex-wrap items-center gap-2">
               <a
                 href="https://bizno.net/"
                 target="_blank"
@@ -105,6 +110,16 @@ export default async function ReviewDetailPage({
               >
                 비즈노(사업자정보 조회)
               </a>
+              {moneypinUrl && (
+                <a
+                  href={moneypinUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded border border-outline px-2 py-1 text-label-small hover:bg-surface-container-high"
+                >
+                  머니핀(사업자정보 조회)
+                </a>
+              )}
               <a
                 href="https://www.pay2pay.co.kr/board/view?bId=faq&wr_id=3779"
                 target="_blank"
