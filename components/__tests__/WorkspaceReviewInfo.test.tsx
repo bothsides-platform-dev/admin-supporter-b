@@ -51,6 +51,22 @@ beforeEach(() => {
 });
 
 describe('WorkspaceReviewInfo', () => {
+  it('자동 확인 출처와 승인 근거를 처리 이력에 표시한다', async () => {
+    mocks.history.mockResolvedValue([{
+      id: 'auto-1', actor: 'system:bona-pay', action: 'workspace.auto_approve', occurredAt: new Date(),
+      payloadJson: { after: { status: 'approved', provider: 'bona-pay', bizNo: '1234567890',
+        checkedAt: '2026-10-20T01:00:00Z', effectiveDate: '2026-07-01', outcome: 'sole_confirmed' },
+        reason: '국세청 정상 영업·영세 등급 자동 확인' },
+    }]);
+    const text = textOf(await WorkspaceReviewInfo({
+      ...props, bizProfile: { ...props.bizProfile!, gradeSource: 'api_confirmed' },
+    }));
+    expect(text).toContain('자동 확인');
+    expect(text).toContain('자동 승인 완료');
+    expect(text).toContain('bona-pay');
+    expect(text).toContain('2026-07-01');
+    expect(text).toContain('2026-10-20');
+  });
   it('심사 정보, 사업자 및 담당자 정보, 전체 유입 정보와 노트를 표시한다', async () => {
     const tree = await WorkspaceReviewInfo(props);
     const text = textOf(tree);
