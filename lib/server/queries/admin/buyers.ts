@@ -1,6 +1,7 @@
+import { getWorkspaceAdminUser } from './workspaceOwner';
 import { and, asc, desc, eq, gte, ilike, lt, sql } from 'drizzle-orm';
 import { ADMIN_PAGE_SIZE, dateBounds, pageNumber, type ListParams } from '@/lib/admin-list';
-import { workspaces, rfps, bizProfiles } from '@/lib/db/schema';
+import { workspaces, rfps, bizProfiles, verificationApplications } from '@/lib/db/schema';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 import type { MerchantTier } from '@/lib/types/biz-profile';
 
@@ -58,14 +59,29 @@ export async function getBuyerDetail(workspaceId: string) {
     .orderBy(desc(rfps.createdAt))) as RfpRow[];
 
   // 현재 영중소구간(가맹점 등급) — bizProfileId 포인터가 가리키는 행에서 조회.
-  let grade: MerchantTier | null = null;
+  let bizProfile: typeof bizProfiles.$inferSelect | null = null;
   if (ws.bizProfileId) {
     const [bp] = await actionDb()
-      .select({ grade: bizProfiles.grade })
+      .select()
       .from(bizProfiles)
       .where(eq(bizProfiles.id, ws.bizProfileId));
-    grade = (bp?.grade as MerchantTier | null) ?? null;
+    bizProfile = bp ?? null;
   }
 
-  return { workspace: ws, rfps: buyerRfps, grade };
+  const [applicationRows, ownerContact] = await Promise.all([
+    actionDb().select().from(verificationApplications)
+      .where(eq(verificationApplications.workspaceId, workspaceId))
+      .orderBy(desc(verificationApplications.submittedAt), desc(verificationApplications.id))
+      .limit(1),
+    getWorkspaceAdminUser(workspaceId),
+  ]);
+
+  return {
+    workspace: ws,
+    rfps: buyerRfps,
+    grade: (bizProfile?.grade as MerchantTier | null) ?? null,
+    bizProfile,
+    application: applicationRows[0] ?? null,
+    ownerContact,
+  };
 }

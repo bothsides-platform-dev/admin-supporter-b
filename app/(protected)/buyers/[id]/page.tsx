@@ -1,3 +1,4 @@
+import { WorkspaceReviewInfo } from '@/components/WorkspaceReviewInfo';
 import { notFound } from 'next/navigation';
 import { getBuyerDetail } from '@/lib/server/queries/admin/buyers';
 import { getWorkspaceMembers } from '@/lib/server/queries/admin/workspaceMembers';
@@ -67,6 +68,12 @@ export default async function BuyerDetailPage({
       </div>
 
       {canManage && <GradeEditForm action={saveGrade} currentGrade={grade} />}
+
+      <WorkspaceReviewInfo
+        {...detail}
+        canWriteNotes={hasPermission(session, 'notes.write')}
+        revalidatePath={`/buyers/${id}`}
+      />
 
       <section>
         <h2 className="text-title-small font-semibold mb-3">멤버 ({members.length}명)</h2>
