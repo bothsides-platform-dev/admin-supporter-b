@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.1.2] - 2026-10-24
+
+### Fixed
+
+- 관리자 서비스의 보안 취약점 수정을 위해 Next.js와 이미지 처리 의존성을 업데이트했어요.
+- 공유 Node.js 기준 버전을 22.23.4로 맞추고, 이전 런타임에서는 의존성 설치를 차단해요.
+
 ## [0.8.1.1] - 2026-10-20
 
 ### Changed
