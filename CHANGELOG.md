@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.1.2] - 2026-10-24
+
+### Fixed
+
+- 관리자 서비스의 보안 취약점 수정을 위해 Next.js와 이미지 처리 의존성을 업데이트했어요.
+
 ## [0.8.1.1] - 2026-10-20
 
 ### Changed
