@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.2.0] - 2026-10-25
+
+### Added
+
+- 구매사 자동 승인 이력에서 신규사업체 예외와 실제 영세 확인을 구분하고, 검증된 개업일과 국세청 확인 근거를 볼 수 있어요.
+
 ## [0.8.1.2] - 2026-10-24
 
 ### Fixed
