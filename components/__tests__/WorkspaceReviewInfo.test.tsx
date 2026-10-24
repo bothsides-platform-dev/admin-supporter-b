@@ -115,3 +115,15 @@ it('신규사업체 예외를 영세 확인과 구분하고 검증된 개업일�
   expect(text).not.toContain('판정: 확인 필요');
   expect(text).not.toContain('new_business_exception');
 });
+
+it('APICK 조회 JSON을 승인과 구분하여 표시한다', async () => {
+  mocks.history.mockResolvedValue([{
+    id: 'lookup-1', actor: 'system:apick', action: 'workspace.apick_lookup', occurredAt: new Date(),
+    payloadJson: { after: { response: { api: { success: true }, data: { 대표명: '보관 대표', 설립일: '2020-01-01', extra: { nested: true } } } } },
+  }]);
+  const text = textOf(await WorkspaceReviewInfo(props));
+  expect(text).toContain('APICK 사업자 정보 조회');
+  expect(text).toContain('보관 대표');
+  expect(text).toContain('"nested": true');
+  expect(text).not.toContain('자동 승인 완료');
+});
