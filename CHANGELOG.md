@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.3.0] - 2026-10-25
+
+### Added
+
+- 로그인 전 견적 여정 목록에서 초안·이메일·상태·기간으로 검색하고, 입력 답변과 전체 행동 기록을 시간순으로 확인할 수 있어요.
+- Slack 요약의 여정 상세 링크에서 관리자 화면으로 바로 이동하고 GA 식별자와 Clarity 녹화 링크를 확인할 수 있어요.
+
 ## [0.8.2.0] - 2026-10-25
 
 ### Added
