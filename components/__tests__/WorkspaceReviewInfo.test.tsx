@@ -97,3 +97,33 @@ describe('WorkspaceReviewInfo', () => {
     expect(findNoteForms(tree)).toHaveLength(0);
   });
 });
+
+it('신규사업체 예외를 영세 확인과 구분하고 검증된 개업일을 표시한다', async () => {
+  mocks.history.mockResolvedValue([{
+    id: 'new-1', actor: 'system:apick', action: 'workspace.auto_approve', occurredAt: new Date(),
+    payloadJson: { after: { status: 'approved', provider: 'apick', bizNo: '1234567890',
+      checkedAt: '2026-10-25T01:00:00Z', openingDate: '2026-09-06', outcome: 'new_business_confirmed', verifiedBy: 'nts_validate' } },
+  }]);
+  const text = textOf(await WorkspaceReviewInfo({
+    ...props, bizProfile: { ...props.bizProfile!, gradeSource: 'new_business_exception' },
+  }));
+  expect(text).toContain('신규사업체 예외');
+  expect(text).toContain('개업일');
+  expect(text).toContain('2026-09-06');
+  expect(text).toContain('국세청 개업일 진위 확인');
+  expect(text).not.toContain('판정: 영세 확인');
+  expect(text).not.toContain('판정: 확인 필요');
+  expect(text).not.toContain('new_business_exception');
+});
+
+it('APICK 조회 JSON을 승인과 구분하여 표시한다', async () => {
+  mocks.history.mockResolvedValue([{
+    id: 'lookup-1', actor: 'system:apick', action: 'workspace.apick_lookup', occurredAt: new Date(),
+    payloadJson: { after: { response: { api: { success: true }, data: { 대표명: '보관 대표', 설립일: '2020-01-01', extra: { nested: true } } } } },
+  }]);
+  const text = textOf(await WorkspaceReviewInfo(props));
+  expect(text).toContain('APICK 사업자 정보 조회');
+  expect(text).toContain('보관 대표');
+  expect(text).toContain('"nested": true');
+  expect(text).not.toContain('자동 승인 완료');
+});

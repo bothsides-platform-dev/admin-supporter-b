@@ -9,7 +9,7 @@ export type BizProfile = {
   status?: 'active' | 'suspended' | 'closed';
   // 가맹점 영세·중소 등급 — 견적 수수료 구간(MerchantTier)과 단일 타입으로 통합됨(영세=sole).
   grade?: MerchantTier;
-  gradeSource: 'user_confirmed' | 'user_overridden' | 'unset' | 'admin_confirmed' | 'api_confirmed';
+  gradeSource: 'user_confirmed' | 'user_overridden' | 'unset' | 'admin_confirmed' | 'api_confirmed' | 'new_business_exception';
   gradeConfirmedBy?: string;
   gradeConfirmedAt?: string;
 };
@@ -40,7 +40,7 @@ export function taxTypeLabel(taxType: string): string {
 
 // biz_profiles.grade_source — 영중소구간이 어떻게 확정됐는지. admin 이 직접
 // 확인한 값(admin_confirmed)인지, 사용자가 답하거나 정정한 값인지 구분해 보여준다.
-export type GradeSource = 'user_confirmed' | 'user_overridden' | 'unset' | 'admin_confirmed' | 'api_confirmed';
+export type GradeSource = 'user_confirmed' | 'user_overridden' | 'unset' | 'admin_confirmed' | 'api_confirmed' | 'new_business_exception';
 
 export const GRADE_SOURCE_LABELS: Record<GradeSource, string> = {
   user_confirmed: '사용자 확인',
@@ -48,6 +48,7 @@ export const GRADE_SOURCE_LABELS: Record<GradeSource, string> = {
   unset: '미설정',
   admin_confirmed: '관리자 확인',
   api_confirmed: '자동 확인',
+  new_business_exception: '신규사업체 예외',
 };
 
 export function gradeSourceLabel(source: string): string {

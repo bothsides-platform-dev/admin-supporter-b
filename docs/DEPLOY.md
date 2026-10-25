@@ -88,9 +88,9 @@ cd ~/admin-supporter-b && bash scripts/deploy/lightsail-deploy.sh
 
 git pull → install → build → PM2 프로세스 삭제·재시작 순서로 진행하며, 재시작 중에는 잠시 접속이 끊길 수 있다. DB·Caddy는 건드리지 않음.
 
-### 영세 확인 구매사 자동 승인
+### 신규사업체 구매사 자동 승인
 
-메인 앱의 `scripts/migrations/20261020-buyer-auto-approval.sql`을 공유 DB에 실행하고 커밋한 뒤 **관리자 앱 → 메인 앱** 순서로 배포한다. 메인 앱 배포부터 별도 활성화 플래그 없이 신규 구매사 조회·판정을 실행한다. 표시 방식과 운영 확인 과제는 [영세 확인 구매사 자동 승인 표시](BUYER_AUTO_APPROVAL.md)를 따른다.
+메인 앱의 `scripts/migrations/20261020-buyer-auto-approval.sql`과 `scripts/migrations/20261025-new-business-approval.sql`을 공유 DB에 실행하고 커밋한 뒤 **관리자 앱 → 메인 앱** 순서로 배포한다. 구매사 서버의 APICK·국세청 키 설정 후 신규사업체 조회·판정을 실행한다. 보나페이 조회는 제거하며 과거 이력은 보존한다. 별도 APICK 원본 조회 감사는 기존 테이블을 사용하므로 추가 필드 DDL은 없다. 표시 방식과 운영 확인 과제는 [신규사업체 구매사 자동 승인 표시](BUYER_AUTO_APPROVAL.md)를 따른다.
 
 ### 입점 심사 알림 링크 복구
 

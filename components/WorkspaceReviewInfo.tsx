@@ -75,7 +75,9 @@ export async function WorkspaceReviewInfo({
             {reviewHistory.map((entry) => (
               <li key={entry.id} className="px-4 py-3 space-y-1 text-body-small">
                 <div className="flex flex-wrap items-center gap-2">
-                  <AdminStatusBadge status={String(entry.payloadJson?.after?.status ?? '')} />
+                  {entry.action === 'workspace.apick_lookup'
+                    ? <span>APICK 사업자 정보 조회</span>
+                    : <AdminStatusBadge status={String(entry.payloadJson?.after?.status ?? '')} />}
                   {entry.action === 'workspace.auto_approve' && <span>자동 승인 완료</span>}
                   <span className="text-on-surface-variant">{entry.actor}, {formatKST(entry.occurredAt)}</span>
                 </div>
@@ -83,10 +85,18 @@ export async function WorkspaceReviewInfo({
                   <p className="text-on-surface-variant">
                     조회 공급자: {String(entry.payloadJson.after.provider ?? '—')} · 사업자번호: {String(entry.payloadJson.after.bizNo ?? '—')}
                     <br />
-                    조회 시각: <span className="md-numeric">{String(entry.payloadJson.after.checkedAt ?? '—')}</span> · 적용 기준일: <span className="md-numeric">{String(entry.payloadJson.after.effectiveDate ?? '—')}</span>
+                    조회 시각: <span className="md-numeric">{String(entry.payloadJson.after.checkedAt ?? '—')}</span> · {entry.payloadJson.after.outcome === 'new_business_confirmed' ? '개업일' : '적용 기준일'}: <span className="md-numeric">{String((entry.payloadJson.after.outcome === 'new_business_confirmed' ? entry.payloadJson.after.openingDate : entry.payloadJson.after.effectiveDate) ?? '—')}</span>
                     <br />
-                    판정: {entry.payloadJson.after.outcome === 'sole_confirmed' ? '영세 확인' : '확인 필요'}
+                    판정: {entry.payloadJson.after.outcome === 'sole_confirmed' ? '영세 확인'
+                      : entry.payloadJson.after.outcome === 'new_business_confirmed' ? '신규사업체 예외 (개업 6개월 미만)' : '확인 필요'}
+                    {entry.payloadJson.after.verifiedBy === 'nts_validate' && <> · 국세청 개업일 진위 확인</>}
                   </p>
+                )}
+                {entry.action === 'workspace.apick_lookup' && entry.payloadJson?.after?.response != null && (
+                  <details>
+                    <summary className="cursor-pointer text-on-surface-variant">조회 원본 JSON 보기</summary>
+                    <pre className="mt-2 overflow-auto whitespace-pre-wrap break-all rounded border border-outline-variant p-3 text-body-small">{JSON.stringify(entry.payloadJson.after.response, null, 2)}</pre>
+                  </details>
                 )}
                 {entry.payloadJson?.reason && <p className="whitespace-pre-wrap">사유: {entry.payloadJson.reason}</p>}
               </li>
