@@ -10,6 +10,7 @@ import { ActionForm } from '@/components/ActionForm';
 import { toActionState, type ActionState } from '@/lib/action-state';
 import { MERCHANT_TIER_LABELS, MERCHANT_TIERS } from '@/lib/types/biz-profile';
 import type { MerchantTier } from '@/lib/types/biz-profile';
+import { normalizeBizNo } from '@/lib/biz-no';
 import { requireAdminSession } from '@/lib/auth/admin-session';
 import { hasPermission } from '@/lib/auth/permissions';
 import { getNextReviewApplicationId } from '@/lib/server/queries/admin/nextReview';
@@ -37,11 +38,8 @@ export default async function ReviewDetailPage({
   if (!detail) notFound();
 
   const { application, workspace, bizProfile, pgProfile } = detail;
-  const bizNo = (application.orgType === 'buyer' ? bizProfile?.bizNo : pgProfile?.bizNo)
-    ?.replace(/[-\s]/g, '');
-  const moneypinUrl = bizNo && /^\d{10}$/.test(bizNo)
-    ? `https://moneypin.biz/bizno/detail/${bizNo}/`
-    : null;
+  const bizNo = normalizeBizNo(application.orgType === 'buyer' ? bizProfile?.bizNo : pgProfile?.bizNo);
+  const moneypinUrl = bizNo ? `https://moneypin.biz/bizno/detail/${bizNo}/` : null;
 
   const canAct =
     canReview && ['submitted', 'review_pending', 'needs_more_info'].includes(application.status);
@@ -103,23 +101,13 @@ export default async function ReviewDetailPage({
             <h2 className="shrink-0 text-title-small font-medium">심사 처리</h2>
             <div className="flex flex-wrap items-center gap-2">
               <a
-                href="https://bizno.net/"
+                href={moneypinUrl ?? 'https://moneypin.biz/bizno/'}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="rounded border border-outline px-2 py-1 text-label-small hover:bg-surface-container-high"
               >
-                비즈노(사업자정보 조회)
+                {moneypinUrl ? '머니핀(사업자정보 조회)' : '머니핀(사업자번호 확인 필요)'}
               </a>
-              {moneypinUrl && (
-                <a
-                  href={moneypinUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rounded border border-outline px-2 py-1 text-label-small hover:bg-surface-container-high"
-                >
-                  머니핀(사업자정보 조회)
-                </a>
-              )}
               <a
                 href="https://www.pay2pay.co.kr/board/view?bId=faq&wr_id=3779"
                 target="_blank"
