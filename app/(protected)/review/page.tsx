@@ -38,12 +38,12 @@ export default async function ReviewListPage({
         <h1 className="text-headline-small font-semibold">입점 심사</h1>
         <div className="flex items-center gap-2">
           <a
-            href="https://bizno.net/"
+            href="https://moneypin.biz/bizno/"
             target="_blank"
             rel="noopener noreferrer"
             className="rounded border border-outline px-2 py-1 text-label-small hover:bg-surface-container-high"
           >
-            비즈노(사업자정보 조회)
+            머니핀(사업자정보 조회)
           </a>
           <a
             href="https://www.pay2pay.co.kr/board/view?bId=faq&wr_id=3779"
