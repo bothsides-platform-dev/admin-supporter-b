@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.5.0] - 2026-11-01
+
+### Changed
+
+- RFP 상세의 "연 PG 거래량"을 "전년도 월 평균 PG 거래액"으로 바꿨어요. 서포트비가 새로 받는 월 평균 값을 보여줘요.
+- 로그인 전 견적 여정의 "연간 거래액" 단계 이름을 "월 평균 거래액"으로 바꿨어요.
+
 ## [0.8.4.0] - 2026-10-27
 
 ### Changed
