@@ -16,7 +16,7 @@ export type CurrentTermsV1 = {
   deliveryServicePeriod?: string;
   solution?: SolutionValue | string;
   solutionDetail?: string;
-  annualPgVolume?: string;
+  monthlyAvgPgVolume?: string;
 };
 
 // currentTerms 의 모든 필드는 string 이어야 하지만 jsonb 라 DB 가 이를 강제하지
@@ -32,7 +32,7 @@ const STRING_FIELDS = [
   'deliveryServicePeriod',
   'solution',
   'solutionDetail',
-  'annualPgVolume',
+  'monthlyAvgPgVolume',
 ] as const satisfies readonly (keyof CurrentTermsV1)[];
 
 /** 관대한 읽기 — rfps.current_terms 는 항상 이 모양이라고 가정하지 않는다. */
