@@ -220,7 +220,7 @@ export default async function RfpDetailPage({
                   : undefined
               }
             />
-            <DetailRow label="연 PG 거래량" value={currentTerms.annualPgVolume} />
+            <DetailRow label="전년도 월 평균 PG 거래액" value={currentTerms.monthlyAvgPgVolume} />
           </div>
         ) : (
           <p className="px-4 py-8 text-center text-on-surface-variant text-body-small">
