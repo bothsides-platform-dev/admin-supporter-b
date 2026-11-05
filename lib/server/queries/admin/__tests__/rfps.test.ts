@@ -43,7 +43,9 @@ const SCHEMA_SQL = `
     pg_ws_id uuid NOT NULL,
     settle_cycle text NOT NULL,
     settle_limit numeric(14,2) NOT NULL DEFAULT '0',
-    guarantee_insurance numeric(14,2) NOT NULL DEFAULT '0',
+    guarantee_insurance numeric(14,2) DEFAULT '0',
+    signup_fee numeric(14,2) DEFAULT '0',
+    quote_terms jsonb NOT NULL DEFAULT '{"_v":1}',
     payment_fees jsonb NOT NULL DEFAULT '{}',
     custom_fees jsonb NOT NULL DEFAULT '{}',
     memo text NOT NULL DEFAULT '',
@@ -116,6 +118,51 @@ async function seedFullRfp(client: PGlite) {
 }
 
 describe('getRfpDetail', () => {
+  it('v2 상태가 숫자 열보다 우선하며 NULL을 0으로 노출하지 않는다', async () => {
+    const client = new PGlite();
+    await seedFullRfp(client);
+    const terms = {
+      _v: 2,
+      signupFee: { state: 'negotiable' },
+      guaranteeInsurance: { state: 'not_applicable' },
+      fees: {
+        'card:general': { state: 'unset' },
+        virtual_account: { state: 'confirmed', value: 0 },
+      },
+    };
+    await client.query(
+      'UPDATE bids SET quote_terms=$1, signup_fee=NULL, guarantee_insurance=NULL WHERE id=$2',
+      [JSON.stringify(terms), BID_ALPHA_R1],
+    );
+    const detail = await getRfpDetail(RFP_ID, drizzle(client));
+    expect(detail!.bids[0]).toMatchObject({
+      signupFee: null,
+      guaranteeInsurance: null,
+      quoteTerms: terms,
+      paymentFees: { virtual_account: 0 },
+      customFees: {},
+    });
+    expect(detail!.bids[0].paymentFees.card).toBeUndefined();
+    await client.close();
+  });
+  it('알 수 없는 문서 판본은 기존 숫자를 견적 조건으로 추정하지 않는다', async () => {
+    const client = new PGlite();
+    await seedFullRfp(client);
+    await client.query('UPDATE bids SET quote_terms=$1 WHERE id=$2', [
+      JSON.stringify({ _v: 99 }),
+      BID_ALPHA_R1,
+    ]);
+    const detail = await getRfpDetail(RFP_ID, drizzle(client));
+    expect(detail!.bids[0]).toMatchObject({
+      signupFee: null,
+      guaranteeInsurance: null,
+      paymentFees: {},
+      customFees: {},
+      quoteTerms: { signupFee: { state: 'unset' } },
+    });
+    await client.close();
+  });
+
   it('구매사/작성자/사업자정보/견적/낙찰/첨부를 모두 정규화해 반환한다', async () => {
     const client = new PGlite();
     await seedFullRfp(client);
@@ -152,16 +199,15 @@ describe('getRfpDetail', () => {
     expect(first.customFees).toEqual({ 'custom-x': 0.02 });
 
     expect(detail.contract).toEqual(
-      expect.objectContaining({ bidId: BID_ALPHA_R1, awardedByName: '관리자김' }),
+      expect.objectContaining({
+        bidId: BID_ALPHA_R1,
+        awardedByName: '관리자김',
+      }),
     );
 
     // status='pending' 인 업로드중 첨부는 제외되어야 한다.
-    expect(detail.attachments).toEqual([
-      expect.objectContaining({ name: '견적요청서.pdf' }),
-    ]);
-    expect(detail.proposalAttachments).toEqual([
-      expect.objectContaining({ name: '제안서.pdf' }),
-    ]);
+    expect(detail.attachments).toEqual([expect.objectContaining({ name: '견적요청서.pdf' })]);
+    expect(detail.proposalAttachments).toEqual([expect.objectContaining({ name: '제안서.pdf' })]);
   });
 
   it('존재하지 않는 RFP id 는 null 을 반환한다', async () => {
@@ -247,7 +293,11 @@ describe('listAllRfps', () => {
 
     const all = await listAllRfps({}, db);
     expect(all).toEqual([
-      expect.objectContaining({ code: 'P-2609-0001', buyerName: '테스트구매사', status: 'sent' }),
+      expect.objectContaining({
+        code: 'P-2609-0001',
+        buyerName: '테스트구매사',
+        status: 'sent',
+      }),
     ]);
 
     expect(await listAllRfps({ q: '존재하지않음' }, db)).toEqual([]);

@@ -74,3 +74,10 @@ export type CustomPaymentMethod = {
 // 실제 저장값 모양을 강제하지 않고 읽기 쪽에서만 좁혀 쓴다.
 export type PaymentFeesDisplay = Partial<Record<string, number | TierRates>>;
 export type CustomFeesDisplay = Record<string, number>;
+
+// Versioned quote conditions share the domestic-card tier policy with bidit.
+export function isTieredMethod(method: string): boolean {
+  return ['card', 'naver_pay', 'kakao_pay', 'toss_pay', 'apple_pay', 'samsung_pay'].includes(
+    method,
+  );
+}

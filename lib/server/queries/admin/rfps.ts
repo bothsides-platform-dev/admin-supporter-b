@@ -1,3 +1,4 @@
+import { QuoteTermsSchema, projectQuoteTerms, type QuoteTerms } from '@/lib/quote/terms';
 import { and, asc, desc, eq, gte, ilike, inArray, lt, or, sql } from 'drizzle-orm';
 import { ADMIN_PAGE_SIZE, dateBounds, pageNumber, type ListParams } from '@/lib/admin-list';
 import {
@@ -11,11 +12,7 @@ import {
 } from '@/lib/db/schema';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 import type { MerchantTier } from '@/lib/types/biz-profile';
-import type {
-  PaymentFeesDisplay,
-  CustomFeesDisplay,
-  CustomPaymentMethod,
-} from '@/lib/types/bid';
+import type { PaymentFeesDisplay, CustomFeesDisplay, CustomPaymentMethod } from '@/lib/types/bid';
 import { currentTermsOf, type CurrentTermsV1 } from '@/lib/types/rfp-terms';
 
 // jsonb 컬럼은 DB 레벨에서 모양을 강제하지 않는다 — 과거 데이터 오류나 수기
@@ -66,7 +63,9 @@ export type BidDetailRow = {
   round: number;
   settleCycle: string;
   settleLimit: number;
-  guaranteeInsurance: number;
+  guaranteeInsurance: number | null;
+  signupFee: number | null;
+  quoteTerms: QuoteTerms;
   paymentFees: PaymentFeesDisplay;
   customFees: CustomFeesDisplay;
   memo: string;
@@ -110,7 +109,9 @@ type RawBidRow = {
   round: number;
   settleCycle: string;
   settleLimit: string;
-  guaranteeInsurance: string;
+  guaranteeInsurance: string | null;
+  signupFee: string | null;
+  quoteTerms: unknown;
   paymentFees: unknown;
   customFees: unknown;
   memo: string;
@@ -146,25 +147,52 @@ export async function listAllRfps(
     .orderBy(desc(rfps.createdAt)) as Promise<RfpListRow[]>;
 }
 
-export async function listAllRfpsPage(opts: ListParams = {}, db: DB = actionDb()): Promise<{ rows: RfpListRow[]; total: number; page: number }> {
+export async function listAllRfpsPage(
+  opts: ListParams = {},
+  db: DB = actionDb(),
+): Promise<{ rows: RfpListRow[]; total: number; page: number }> {
   const { fromDate, toDate } = dateBounds(opts.from, opts.to);
   const where = and(
     opts.q ? or(ilike(rfps.title, `%${opts.q}%`), ilike(rfps.code, `%${opts.q}%`)) : undefined,
-    ['draft', 'sent', 'closed', 'cancelled', 'awarded'].includes(opts.status ?? '') ? eq(rfps.status, opts.status as RfpListRow['status']) : undefined,
+    ['draft', 'sent', 'closed', 'cancelled', 'awarded'].includes(opts.status ?? '')
+      ? eq(rfps.status, opts.status as RfpListRow['status'])
+      : undefined,
     fromDate ? gte(rfps.deadline, fromDate) : undefined,
     toDate ? lt(rfps.deadline, toDate) : undefined,
   );
-  const [{ total }] = await db.select({ total: sql<number>`cast(count(*) as int)` }).from(rfps).innerJoin(workspaces, eq(rfps.buyerWsId, workspaces.id)).where(where) as { total: number }[];
+  const [{ total }] = (await db
+    .select({ total: sql<number>`cast(count(*) as int)` })
+    .from(rfps)
+    .innerJoin(workspaces, eq(rfps.buyerWsId, workspaces.id))
+    .where(where)) as { total: number }[];
   const page = Math.min(pageNumber(opts.page), Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE)));
-  const order = opts.sort === 'oldest' ? [asc(rfps.createdAt), asc(rfps.id)] : opts.sort === 'deadline' ? [asc(rfps.deadline), asc(rfps.id)] : [desc(rfps.createdAt), desc(rfps.id)];
-  const rows = await db.select({ id: rfps.id, code: rfps.code, title: rfps.title, status: rfps.status, deadline: rfps.deadline, buyerName: workspaces.name, buyerWsId: rfps.buyerWsId })
-    .from(rfps).innerJoin(workspaces, eq(rfps.buyerWsId, workspaces.id)).where(where)
-    .orderBy(...order).limit(ADMIN_PAGE_SIZE).offset((page - 1) * ADMIN_PAGE_SIZE) as RfpListRow[];
+  const order =
+    opts.sort === 'oldest'
+      ? [asc(rfps.createdAt), asc(rfps.id)]
+      : opts.sort === 'deadline'
+        ? [asc(rfps.deadline), asc(rfps.id)]
+        : [desc(rfps.createdAt), desc(rfps.id)];
+  const rows = (await db
+    .select({
+      id: rfps.id,
+      code: rfps.code,
+      title: rfps.title,
+      status: rfps.status,
+      deadline: rfps.deadline,
+      buyerName: workspaces.name,
+      buyerWsId: rfps.buyerWsId,
+    })
+    .from(rfps)
+    .innerJoin(workspaces, eq(rfps.buyerWsId, workspaces.id))
+    .where(where)
+    .orderBy(...order)
+    .limit(ADMIN_PAGE_SIZE)
+    .offset((page - 1) * ADMIN_PAGE_SIZE)) as RfpListRow[];
   return { rows, total, page };
 }
 
 export async function getRfpDetail(rfpId: string, db: DB = actionDb()) {
-  const [rfpRow] = await db
+  const [rfpRow] = (await db
     .select({
       rfp: rfps,
       buyerName: workspaces.name,
@@ -179,7 +207,7 @@ export async function getRfpDetail(rfpId: string, db: DB = actionDb()) {
     .innerJoin(workspaces, eq(rfps.buyerWsId, workspaces.id))
     .innerJoin(users, eq(rfps.createdBy, users.id))
     .leftJoin(bizProfiles, eq(rfps.bizProfileId, bizProfiles.id))
-    .where(eq(rfps.id, rfpId)) as RfpDetailQueryRow[];
+    .where(eq(rfps.id, rfpId))) as RfpDetailQueryRow[];
   if (!rfpRow) return null;
 
   const { rfp, ...rfpMeta } = rfpRow;
@@ -200,6 +228,8 @@ export async function getRfpDetail(rfpId: string, db: DB = actionDb()) {
         settleCycle: bids.settleCycle,
         settleLimit: bids.settleLimit,
         guaranteeInsurance: bids.guaranteeInsurance,
+        signupFee: bids.signupFee,
+        quoteTerms: bids.quoteTerms,
         paymentFees: bids.paymentFees,
         customFees: bids.customFees,
         memo: bids.memo,
@@ -236,10 +266,28 @@ export async function getRfpDetail(rfpId: string, db: DB = actionDb()) {
   const normalizedBids: BidDetailRow[] = rawBids.map((b: RawBidRow) => ({
     ...b,
     settleLimit: Number(b.settleLimit),
-    guaranteeInsurance: Number(b.guaranteeInsurance),
+    guaranteeInsurance: b.guaranteeInsurance == null ? null : Number(b.guaranteeInsurance),
+    signupFee: b.signupFee == null ? null : Number(b.signupFee),
+    quoteTerms: { _v: 1 },
     paymentFees: asRecord(b.paymentFees) as PaymentFeesDisplay,
     customFees: asRecord(b.customFees) as CustomFeesDisplay,
   }));
+  for (let i = 0; i < normalizedBids.length; i++) {
+    const raw = asRecord(rawBids[i].quoteTerms);
+    if (raw._v === 1) continue;
+    const parsed = QuoteTermsSchema.safeParse(raw);
+    const terms = parsed.success
+      ? parsed.data
+      : {
+          _v: 2 as const,
+          signupFee: { state: 'unset' as const },
+          guaranteeInsurance: { state: 'unset' as const },
+          fees: {},
+        };
+    Object.assign(normalizedBids[i], projectQuoteTerms(terms), {
+      quoteTerms: terms,
+    });
+  }
 
   const bidIds = normalizedBids.map((b) => b.id);
   const contract: ContractRow | null = contractRow[0] ?? null;

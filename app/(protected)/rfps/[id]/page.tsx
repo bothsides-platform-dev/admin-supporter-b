@@ -1,3 +1,4 @@
+import { bidConditions, formatCondition } from '@/lib/quote/terms';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getRfpDetail } from '@/lib/server/queries/admin/rfps';
@@ -24,7 +25,15 @@ import { deleteRfpAction } from '@/lib/server/actions/admin/deleteRfpAction';
 import { getRfpDeletionImpact } from '@/lib/server/queries/admin/deletion-impact';
 import { DangerousDeleteForm } from '@/components/DangerousDeleteForm';
 
-function DetailRow({ label, value, badge }: { label: string; value: React.ReactNode; badge?: React.ReactNode }) {
+function DetailRow({
+  label,
+  value,
+  badge,
+}: {
+  label: string;
+  value: React.ReactNode;
+  badge?: React.ReactNode;
+}) {
   if (value === null || value === undefined || value === '') return null;
   return (
     <div>
@@ -35,7 +44,11 @@ function DetailRow({ label, value, badge }: { label: string; value: React.ReactN
   );
 }
 
-function AttachmentList({ attachments }: { attachments: { id: string; name: string; size: number; uploadedAt: Date }[] }) {
+function AttachmentList({
+  attachments,
+}: {
+  attachments: { id: string; name: string; size: number; uploadedAt: Date }[];
+}) {
   return (
     <ul className="list-disc list-inside space-y-0.5">
       {attachments.map((a) => (
@@ -67,7 +80,11 @@ export default async function RfpDetailPage({
 }) {
   const { id } = await params;
   const returnTo = safeListReturnTo((await searchParams).returnTo, '/rfps');
-  const [detail, session, history] = await Promise.all([getRfpDetail(id), requireAdminSession(), listEntityAuditLogs('rfp', id)]);
+  const [detail, session, history] = await Promise.all([
+    getRfpDetail(id),
+    requireAdminSession(),
+    listEntityAuditLogs('rfp', id),
+  ]);
   if (!detail) notFound();
   const canManage = hasPermission(session, 'rfp.manage');
   const canDelete = hasPermission(session, 'rfp.delete');
@@ -99,10 +116,7 @@ export default async function RfpDetailPage({
   // (낙찰 칩은 아래 견적 목록에서 rfp.awardedBidId 를 직접 비교한다.)
   const contractBid = contract ? bids.find((b) => b.id === contract.bidId) : undefined;
 
-  async function extendAction(
-    _prev: ActionState,
-    formData: FormData,
-  ): Promise<ActionState> {
+  async function extendAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
     'use server';
     const days = Number(formData.get('days') ?? 7);
     const result = await extendRfpDeadlineAction(undefined, rfp.id, days);
@@ -155,18 +169,32 @@ export default async function RfpDetailPage({
           {rfp.contractType && (
             <DetailRow label="계약유형" value={CONTRACT_TYPE_LABELS[rfp.contractType]} />
           )}
-          <DetailRow label="마감" value={<span className="md-numeric">{formatKST(rfp.deadline)}</span>} />
+          <DetailRow
+            label="마감"
+            value={<span className="md-numeric">{formatKST(rfp.deadline)}</span>}
+          />
           {rfp.sentAt && (
-            <DetailRow label="발송일" value={<span className="md-numeric">{formatKST(rfp.sentAt)}</span>} />
+            <DetailRow
+              label="발송일"
+              value={<span className="md-numeric">{formatKST(rfp.sentAt)}</span>}
+            />
           )}
-          <DetailRow label="생성일" value={<span className="md-numeric">{formatKST(rfp.createdAt)}</span>} />
+          <DetailRow
+            label="생성일"
+            value={<span className="md-numeric">{formatKST(rfp.createdAt)}</span>}
+          />
           <DetailRow label="게시판 노출" value={rfp.boardVisible ? '노출' : '비노출'} />
           {rfp.websiteUrl && (
             <DetailRow
               label="사이트"
               value={
                 isSafeHttpUrl(rfp.websiteUrl) ? (
-                  <a href={rfp.websiteUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline break-all">
+                  <a
+                    href={rfp.websiteUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-primary hover:underline break-all"
+                  >
                     {rfp.websiteUrl}
                   </a>
                 ) : (
@@ -176,7 +204,12 @@ export default async function RfpDetailPage({
             />
           )}
           {rfp.mainProducts && <DetailRow label="주요 상품" value={rfp.mainProducts} />}
-          {bizProfile?.bizNo && <DetailRow label="사업자번호" value={<span className="md-numeric">{bizProfile.bizNo}</span>} />}
+          {bizProfile?.bizNo && (
+            <DetailRow
+              label="사업자번호"
+              value={<span className="md-numeric">{bizProfile.bizNo}</span>}
+            />
+          )}
           {bizProfile?.taxType && (
             <DetailRow label="과세유형" value={taxTypeLabel(bizProfile.taxType)} />
           )}
@@ -209,7 +242,7 @@ export default async function RfpDetailPage({
               badge={feeRateHidden && <PgHiddenBadge />}
             />
             <DetailRow label="정산한도" value={currentTerms.settlementLimit} />
-            <DetailRow label="보증보험" value={currentTerms.guaranteeInsurance} />
+            <DetailRow label="보증보험 금액(원)" value={currentTerms.guaranteeInsurance} />
             <DetailRow label="정산주기" value={currentTerms.settlementCycle} />
             <DetailRow label="배송 또는 서비스 주기" value={currentTerms.deliveryServicePeriod} />
             <DetailRow
@@ -292,25 +325,49 @@ export default async function RfpDetailPage({
           <table className="min-w-full text-body-small">
             <thead>
               <tr className="border-b border-outline-variant bg-surface-container-low">
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">PG사</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">차수</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">상태</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">정산주기</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">정산한도</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">보증보험</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">제출자</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">제출일</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">처리</th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">
+                  PG사
+                </th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">
+                  차수
+                </th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">
+                  상태
+                </th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">
+                  정산주기
+                </th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">
+                  정산한도
+                </th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">
+                  보증보험 금액(원)
+                </th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">
+                  제출자
+                </th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">
+                  제출일
+                </th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">
+                  처리
+                </th>
               </tr>
             </thead>
             <tbody>
               {bids.map((bid) => {
                 const isAwarded = rfp.awardedBidId === bid.id;
 
-                async function hideBidAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+                async function hideBidAction(
+                  _prev: ActionState,
+                  formData: FormData,
+                ): Promise<ActionState> {
                   'use server';
                   const reason = String(formData.get('reason') ?? '').trim();
-                  return toActionState(await hideQuoteAction(undefined, bid.id, reason), '견적을 철회했습니다.');
+                  return toActionState(
+                    await hideQuoteAction(undefined, bid.id, reason),
+                    '견적을 철회했습니다.',
+                  );
                 }
 
                 return (
@@ -324,14 +381,27 @@ export default async function RfpDetailPage({
                         {isAwarded && <Chip color="tertiary" label="낙찰" />}
                       </div>
                     </td>
-                    <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant whitespace-nowrap">{bid.round}</td>
+                    <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant whitespace-nowrap">
+                      {bid.round}
+                    </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <AdminStatusBadge status={bid.status} />
                     </td>
-                    <td className="px-4 py-3 md-numeric text-label-small whitespace-nowrap">{bid.settleCycle}</td>
-                    <td className="px-4 py-3 md-numeric text-label-small whitespace-nowrap">{formatKRW(bid.settleLimit)}</td>
-                    <td className="px-4 py-3 md-numeric text-label-small whitespace-nowrap">{formatKRW(bid.guaranteeInsurance)}</td>
-                    <td className="px-4 py-3 text-label-small text-on-surface-variant whitespace-nowrap">{bid.submittedByName ?? '—'}</td>
+                    <td className="px-4 py-3 md-numeric text-label-small whitespace-nowrap">
+                      {bid.settleCycle}
+                    </td>
+                    <td className="px-4 py-3 md-numeric text-label-small whitespace-nowrap">
+                      {formatKRW(bid.settleLimit)}
+                    </td>
+                    <td className="px-4 py-3 md-numeric text-label-small whitespace-nowrap">
+                      {formatCondition(bidConditions(bid).guaranteeInsurance)}
+                      <div className="mt-1 text-on-surface-variant">
+                        가입비 · {formatCondition(bidConditions(bid).signupFee)} (최초 1회)
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-label-small text-on-surface-variant whitespace-nowrap">
+                      {bid.submittedByName ?? '—'}
+                    </td>
                     <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant whitespace-nowrap">
                       {formatDateKST(bid.submittedAt)}
                     </td>
@@ -402,7 +472,9 @@ export default async function RfpDetailPage({
       {proposalAttachments.length > 0 && (
         <section className="rounded border border-outline-variant">
           <div className="border-b border-outline-variant px-4 py-2 bg-surface-container-low">
-            <h2 className="text-title-small font-medium">제안서 첨부 ({proposalAttachments.length}건)</h2>
+            <h2 className="text-title-small font-medium">
+              제안서 첨부 ({proposalAttachments.length}건)
+            </h2>
           </div>
           <div className="px-4 py-3 text-body-small">
             <AttachmentList attachments={proposalAttachments} />
@@ -418,7 +490,10 @@ export default async function RfpDetailPage({
         {contract && contractBid ? (
           <div className="px-4 py-3 grid grid-cols-2 gap-3 text-body-small">
             <DetailRow label="낙찰 PG" value={contractBid.pgWsName} />
-            <DetailRow label="낙찰일시" value={<span className="md-numeric">{formatKST(contract.awardedAt)}</span>} />
+            <DetailRow
+              label="낙찰일시"
+              value={<span className="md-numeric">{formatKST(contract.awardedAt)}</span>}
+            />
             <DetailRow label="처리자" value={contract.awardedByName ?? '—'} />
           </div>
         ) : contract ? (
@@ -435,7 +510,14 @@ export default async function RfpDetailPage({
         )}
       </section>
       <AdminAuditHistory logs={history} entityType="rfp" entityId={rfp.id} />
-      {canDelete && <DangerousDeleteForm name={rfp.title} label="RFP" impact={deletionImpact} action={doDelete} />}
+      {canDelete && (
+        <DangerousDeleteForm
+          name={rfp.title}
+          label="RFP"
+          impact={deletionImpact}
+          action={doDelete}
+        />
+      )}
     </div>
   );
 }

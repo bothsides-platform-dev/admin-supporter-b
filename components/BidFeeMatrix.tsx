@@ -1,5 +1,8 @@
+import { formatCondition, type QuoteTerms } from '@/lib/quote/terms';
 import {
   MERCHANT_TIERS,
+  PAYMENT_METHODS,
+  isTieredMethod,
   isFlatFeeMethod,
   merchantTierLabel,
   paymentMethodLabel,
@@ -18,6 +21,7 @@ export type FeeMatrixBid = {
   status: string;
   paymentFees: PaymentFeesDisplay;
   customFees: CustomFeesDisplay;
+  quoteTerms?: QuoteTerms;
 };
 
 type BidFeeMatrixProps = {
@@ -37,7 +41,24 @@ function isTierRates(value: unknown): value is TierRates {
  * 가짜 수수료로 보인다(코드 리뷰에서 지적됨). number/구간맵이 아니면 전부
  * 미제출과 동일하게 fail-safe(—) 처리한다.
  */
-function FeeCell({ method, fee }: { method: string; fee: unknown }) {
+function FeeCell({ method, fee, terms }: { method: string; fee: unknown; terms?: QuoteTerms }) {
+  if (terms?._v === 2) {
+    const keys = isTieredMethod(method) ? MERCHANT_TIERS.map((t) => `${method}:${t}`) : [method];
+    return (
+      <div className="space-y-1">
+        {keys.map((key) => (
+          <div key={key}>
+            {key.includes(':') && (
+              <span className="text-on-surface-variant">
+                {merchantTierLabel(key.split(':')[1])}{' '}
+              </span>
+            )}
+            {formatCondition(terms.fees[key], isFlatFeeMethod(method) ? '원/건' : '%')}
+          </div>
+        ))}
+      </div>
+    );
+  }
   if (fee === undefined || fee === null) {
     return <span className="text-on-surface-variant">—</span>;
   }
@@ -70,7 +91,11 @@ function FeeCell({ method, fee }: { method: string; fee: unknown }) {
  * bids_rfp_pg_round_unique(rfp_id, pg_ws_id, round) 로 같은 PG가 재견적(round≥2)
  * 시 여러 견적을 가질 수 있어 PG로 열을 잡으면 충돌한다.
  */
-export function BidFeeMatrix({ bids, requiredPaymentMethods, customPaymentMethods }: BidFeeMatrixProps) {
+export function BidFeeMatrix({
+  bids,
+  requiredPaymentMethods,
+  customPaymentMethods,
+}: BidFeeMatrixProps) {
   if (bids.length === 0) return null;
 
   // 행 순서: RFP 요청 수단 우선(중복 제거 — requiredPaymentMethods 는 유니크
@@ -78,7 +103,15 @@ export function BidFeeMatrix({ bids, requiredPaymentMethods, customPaymentMethod
   // 어떤 견적이든 실제 제출한 수단은 뒤에 추가.
   const methodRows: string[] = [];
   const seen = new Set<string>();
-  for (const m of [...requiredPaymentMethods, ...bids.flatMap((b) => Object.keys(b.paymentFees))]) {
+  for (const m of [
+    ...requiredPaymentMethods,
+    ...bids.flatMap((b) => [
+      ...Object.keys(b.paymentFees),
+      ...Object.keys(b.quoteTerms?._v === 2 ? b.quoteTerms.fees : {})
+        .map((k) => k.split(':')[0])
+        .filter((k) => (PAYMENT_METHODS as readonly string[]).includes(k)),
+    ]),
+  ]) {
     if (seen.has(m)) continue;
     seen.add(m);
     methodRows.push(m);
@@ -87,7 +120,12 @@ export function BidFeeMatrix({ bids, requiredPaymentMethods, customPaymentMethod
   // RFP 가 정의한 커스텀 수단은 아무도 제출하지 않아도 행으로 노출해야 한다 —
   // 표준 요청 수단처럼 "누락"이 —로 보이지 않으면 안 보이는 것과 구분이 안 된다.
   const customIds = new Set<string>(customPaymentMethods.map((c) => c.id));
-  bids.forEach((b) => Object.keys(b.customFees).forEach((id) => customIds.add(id)));
+  bids.forEach((b) => {
+    Object.keys(b.customFees).forEach((id) => customIds.add(id));
+    Object.keys(b.quoteTerms?._v === 2 ? b.quoteTerms.fees : {})
+      .filter((k) => !(PAYMENT_METHODS as readonly string[]).includes(k.split(':')[0]))
+      .forEach((k) => customIds.add(k));
+  });
 
   return (
     <div className="rounded border border-outline-variant overflow-x-auto">
@@ -98,7 +136,10 @@ export function BidFeeMatrix({ bids, requiredPaymentMethods, customPaymentMethod
               결제수단
             </th>
             {bids.map((b) => (
-              <th key={b.id} className="px-4 py-2 text-left text-label-small font-medium whitespace-nowrap">
+              <th
+                key={b.id}
+                className="px-4 py-2 text-left text-label-small font-medium whitespace-nowrap"
+              >
                 <div className="flex items-center gap-2">
                   <span className="text-on-surface">
                     {b.pgWsName}, {b.round}차
@@ -117,7 +158,7 @@ export function BidFeeMatrix({ bids, requiredPaymentMethods, customPaymentMethod
               </td>
               {bids.map((b) => (
                 <td key={b.id} className="px-4 py-3">
-                  <FeeCell method={method} fee={b.paymentFees[method]} />
+                  <FeeCell method={method} fee={b.paymentFees[method]} terms={b.quoteTerms} />
                 </td>
               ))}
             </tr>
@@ -126,10 +167,14 @@ export function BidFeeMatrix({ bids, requiredPaymentMethods, customPaymentMethod
             const label = customPaymentMethods.find((c) => c.id === id)?.label ?? id;
             return (
               <tr key={id} className="border-b border-outline-variant last:border-0">
-                <td className="px-4 py-3 text-on-surface-variant sticky left-0 bg-surface">{label}</td>
+                <td className="px-4 py-3 text-on-surface-variant sticky left-0 bg-surface">
+                  {label}
+                </td>
                 {bids.map((b) => (
                   <td key={b.id} className="px-4 py-3">
-                    {typeof b.customFees[id] === 'number' ? (
+                    {b.quoteTerms?._v === 2 ? (
+                      formatCondition(b.quoteTerms.fees[id], '%')
+                    ) : typeof b.customFees[id] === 'number' ? (
                       formatPct(b.customFees[id])
                     ) : (
                       <span className="text-on-surface-variant">—</span>
