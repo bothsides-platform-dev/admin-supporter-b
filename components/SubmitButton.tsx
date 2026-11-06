@@ -1,6 +1,7 @@
 'use client';
 
 import { useFormStatus } from 'react-dom';
+import { PendingLabel } from './PendingLabel';
 
 type SubmitButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement>;
 
@@ -14,10 +15,7 @@ export function SubmitButton({ children, className, disabled, ...props }: Submit
       aria-busy={pending}
       className={className}
     >
-      {pending && (
-        <span className="inline-block w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin mr-1.5 align-middle" />
-      )}
-      {children}
+      <PendingLabel pending={pending}>{children}</PendingLabel>
     </button>
   );
 }

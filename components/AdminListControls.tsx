@@ -29,7 +29,7 @@ export function AdminListControls({ path, params, children, dateLabel = '등록�
         </select>
       </label>
       <button type="submit" className="rounded bg-primary px-3 py-1.5 text-label-small text-on-primary">검색</button>
-      <Link href={path} className="rounded border border-outline-variant px-3 py-1.5 text-label-small hover:bg-surface-container-low">초기화</Link>
+      <Link href={path} data-pressable className="rounded border border-outline-variant px-3 py-1.5 text-label-small hover:bg-surface-container-low">초기화</Link>
     </form>
   );
 }

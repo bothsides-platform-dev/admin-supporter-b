@@ -2,6 +2,7 @@
 
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
+import { flushSync } from 'react-dom';
 
 export function ThemeToggle() {
   const { resolvedTheme, setTheme } = useTheme();
@@ -16,10 +17,25 @@ export function ThemeToggle() {
 
   if (!mounted) return <div className="w-7 h-7" />;
 
+  function toggleTheme() {
+    const next = resolvedTheme === 'dark' ? 'light' : 'dark';
+    // 라이트↔다크 전환 시 화면 전체 밝기가 한 프레임에 뒤집히지 않도록
+    // View Transition 으로 교차 페이드한다(움직임이 없어 reduced-motion 에서도 안전).
+    // next-themes 는 setTheme 후 effect 에서 <html> 클래스를 바꾸므로, 새 상태
+    // 스냅샷 전에 반영되도록 flushSync 로 effect 까지 동기 커밋한다.
+    if (typeof document.startViewTransition !== 'function') {
+      setTheme(next);
+      return;
+    }
+    document.startViewTransition(() => {
+      flushSync(() => setTheme(next));
+    });
+  }
+
   return (
     <button
       type="button"
-      onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
+      onClick={toggleTheme}
       className="w-7 h-7 flex items-center justify-center rounded text-on-surface-variant hover:bg-surface-container-highest"
       aria-label="테마 전환"
     >
