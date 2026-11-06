@@ -1,3 +1,4 @@
+import { costText } from '@/lib/quote-display';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { getRfpDetail } from '@/lib/server/queries/admin/rfps';
@@ -298,6 +299,7 @@ export default async function RfpDetailPage({
                 <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">정산주기</th>
                 <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">정산한도</th>
                 <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">보증보험</th>
+                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">가입비</th>
                 <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">제출자</th>
                 <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">제출일</th>
                 <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium whitespace-nowrap">처리</th>
@@ -330,7 +332,7 @@ export default async function RfpDetailPage({
                     </td>
                     <td className="px-4 py-3 md-numeric text-label-small whitespace-nowrap">{bid.settleCycle}</td>
                     <td className="px-4 py-3 md-numeric text-label-small whitespace-nowrap">{formatKRW(bid.settleLimit)}</td>
-                    <td className="px-4 py-3 md-numeric text-label-small whitespace-nowrap">{formatKRW(bid.guaranteeInsurance)}</td>
+                    <td className="px-4 py-3 md-numeric text-label-small whitespace-nowrap">{costText(bid.quoteTerms, 'guaranteeInsurance', bid.guaranteeInsurance)}</td><td className="px-4 py-3 md-numeric text-label-small whitespace-nowrap">{costText(bid.quoteTerms, 'signupFee', bid.signupFee)}</td>
                     <td className="px-4 py-3 text-label-small text-on-surface-variant whitespace-nowrap">{bid.submittedByName ?? '—'}</td>
                     <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant whitespace-nowrap">
                       {formatDateKST(bid.submittedAt)}
@@ -356,7 +358,7 @@ export default async function RfpDetailPage({
               })}
               {bids.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-on-surface-variant">
+                  <td colSpan={10} className="px-4 py-8 text-center text-on-surface-variant">
                     견적이 없습니다.
                   </td>
                 </tr>

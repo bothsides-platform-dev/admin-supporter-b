@@ -66,7 +66,9 @@ export type BidDetailRow = {
   round: number;
   settleCycle: string;
   settleLimit: number;
-  guaranteeInsurance: number;
+  guaranteeInsurance: number | null;
+  signupFee: number | null;
+  quoteTerms: unknown;
   paymentFees: PaymentFeesDisplay;
   customFees: CustomFeesDisplay;
   memo: string;
@@ -110,7 +112,9 @@ type RawBidRow = {
   round: number;
   settleCycle: string;
   settleLimit: string;
-  guaranteeInsurance: string;
+  guaranteeInsurance: string | null;
+  signupFee: string | null;
+  quoteTerms: unknown;
   paymentFees: unknown;
   customFees: unknown;
   memo: string;
@@ -200,6 +204,8 @@ export async function getRfpDetail(rfpId: string, db: DB = actionDb()) {
         settleCycle: bids.settleCycle,
         settleLimit: bids.settleLimit,
         guaranteeInsurance: bids.guaranteeInsurance,
+        signupFee: bids.signupFee,
+        quoteTerms: bids.quoteTerms,
         paymentFees: bids.paymentFees,
         customFees: bids.customFees,
         memo: bids.memo,
@@ -236,7 +242,8 @@ export async function getRfpDetail(rfpId: string, db: DB = actionDb()) {
   const normalizedBids: BidDetailRow[] = rawBids.map((b: RawBidRow) => ({
     ...b,
     settleLimit: Number(b.settleLimit),
-    guaranteeInsurance: Number(b.guaranteeInsurance),
+    guaranteeInsurance: b.guaranteeInsurance == null ? null : Number(b.guaranteeInsurance),
+    signupFee: b.signupFee == null ? null : Number(b.signupFee),
     paymentFees: asRecord(b.paymentFees) as PaymentFeesDisplay,
     customFees: asRecord(b.customFees) as CustomFeesDisplay,
   }));

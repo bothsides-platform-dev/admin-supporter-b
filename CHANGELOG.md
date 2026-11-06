@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.5.1] - 2026-11-06
+
+### Fixed
+
+- PG v2 견적의 가입비·보증보험·수수료를 미입력·확정·협의 필요·해당 없음으로 구분해 표시해요. 기존 0원은 보존하고 비어 있는 금액을 0원으로 바꾸지 않아요.
+
 ## [0.8.5.0] - 2026-11-01
 
 ### Changed
