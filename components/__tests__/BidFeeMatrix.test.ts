@@ -33,8 +33,41 @@ function baseBid(overrides: Partial<FeeMatrixBid>): FeeMatrixBid {
 }
 
 describe('BidFeeMatrix', () => {
+  it('v2의 미정 수수료도 요청 목록이 비어 있을 때 표시하고 숫자 0으로 바꾸지 않는다', () => {
+    const bid = baseBid({
+      quoteTerms: {
+        _v: 2,
+        signupFee: { state: 'negotiable' },
+        guaranteeInsurance: { state: 'not_applicable' },
+        fees: {
+          bank_transfer: { state: 'negotiable' },
+          virtual_account: { state: 'confirmed', value: 0 },
+          'card:general': { state: 'not_applicable' },
+        },
+      },
+    });
+    const text = textOf(
+      BidFeeMatrix({
+        bids: [bid],
+        requiredPaymentMethods: [],
+        customPaymentMethods: [],
+      }),
+    );
+    expect(text).toContain('협의 필요');
+    expect(text).toContain('해당 없음');
+    expect(text).toContain('미입력');
+    expect(text).toContain('0원/건');
+    expect(text).not.toContain('0.00%');
+  });
+
   it('견적이 없으면 아무것도 렌더하지 않는다', () => {
-    expect(BidFeeMatrix({ bids: [], requiredPaymentMethods: [], customPaymentMethods: [] })).toBeNull();
+    expect(
+      BidFeeMatrix({
+        bids: [],
+        requiredPaymentMethods: [],
+        customPaymentMethods: [],
+      }),
+    ).toBeNull();
   });
 
   it('구간맵은 정의된 구간만 %로, 정액 수단은 건당 원으로 렌더한다', () => {
@@ -45,7 +78,11 @@ describe('BidFeeMatrix', () => {
       },
     });
     const text = textOf(
-      BidFeeMatrix({ bids: [bid], requiredPaymentMethods: ['card', 'virtual_account'], customPaymentMethods: [] }),
+      BidFeeMatrix({
+        bids: [bid],
+        requiredPaymentMethods: ['card', 'virtual_account'],
+        customPaymentMethods: [],
+      }),
     );
     expect(text).toContain('영세');
     expect(text).toContain('0.50%');
@@ -57,7 +94,11 @@ describe('BidFeeMatrix', () => {
   it('제출하지 않은 결제수단은 —로 표시한다 (fail-safe, 빈칸 아님)', () => {
     const bid = baseBid({ paymentFees: { card: 0.01 } });
     const text = textOf(
-      BidFeeMatrix({ bids: [bid], requiredPaymentMethods: ['card', 'bank_transfer'], customPaymentMethods: [] }),
+      BidFeeMatrix({
+        bids: [bid],
+        requiredPaymentMethods: ['card', 'bank_transfer'],
+        customPaymentMethods: [],
+      }),
     );
     expect(text).toContain('—');
   });
@@ -65,7 +106,11 @@ describe('BidFeeMatrix', () => {
   it('구간이 모두 비어있는 요율 맵도 —로 표시한다 (미제출과 동일하게 fail-safe)', () => {
     const bid = baseBid({ paymentFees: { card: {} } });
     const text = textOf(
-      BidFeeMatrix({ bids: [bid], requiredPaymentMethods: ['card'], customPaymentMethods: [] }),
+      BidFeeMatrix({
+        bids: [bid],
+        requiredPaymentMethods: ['card'],
+        customPaymentMethods: [],
+      }),
     );
     expect(text).toContain('—');
   });
@@ -86,7 +131,11 @@ describe('BidFeeMatrix', () => {
   it('요청 결제수단이 비어있어도(제한 없음) 견적이 제출한 수단은 행으로 나온다', () => {
     const bid = baseBid({ paymentFees: { card: 0.01 } });
     const text = textOf(
-      BidFeeMatrix({ bids: [bid], requiredPaymentMethods: [], customPaymentMethods: [] }),
+      BidFeeMatrix({
+        bids: [bid],
+        requiredPaymentMethods: [],
+        customPaymentMethods: [],
+      }),
     );
     expect(text).toContain('카드');
     expect(text).toContain('1.00%');
@@ -95,7 +144,11 @@ describe('BidFeeMatrix', () => {
   it('requiredPaymentMethods 에 중복이 있어도 행을 한 번만 렌더한다 (key 충돌 방지)', () => {
     const bid = baseBid({ paymentFees: { card: 0.01 } });
     const text = textOf(
-      BidFeeMatrix({ bids: [bid], requiredPaymentMethods: ['card', 'card'], customPaymentMethods: [] }),
+      BidFeeMatrix({
+        bids: [bid],
+        requiredPaymentMethods: ['card', 'card'],
+        customPaymentMethods: [],
+      }),
     );
     expect(text.match(/카드/g)).toHaveLength(1);
   });
@@ -103,7 +156,11 @@ describe('BidFeeMatrix', () => {
   it('어휘에 없는 결제수단 키가 와도 원문 키로 렌더한다 (fail-open)', () => {
     const bid = baseBid({ paymentFees: { unknown_method: 0.03 } });
     const text = textOf(
-      BidFeeMatrix({ bids: [bid], requiredPaymentMethods: ['unknown_method'], customPaymentMethods: [] }),
+      BidFeeMatrix({
+        bids: [bid],
+        requiredPaymentMethods: ['unknown_method'],
+        customPaymentMethods: [],
+      }),
     );
     expect(text).toContain('unknown_method');
   });
@@ -124,7 +181,11 @@ describe('BidFeeMatrix', () => {
   it('customPaymentMethods에 라벨이 없으면 id를 그대로 보여준다 (fail-open)', () => {
     const bid = baseBid({ customFees: { 'unknown-id': 0.03 } });
     const text = textOf(
-      BidFeeMatrix({ bids: [bid], requiredPaymentMethods: [], customPaymentMethods: [] }),
+      BidFeeMatrix({
+        bids: [bid],
+        requiredPaymentMethods: [],
+        customPaymentMethods: [],
+      }),
     );
     expect(text).toContain('unknown-id');
   });
@@ -144,7 +205,10 @@ describe('BidFeeMatrix', () => {
 
   it('null/false/문자열 등 잘못된 fee 값은 0%가 아니라 —로 표시한다 (가짜 수수료 방지)', () => {
     const bid = baseBid({
-      paymentFees: { card: null as unknown as number, gift_card: false as unknown as number },
+      paymentFees: {
+        card: null as unknown as number,
+        gift_card: false as unknown as number,
+      },
       customFees: { 'custom-1': null as unknown as number },
     });
     const text = textOf(
@@ -160,7 +224,10 @@ describe('BidFeeMatrix', () => {
   });
 
   it('일부 견적만 커스텀 수단을 제출했으면 나머지 열은 —로 표시한다', () => {
-    const submitted = baseBid({ id: 'bid-1', customFees: { 'custom-1': 0.02 } });
+    const submitted = baseBid({
+      id: 'bid-1',
+      customFees: { 'custom-1': 0.02 },
+    });
     const notSubmitted = baseBid({ id: 'bid-2', customFees: {} });
     const text = textOf(
       BidFeeMatrix({
@@ -176,7 +243,7 @@ describe('BidFeeMatrix', () => {
 
 it('v2 conditions remain visible without numeric projections', () => {
   const text = textOf(BidFeeMatrix({
-    bids: [baseBid({quoteTerms: {_v: 2, fees: {
+    bids: [baseBid({quoteTerms: {_v: 2, signupFee: {state: 'unset'}, guaranteeInsurance: {state: 'unset'}, fees: {
       'card:sole': {state: 'confirmed', value: 0},
       'card:general': {state: 'negotiable'},
       virtual_account: {state: 'not_applicable'},
