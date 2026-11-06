@@ -173,3 +173,21 @@ describe('BidFeeMatrix', () => {
     expect(text).toContain('—');
   });
 });
+
+it('v2 conditions remain visible without numeric projections', () => {
+  const text = textOf(BidFeeMatrix({
+    bids: [baseBid({quoteTerms: {_v: 2, fees: {
+      'card:sole': {state: 'confirmed', value: 0},
+      'card:general': {state: 'negotiable'},
+      virtual_account: {state: 'not_applicable'},
+      custom: {state: 'negotiable'},
+    }}})],
+    requiredPaymentMethods: ['card', 'virtual_account', 'bank_transfer'],
+    customPaymentMethods: [{id: 'custom', label: '커스텀'}],
+  }));
+  expect(text).toContain('0%');
+  expect(text).toContain('협의 필요');
+  expect(text).toContain('해당 없음');
+  expect(text).toContain('미입력');
+  expect(text).toContain('커스텀');
+});

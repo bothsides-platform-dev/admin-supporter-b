@@ -1,3 +1,4 @@
+import { conditionText, record, v2Terms } from '@/lib/quote-display';
 import {
   MERCHANT_TIERS,
   isFlatFeeMethod,
@@ -18,6 +19,7 @@ export type FeeMatrixBid = {
   status: string;
   paymentFees: PaymentFeesDisplay;
   customFees: CustomFeesDisplay;
+  quoteTerms?: unknown;
 };
 
 type BidFeeMatrixProps = {
@@ -78,7 +80,7 @@ export function BidFeeMatrix({ bids, requiredPaymentMethods, customPaymentMethod
   // 어떤 견적이든 실제 제출한 수단은 뒤에 추가.
   const methodRows: string[] = [];
   const seen = new Set<string>();
-  for (const m of [...requiredPaymentMethods, ...bids.flatMap((b) => Object.keys(b.paymentFees))]) {
+  for (const m of [...requiredPaymentMethods, ...bids.flatMap((b) => [...Object.keys(b.paymentFees), ...Object.keys(record(v2Terms(b.quoteTerms)?.fees)).map(k => k.split(':')[0]).filter(k => !customPaymentMethods.some(c => c.id === k))])]) {
     if (seen.has(m)) continue;
     seen.add(m);
     methodRows.push(m);
@@ -117,7 +119,12 @@ export function BidFeeMatrix({ bids, requiredPaymentMethods, customPaymentMethod
               </td>
               {bids.map((b) => (
                 <td key={b.id} className="px-4 py-3">
-                  <FeeCell method={method} fee={b.paymentFees[method]} />
+                  {v2Terms(b.quoteTerms) ? (() => {
+                    const fees = record(v2Terms(b.quoteTerms)?.fees);
+                    const tiers = MERCHANT_TIERS.filter(t => `${method}:${t}` in fees);
+                    return tiers.length ? <div>{tiers.map(t => <div key={t}>{merchantTierLabel(t)} {conditionText(fees[`${method}:${t}`], 'rate')}</div>)}</div>
+                      : conditionText(fees[method], isFlatFeeMethod(method) ? 'money' : 'rate');
+                  })() : <FeeCell method={method} fee={b.paymentFees[method]} />}
                 </td>
               ))}
             </tr>
@@ -129,7 +136,7 @@ export function BidFeeMatrix({ bids, requiredPaymentMethods, customPaymentMethod
                 <td className="px-4 py-3 text-on-surface-variant sticky left-0 bg-surface">{label}</td>
                 {bids.map((b) => (
                   <td key={b.id} className="px-4 py-3">
-                    {typeof b.customFees[id] === 'number' ? (
+                    {v2Terms(b.quoteTerms) ? conditionText(record(v2Terms(b.quoteTerms)?.fees)[id], 'rate') : typeof b.customFees[id] === 'number' ? (
                       formatPct(b.customFees[id])
                     ) : (
                       <span className="text-on-surface-variant">—</span>
