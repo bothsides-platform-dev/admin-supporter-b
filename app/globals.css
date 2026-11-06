@@ -123,4 +123,38 @@
     font-variant-numeric: tabular-nums;
     font-feature-settings: "tnum";
   }
+
+  /* ── Press feedback ─────────────────────────────────────────────
+     누르는 순간(pointer-down)에 바로 반응하고, 손을 떼면 부드럽게 돌아온다.
+     hover 색 변화는 지금처럼 즉시 바뀌게 두고 scale만 전환한다.
+     - `scale` 개별 속성: Tailwind v4 translate-*/scale-* 유틸리티와 합성되도록
+       transform 단축 속성을 쓰지 않는다.
+     - :where() 로 명시도 0, base 레이어 — 컴포넌트 유틸리티가 항상 이긴다.
+     - 버튼처럼 보이는 링크는 `data-pressable` 로 같은 반응을 받는다.
+     tokens.css 는 bidit DESIGN.md 에서 단방향 동기화되므로 어드민 전용
+     상호작용 규칙은 이 파일에만 둔다. */
+  :where(button, [role="button"], [data-pressable], input:is([type="submit"], [type="button"], [type="reset"])) {
+    transition: scale 100ms ease-out;
+  }
+
+  :where(button, [role="button"], [data-pressable], input:is([type="submit"], [type="button"], [type="reset"])):where(:not(:disabled, [aria-disabled="true"])):active {
+    scale: 0.97;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* 움직임 대신 불투명도로 같은 신호를 준다. */
+    :where(button, [role="button"], [data-pressable], input:is([type="submit"], [type="button"], [type="reset"])):where(:not(:disabled, [aria-disabled="true"])):active {
+      scale: none;
+      opacity: 0.8;
+    }
+  }
+}
+
+/* 대비 강화 설정에서는 옅은 구분선을 진한 outline 으로 올린다.
+   tokens.css 의 `.dark` 블록이 레이어 밖에 있으므로 이 규칙도 레이어 밖에
+   두고 뒤에 선언해 두 테마 모두에서 이기게 한다. */
+@media (prefers-contrast: more) {
+  :root {
+    --md-sys-color-outline-variant: var(--md-sys-color-outline);
+  }
 }

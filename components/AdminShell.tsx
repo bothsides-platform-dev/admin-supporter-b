@@ -35,7 +35,7 @@ export function AdminShell({ children, role = 'operator', adminId }: { children:
                   'flex items-center px-3 py-2 mx-2 text-body-medium rounded-[var(--md-sys-shape-small)]',
                   isActive
                     ? 'bg-secondary-container text-on-secondary-container font-medium'
-                    : 'text-on-surface-variant hover:bg-surface-container-highest'
+                    : 'text-on-surface-variant hover:bg-surface-container-highest active:bg-surface-container-highest'
                 )}
               >
                 {label}
@@ -49,7 +49,7 @@ export function AdminShell({ children, role = 'operator', adminId }: { children:
           {adminId && <p className="truncate" title={adminId}>{adminId}</p>}
         </div>
         <form action={logoutAction} className="p-3 border-t border-outline-variant flex items-center gap-2">
-          <button type="submit" className="flex-1 text-left px-3 py-2 text-body-small text-on-surface-variant hover:bg-surface-container-highest rounded-[var(--md-sys-shape-small)]">
+          <button type="submit" className="flex-1 text-left px-3 py-2 text-body-small text-on-surface-variant hover:bg-surface-container-highest active:bg-surface-container-highest active:scale-100 rounded-[var(--md-sys-shape-small)]">
             로그아웃
           </button>
           <ThemeToggle />

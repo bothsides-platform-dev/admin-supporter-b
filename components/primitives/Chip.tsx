@@ -51,7 +51,7 @@ export function Chip({
     'border select-none',
     useTonal ? tonalClasses[color] : outlineClass,
     isInteractive
-      ? 'transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--md-sys-color-primary)]/50 disabled:opacity-[0.38] disabled:cursor-not-allowed disabled:pointer-events-none'
+      ? 'transition-[background-color,color,border-color,scale] duration-100 ease-out cursor-pointer focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-[var(--md-sys-color-primary)]/50 disabled:opacity-[0.38] disabled:cursor-not-allowed disabled:pointer-events-none'
       : 'cursor-default',
     className,
   );
