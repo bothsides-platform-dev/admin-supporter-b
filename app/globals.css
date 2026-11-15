@@ -127,7 +127,7 @@
   /* ── Press feedback ─────────────────────────────────────────────
      누르는 순간(pointer-down)에 바로 반응하고, 손을 떼면 부드럽게 돌아온다.
      hover 색 변화는 지금처럼 즉시 바뀌게 두고 scale만 전환한다.
-     - `scale` 개별 속성: Tailwind v4 translate-*/scale-* 유틸리티와 합성되도록
+     - `scale` 개별 속성: Tailwind v4 translate-*, scale-* 유틸리티와 합성되도록
        transform 단축 속성을 쓰지 않는다.
      - :where() 로 명시도 0, base 레이어 — 컴포넌트 유틸리티가 항상 이긴다.
      - 버튼처럼 보이는 링크는 `data-pressable` 로 같은 반응을 받는다.
