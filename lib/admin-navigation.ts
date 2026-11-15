@@ -3,6 +3,7 @@ export type AdminNavigationItem = { href: string; label: string; permission: Adm
 export const ADMIN_NAVIGATION: { label: string; items: AdminNavigationItem[] }[] = [
   { label: '운영 현황', items: [
     { href: '/', label: '대시보드', permission: 'data.view' },
+    { href: '/metrics', label: '핵심 지표', permission: 'data.view' },
     { href: '/guest-journeys', label: '견적 작성 여정', permission: 'data.view' },
   ] },
   { label: '심사 업무', items: [
