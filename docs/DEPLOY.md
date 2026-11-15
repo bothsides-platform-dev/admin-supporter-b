@@ -77,8 +77,36 @@ journalctl -u caddy -f          # admin 서브도메인 인증서 발급 확인
 | `NEXT_PUBLIC_BASE_URL` | `https://admin.<도메인>` — admin 자체 origin. **빌드 타임 인라인**이라 deploy 전에 설정 |
 | `PUBLIC_APP_URL` | `https://<도메인>` — **메인 앱** URL (승인/반려 메일 링크용, admin 자신 아님) |
 | `RESEND_API_KEY` / `RESEND_FROM` | 워크스페이스·PG 담당자 멤버십 승인/반려 메일 발송 (outbox 패턴) |
-| `ADMIN_EMAILS` | 허용 admin Google 이메일 (쉼표 구분) |
-| `ADMIN_SUPER_EMAILS` | 그중 `super_admin` 역할 부분집합 |
+| `ADMIN_TOTP_ENCRYPTION_KEY` | `openssl rand -base64 32` — 공유 DB에 저장하는 TOTP 시크릿의 암호화 키. **잃어버리면 모든 관리자가 2단계 인증을 다시 등록해야 하므로** 서버 밖에도 보관한다 |
+
+허용 관리자 목록은 env가 아니라 공유 DB의 `admin_users` 테이블에 있다(`/admins` 화면에서 관리). 예전 `ADMIN_EMAILS`·`ADMIN_SUPER_EMAILS`는 더 이상 읽지 않지만, 이전 버전으로 롤백할 때 필요하므로 아래 전환 순서 5단계까지 지우지 않는다.
+
+## 관리자 계정·2단계 인증 (TOTP)
+
+로그인은 **Google 로그인 → `admin_users`에 있는 이메일인지 확인 → 인증 앱 6자리 코드(TOTP)** 순서다. 2단계 인증은 한 번 통과하면 12시간 유지되고, 로그아웃하거나 Google로 다시 로그인하면 다시 묻는다. 코드를 5번 틀리면 15분 동안 잠긴다(공유 `login_attempts` 테이블, 키 `admin-2fa:<email>`).
+
+### 최초 전환 순서 (env 허용 목록 → `admin_users`)
+
+1. **메인 앱(bidit) 스키마를 `main`까지 반영**한다. bidit의 `admin_users` 스키마가 `main`에 들어가기 전에 운영 DB에 테이블을 만들면, 테이블이 없는 bidit 체크아웃의 `pnpm db:push`가 DROP을 제안한다. bidit `main`의 운영 배포는 스키마 fingerprint가 바뀌어 `shared/schema-ready` 확인에서 멈추는데, 정상이다(bidit `docs/PRODUCTION_CI.md`).
+2. **DDL·시드**: bidit 체크아웃에서 `scripts/migrations/20261115-admin-users.sql`을 공유 DB에 적용하고, 현재 `ADMIN_EMAILS`의 이메일을 **소문자로** 넣는다. 그다음 bidit의 `shared/schema-ready`를 기록해 메인 앱 배포를 이어 간다. 구 버전 admin은 이 테이블을 무시하므로 admin 배포 전에 적용해도 안전하다.
+   ```bash
+   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/migrations/20261115-admin-users.sql
+   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO admin_users (email, created_by) VALUES ('a@example.com', 'migration:env'), ('b@example.com', 'migration:env') ON CONFLICT (email) DO NOTHING"
+   ```
+3. `.env.production`에 `ADMIN_TOTP_ENCRYPTION_KEY`를 추가한다(위 표). 테이블 없이 이 앱을 먼저 배포하면 로그인이 전부 실패한다.
+4. 이 앱을 배포한다. 배포 전에 발급된 로그인 세션은 한 번 로그아웃되므로 **모든 관리자가 다시 로그인해 QR로 인증 앱을 등록**한다. 미등록 계정은 그 Google 계정으로 처음 로그인한 사람이 등록하게 되니, 배포 직후 바로 등록하도록 안내한다.
+5. **`ADMIN_EMAILS`는 롤백 가능성이 없어질 때까지 남겨 둔다.** 이전 버전 admin은 이 값으로 허용 목록을 판단하므로, 지운 상태로 롤백하면 아무도 로그인하지 못한다. 모두 등록한 것을 `/admins`에서 확인하고 롤백할 일이 없다고 판단되면 `ADMIN_EMAILS`·`ADMIN_SUPER_EMAILS`를 지운다. 롤백해도 `admin_users` 테이블과 행은 남겨 둔다(이전 버전은 무시한다).
+
+### 휴대폰 분실·잠김 복구
+
+- 다른 관리자가 `/admins`에서 **2단계 인증 초기화**를 누른다. 대상자는 다음 로그인 때 QR로 다시 등록하고, 잠금도 함께 풀린다. 본인 계정은 본인이 초기화할 수 없다.
+- 로그인할 수 있는 관리자가 아무도 없으면 공유 DB에서 직접 초기화한다.
+  ```sql
+  UPDATE admin_users SET totp_secret_enc = NULL, totp_enabled_at = NULL, totp_last_used_step = NULL, updated_at = now()
+   WHERE email = 'a@example.com';
+  DELETE FROM login_attempts WHERE key = 'admin-2fa:a@example.com';
+  ```
+- 관리자 추가도 같은 방식으로 `INSERT INTO admin_users (email, created_by) VALUES ('…', 'manual:sql')`. 평소에는 `/admins` 화면을 쓴다(감사 로그에 남는다).
 
 ## 갱신 배포 (이후 매번)
 
@@ -101,6 +129,7 @@ git pull → install → build → PM2 프로세스 삭제·재시작 순서로 
 비로그인 요청은 경로와 쿼리를 `/login?callbackUrl=…`로 전달한다.
 로그인 폼과 액션은 내부 상대경로만 허용하며, 외부 주소·로그인/인증 경로·
 잘못된 입력은 `/`로 대체한다. 관리자 이메일 권한 검사와 독립 쿠키 정책은 유지한다.
+로그인 후 2단계 인증이 필요하면 같은 경로를 `/login/2fa?callbackUrl=…`로 넘겨 인증 뒤에 돌아온다.
 
 배포 순서는 **관리자 앱 → 메인 앱(bidit)**이다. 관리자 앱으로 기존 링크와
 로그인 복귀를 복구한 뒤 메인 앱의 새 알림 주소 생성을 배포한다.
@@ -134,8 +163,10 @@ DB 변경이나 기존 알림 재발송은 필요하지 않다. 배포 후 기�
 
 - **`admin.<도메인>` 502**: 포트 불일치가 가장 흔하다. `pm2 describe admin-supporter-b`로 4242 바인딩 확인,
   `/etc/caddy/Caddyfile`의 admin 블록이 `127.0.0.1:4242`인지 확인 (bidit 레포에서 동기화).
-- **로그인 거부**: 본인 Google 이메일이 `ADMIN_EMAILS`에 있는지, OAuth 리디렉트 URI에
+- **로그인 거부**: 본인 Google 이메일이 `admin_users`에 (소문자로) 있는지, OAuth 리디렉트 URI에
   `https://admin.<도메인>/api/auth/callback/google`이 등록됐는지 확인.
+- **2단계 인증 화면에서 오류**: `ADMIN_TOTP_ENCRYPTION_KEY`가 설정돼 있고 시크릿을 암호화할 때 쓴 키와 같은지 확인.
+  키가 바뀌었으면 위 "휴대폰 분실·잠김 복구"의 SQL로 초기화한 뒤 다시 등록한다. 코드가 계속 틀리면 휴대폰 시계가 자동 설정인지 확인한다.
 - **TLS 안 됨**: `dig +short admin.<도메인>`이 고정 IP를 가리키는지, `journalctl -u caddy`의 ACME 에러 확인.
 - **DB 접속 실패**: bidit의 Postgres 컨테이너가 떠 있는지(`docker compose -f ~/supporter-b/docker-compose.prod.yml ps`),
   `DATABASE_URL` 자격증명이 bidit의 `POSTGRES_*`와 일치하는지 확인.

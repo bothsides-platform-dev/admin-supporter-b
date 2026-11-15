@@ -3,6 +3,7 @@ export const ADMIN_PERMISSIONS = [
   'data.view', 'audit.view', 'workspace.review', 'workspace.manage',
   'user.manage', 'notes.write', 'rfp.manage', 'recommendation.edit',
   'agreement_rates.edit', 'workspace.delete', 'user.delete', 'rfp.delete',
+  'admin.manage',
 ] as const;
 export type AdminPermission = typeof ADMIN_PERMISSIONS[number];
 export type AdminRole = 'viewer' | 'reviewer' | 'finance' | 'operator' | 'super_admin';
@@ -11,7 +12,8 @@ export const ROLE_PERMISSIONS: Record<AdminRole, readonly AdminPermission[]> = {
   viewer: READ,
   reviewer: [...READ, 'workspace.review', 'notes.write'],
   finance: [...READ, 'agreement_rates.edit', 'recommendation.edit'],
-  operator: ADMIN_PERMISSIONS.filter(p => !p.endsWith('.delete')),
+  // Managing admin accounts / resetting 2FA stays with super admins only.
+  operator: ADMIN_PERMISSIONS.filter(p => !p.endsWith('.delete') && p !== 'admin.manage'),
   super_admin: ADMIN_PERMISSIONS,
 };
 export const ROLE_LABELS: Record<AdminRole, string> = {

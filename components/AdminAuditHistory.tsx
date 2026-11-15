@@ -20,13 +20,15 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'workspace.grade.update': '영중소구간 변경', 'rfp.extend_deadline': '마감 연장',
   'rfp.reminder.send': '리마인더 발송', 'bid.withdraw': '입찰 철회',
   'agreement_rates.update': '수수료 기준 변경',
+  'admin_user.create': '관리자 추가', 'admin_user.delete': '관리자 삭제',
+  'admin_user.totp_enroll': '2단계 인증 등록', 'admin_user.totp_reset': '2단계 인증 초기화',
 };
 
 export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   workspace: '워크스페이스', user: '회원', admin_note: '노트', note: '노트',
   rfp: 'RFP', bid: '입찰', verification_application: '심사 신청',
   workspace_member: '워크스페이스 멤버', pg_agreement_rates: '수수료 기준',
-  pg_recommendation_group: 'PG 추천 그룹',
+  pg_recommendation_group: 'PG 추천 그룹', admin_user: '관리자 계정',
 };
 
 export function auditEntityHref(log: AuditLogRow, workspaceType?: 'buyer' | 'pg' | null, bidRfpId?: string | null): string | null {
@@ -37,6 +39,7 @@ export function auditEntityHref(log: AuditLogRow, workspaceType?: 'buyer' | 'pg'
     case 'workspace': case 'workspace_member': case 'pg_agreement_rates': return workspaceType === 'buyer' ? `/buyers/${log.entityId}` : workspaceType === 'pg' ? `/sellers/${log.entityId}` : null;
     case 'bid': return bidRfpId ? `/rfps/${bidRfpId}` : null;
     case 'pg_recommendation_group': return '/pg-recommendations';
+    case 'admin_user': return '/admins';
     default: return null;
   }
 }
@@ -46,7 +49,7 @@ const FIELD_LABELS: Record<string, string> = {
   grade: '영중소구간', name: '이름', reason: '사유', deadline: '마감일',
   body: '내용', userId: '회원 ID', workspaceId: '워크스페이스 ID',
   email: '이메일', type: '유형', days: '연장 일수', oldDeadline: '기존 마감일',
-  newDeadline: '새 마감일',
+  newDeadline: '새 마감일', totpEnabledAt: '2단계 인증 등록 시각',
 };
 const GRADE_LABELS: Record<string, string> = {
   sole: '영세', small: '중소 1', medium: '중소 2', large: '중소 3', general: '일반',
