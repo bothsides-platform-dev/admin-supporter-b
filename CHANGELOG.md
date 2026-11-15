@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.8.7.0] - 2026-11-15
+
+### Added
+
+- 로그인할 때 Google 로그인 다음에 인증 앱(Google Authenticator·1Password 등)의 6자리 코드를 입력해요. 처음 로그인하면 QR 코드로 인증 앱을 등록하고, 한 번 통과하면 12시간 동안 유지돼요. 코드를 5번 틀리면 15분 동안 잠겨요.
+- 관리자 계정 화면(`/admins`)에서 관리자를 추가·삭제하고, 휴대폰을 잃어버린 관리자의 2단계 인증을 초기화할 수 있어요. 추가·삭제·등록·초기화는 감사 로그에 남아요.
+
+### Changed
+
+- 로그인을 허용하는 관리자 목록을 환경변수 `ADMIN_EMAILS` 대신 공유 DB의 `admin_users` 테이블에서 읽어요. 배포 전에 메인 앱의 테이블 DDL과 기존 이메일 시드를 먼저 적용하고 `ADMIN_TOTP_ENCRYPTION_KEY`를 설정해야 해요(`docs/DEPLOY.md`).
+- 배포 전에 로그인해 둔 관리자는 한 번 다시 로그인해야 해요.
+
 ## [0.8.6.0] - 2026-11-05
 
 ### Changed

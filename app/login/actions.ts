@@ -3,6 +3,7 @@
 import { safeLoginDestination } from '@/lib/auth/login-destination';
 import { cookies } from 'next/headers';
 import { signIn, signOut } from '@/auth';
+import { clearMfaCookie } from '@/lib/auth/mfa-cookie';
 
 // Cookies use the `admin-authjs.*` base (see auth.ts) so they never collide with
 // the main app's parent-domain `authjs.*` cookies. The legacy `authjs.session-token`
@@ -39,9 +40,13 @@ export async function googleSignInAction(formData: FormData) {
       if (jar.has(name)) jar.delete(name);
     }
   }
+  // A new Google login gets a new sid anyway (which invalidates the old 2FA
+  // cookie); clearing it too keeps the browser state obvious.
+  clearMfaCookie(jar);
   await signIn('google', { redirectTo: safeLoginDestination(formData.get('callbackUrl')) });
 }
 
 export async function logoutAction() {
+  clearMfaCookie(await cookies());
   await signOut({ redirectTo: '/login' });
 }

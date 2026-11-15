@@ -24,6 +24,10 @@ const ERROR_MESSAGES: Record<string, string> = {
   LAST_ADMIN: '마지막 관리자는 제외할 수 없습니다.',
   OWNER_EMAIL_NOT_VERIFIED: '신청자(오너)의 이메일 인증이 완료되지 않아 승인할 수 없습니다.',
   ALREADY_PROCESSED: '이미 처리된 요청입니다. 새로고침해 주세요.',
+  INVALID_EMAIL: '올바른 이메일 주소를 입력해 주세요.',
+  ADMIN_ALREADY_EXISTS: '이미 등록된 관리자입니다.',
+  CANNOT_CHANGE_SELF: '본인 계정은 다른 관리자가 처리해야 합니다.',
+  LAST_ADMIN_ACCOUNT: '마지막 관리자 계정은 삭제할 수 없습니다.',
 };
 
 const FALLBACK_ERROR_MESSAGE = '처리에 실패했습니다. 다시 시도해 주세요.';

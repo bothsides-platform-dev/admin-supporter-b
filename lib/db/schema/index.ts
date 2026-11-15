@@ -25,6 +25,7 @@ export * from './rfp-counters';
 export * from './phone-otps';
 export * from './login-attempts';
 export * from './admin';
+export * from './admin-users';
 export * from './pg-recommendations';
 export * from './pg-matching';
 export * from './chat-conversations';
