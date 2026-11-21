@@ -1,12 +1,23 @@
 import Link from 'next/link';
 import { ADMIN_PAGE_SIZE, listQuery, type ListParams } from '@/lib/admin-list';
 
-export function AdminListPagination({ path, params, page, total }: { path: string; params: ListParams; page: number; total: number }) {
-  const last = Math.max(1, Math.ceil(total / ADMIN_PAGE_SIZE));
+/**
+ * 목록 공통 페이지 이동. 기본은 `listQuery(params)` 로 주소를 만들고,
+ * 공통 파라미터 밖의 필터를 쓰는 목록(감사 로그)은 `hrefFor` 로 직접 만든다.
+ */
+export function AdminListPagination({ path, params, page, total, pageSize = ADMIN_PAGE_SIZE, hrefFor }: {
+  path: string;
+  params?: ListParams;
+  page: number;
+  total: number;
+  pageSize?: number;
+  hrefFor?: (page: number) => string;
+}) {
+  const last = Math.max(1, Math.ceil(total / pageSize));
   const current = Math.min(page, last);
-  const firstRow = total ? (current - 1) * ADMIN_PAGE_SIZE + 1 : 0;
-  const lastRow = Math.min(current * ADMIN_PAGE_SIZE, total);
-  const href = (target: number) => `${path}?${listQuery({ ...params, page: String(target) })}`;
+  const firstRow = total ? (current - 1) * pageSize + 1 : 0;
+  const lastRow = Math.min(current * pageSize, total);
+  const href = hrefFor ?? ((target: number) => `${path}?${listQuery({ ...params, page: String(target) })}`);
   return (
     <nav aria-label="목록 페이지" className="flex flex-wrap items-center justify-between gap-3 text-body-small text-on-surface-variant">
       <span>전체 {total.toLocaleString()}건, {firstRow.toLocaleString()}–{lastRow.toLocaleString()}건 표시</span>

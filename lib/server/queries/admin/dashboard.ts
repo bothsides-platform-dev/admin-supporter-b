@@ -1,10 +1,14 @@
-import { count, eq, and, lte, gt } from 'drizzle-orm';
+import { waitingDays } from '@/lib/utils';
+import { count, eq, and, inArray, lte, gt } from 'drizzle-orm';
+import { REVIEW_OPEN_STATUSES } from '@/lib/review-queue';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 import { workspaces, rfps, verificationApplications, workspaceNameChangeRequests, workspaceMembers } from '@/lib/db/schema';
 
 type DB = ReturnType<typeof actionDb>;
 
 export interface DashboardStats {
+  /** 신청됨 + 심사 중 — 입점 심사 메뉴 뱃지와 기본 큐가 쓰는 묶음. */
+  openReviewCount: number;
   /** 신규 입점 신청 (status = 'submitted') */
   pendingReviewCount: number;
   /** 진행 중인 RFP 수 (status = 'sent') */
@@ -22,7 +26,7 @@ export interface HotlistItem {
 }
 
 export async function getDashboardStats(db: DB = actionDb()): Promise<DashboardStats> {
-  const [pendingRows, activeRfpRows, nameRows, memberRows] = await Promise.all([
+  const [pendingRows, activeRfpRows, nameRows, memberRows, openRows] = await Promise.all([
     // 목록 링크와 같은 상태를 집계한다.
     db
       .select({ count: count() })
@@ -38,9 +42,12 @@ export async function getDashboardStats(db: DB = actionDb()): Promise<DashboardS
     db.select({ count: count() }).from(workspaceMembers)
       .innerJoin(workspaces, eq(workspaces.id, workspaceMembers.workspaceId))
       .where(and(eq(workspaces.type, 'pg'), eq(workspaceMembers.approvalStatus, 'pending_approval'))),
+    db.select({ count: count() }).from(verificationApplications)
+      .where(inArray(verificationApplications.status, [...REVIEW_OPEN_STATUSES])),
   ]);
 
   return {
+    openReviewCount: Number(openRows[0].count),
     pendingReviewCount: Number(pendingRows[0].count),
     activeRfpCount: Number(activeRfpRows[0].count),
     pendingNameChangeCount: Number(nameRows[0].count),
@@ -95,5 +102,5 @@ export async function getOldestApplications(db: DB = actionDb()) {
     .where(eq(verificationApplications.status, 'submitted'))
     .orderBy(verificationApplications.submittedAt, verificationApplications.id).limit(5);
   const now = Date.now();
-  return rows.map(row => ({ ...row, waitingDays: Math.max(0, Math.floor((now - row.submittedAt.getTime()) / 86400000)) }));
+  return rows.map(row => ({ ...row, waitingDays: waitingDays(row.submittedAt, now) }));
 }

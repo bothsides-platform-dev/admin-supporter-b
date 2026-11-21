@@ -1,9 +1,15 @@
 import { bidConditions, formatCondition } from '@/lib/quote/terms';
+import { cache } from 'react';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '@/components/AdminPageHeader';
+import { CopyableValue } from '@/components/CopyableValue';
+import { AdminSectionNav } from '@/components/AdminSectionNav';
 import Link from 'next/link';
 import { getRfpDetail } from '@/lib/server/queries/admin/rfps';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
 import { BidFeeMatrix } from '@/components/BidFeeMatrix';
+import { RfpPgResponseTable } from '@/components/RfpPgResponseTable';
 import { extendRfpDeadlineAction } from '@/lib/server/actions/admin/extendRfpDeadlineAction';
 import { ExtendDeadlineForm } from '@/components/ExtendDeadlineForm';
 import { ActionForm } from '@/components/ActionForm';
@@ -71,6 +77,14 @@ function PgHiddenBadge() {
   );
 }
 
+// generateMetadata 와 본문이 같은 조회를 한 번만 하도록 요청 단위로 캐시한다.
+const loadRfp = cache((id: string) => getRfpDetail(id));
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const detail = await loadRfp((await params).id);
+  return { title: detail ? detail.rfp.title : 'RFP' };
+}
+
 export default async function RfpDetailPage({
   params,
   searchParams,
@@ -80,8 +94,9 @@ export default async function RfpDetailPage({
 }) {
   const { id } = await params;
   const returnTo = safeListReturnTo((await searchParams).returnTo, '/rfps');
+  const fromPgStatus = returnTo.startsWith('/pg-status');
   const [detail, session, history] = await Promise.all([
-    getRfpDetail(id),
+    loadRfp(id),
     requireAdminSession(),
     listEntityAuditLogs('rfp', id),
   ]);
@@ -98,6 +113,7 @@ export default async function RfpDetailPage({
     bizProfile,
     currentTerms,
     customPaymentMethods,
+    pgResponses,
     bids,
     contract,
     attachments,
@@ -136,21 +152,38 @@ export default async function RfpDetailPage({
     return deleteRfpAction(rfp.id, String(formData.get('confirmationName') ?? ''), returnTo);
   }
 
+  // 조건부로 그리는 섹션은 목차에서도 같은 조건으로 뺀다.
+  const sections = [
+    { id: 'info', label: 'RFP 정보' },
+    { id: 'current-terms', label: '현재 조건' },
+    { id: 'payment-methods', label: '요청 결제수단' },
+    { id: 'memo', label: '메모·첨부' },
+    { id: 'pg-responses', label: 'PG사별 응답 현황' },
+    { id: 'bids', label: '견적 목록' },
+    ...(bids.length > 0 ? [{ id: 'fee-matrix', label: '수수료 비교표' }] : []),
+    ...(bids.some((b) => b.memo) ? [{ id: 'bid-memos', label: '견적별 메모' }] : []),
+    { id: 'contract', label: '낙찰/계약' },
+    { id: 'history', label: '변경 이력' },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Link
-          href={returnTo}
-          className="text-on-surface-variant hover:text-on-surface text-body-small"
-        >
-          ← 목록
-        </Link>
-        <h1 className="text-headline-small font-semibold">{rfp.title}</h1>
-        <AdminStatusBadge status={rfp.status} />
-      </div>
+      <AdminPageHeader
+        title={rfp.title}
+        breadcrumbs={[{ label: fromPgStatus ? 'PG사별 현황' : 'RFP', href: returnTo }]}
+        badges={<AdminStatusBadge status={rfp.status} />}
+        meta={<>
+          <span>코드 <CopyableValue value={rfp.code} label="RFP 코드" numeric /></span>
+          <span>RFP ID <CopyableValue value={rfp.id} label="RFP ID" numeric /></span>
+        </>}
+      />
+      <AdminSectionNav items={sections} className="lg:hidden" />
+
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_10rem] lg:items-start lg:gap-6">
+      <div className="min-w-0 space-y-6">
 
       {/* RFP info */}
-      <section className="rounded border border-outline-variant">
+      <section id="info" className="scroll-mt-4 rounded border border-outline-variant">
         <div className="border-b border-outline-variant px-4 py-2 bg-surface-container-low">
           <h2 className="text-title-small font-medium">RFP 정보</h2>
         </div>
@@ -230,7 +263,7 @@ export default async function RfpDetailPage({
       </section>
 
       {/* Current terms (buyer-submitted) */}
-      <section className="rounded border border-outline-variant">
+      <section id="current-terms" className="scroll-mt-4 rounded border border-outline-variant">
         <div className="border-b border-outline-variant px-4 py-2 bg-surface-container-low">
           <h2 className="text-title-small font-medium">현재 조건 (구매사 제출)</h2>
         </div>
@@ -263,7 +296,7 @@ export default async function RfpDetailPage({
       </section>
 
       {/* Requested payment methods */}
-      <section className="rounded border border-outline-variant">
+      <section id="payment-methods" className="scroll-mt-4 rounded border border-outline-variant">
         <div className="border-b border-outline-variant px-4 py-2 bg-surface-container-low">
           <h2 className="text-title-small font-medium">요청 결제수단</h2>
         </div>
@@ -284,7 +317,7 @@ export default async function RfpDetailPage({
       </section>
 
       {/* Memo / attachments */}
-      <section className="rounded border border-outline-variant">
+      <section id="memo" className="scroll-mt-4 rounded border border-outline-variant">
         <div className="border-b border-outline-variant px-4 py-2 bg-surface-container-low">
           <h2 className="text-title-small font-medium">RFP 메모 / 첨부파일</h2>
         </div>
@@ -306,8 +339,10 @@ export default async function RfpDetailPage({
       {/* Extend deadline */}
       {canManage && <ExtendDeadlineForm action={extendAction} />}
 
+      <RfpPgResponseTable rows={pgResponses} overviewHref={fromPgStatus ? returnTo : undefined} />
+
       {/* Bid list */}
-      <section>
+      <section id="bids" className="scroll-mt-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-title-small font-semibold">견적 목록 ({bids.length}건)</h2>
           {canManage && bids.length > 0 && (
@@ -438,7 +473,7 @@ export default async function RfpDetailPage({
 
       {/* Fee comparison matrix */}
       {bids.length > 0 && (
-        <section>
+        <section id="fee-matrix" className="scroll-mt-4">
           <h2 className="text-title-small font-semibold mb-3">수수료 비교표</h2>
           <BidFeeMatrix
             bids={bids}
@@ -450,7 +485,7 @@ export default async function RfpDetailPage({
 
       {/* Per-bid memos */}
       {bids.some((b) => b.memo) && (
-        <section className="rounded border border-outline-variant">
+        <section id="bid-memos" className="scroll-mt-4 rounded border border-outline-variant">
           <div className="border-b border-outline-variant px-4 py-2 bg-surface-container-low">
             <h2 className="text-title-small font-medium">견적별 메모</h2>
           </div>
@@ -483,7 +518,7 @@ export default async function RfpDetailPage({
       )}
 
       {/* Award / contract */}
-      <section className="rounded border border-outline-variant">
+      <section id="contract" className="scroll-mt-4 rounded border border-outline-variant">
         <div className="border-b border-outline-variant px-4 py-2 bg-surface-container-low">
           <h2 className="text-title-small font-medium">낙찰/계약</h2>
         </div>
@@ -509,7 +544,9 @@ export default async function RfpDetailPage({
           </p>
         )}
       </section>
-      <AdminAuditHistory logs={history} entityType="rfp" entityId={rfp.id} />
+      <div id="history" className="scroll-mt-4">
+        <AdminAuditHistory logs={history} entityType="rfp" entityId={rfp.id} />
+      </div>
       {canDelete && (
         <DangerousDeleteForm
           name={rfp.title}
@@ -518,6 +555,9 @@ export default async function RfpDetailPage({
           action={doDelete}
         />
       )}
+      </div>
+      <AdminSectionNav items={sections} orientation="vertical" className="sticky top-0 hidden lg:block" />
+      </div>
     </div>
   );
 }

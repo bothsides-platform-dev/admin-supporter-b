@@ -1,0 +1,35 @@
+// Optional: Docker journald logging driver, tag=bidit-postgres. No Docker socket.
+loki.source.journal "postgres" {
+	matches    = "CONTAINER_TAG=bidit-postgres"
+	max_age    = "1h"
+	labels     = {service = "postgres"}
+	forward_to = [loki.process.postgres.receiver]
+}
+
+loki.process "postgres" {
+	stage.match {
+		selector            = "{service=\"postgres\"} !~ \"(?i)(LOG|INFO|WARNING|ERROR|FATAL|PANIC):\""
+		action              = "drop"
+		drop_counter_reason = "postgres_continuation"
+	}
+	// Do not ship statements, bind parameters or DETAIL/HINT/CONTEXT lines.
+	stage.drop {
+		expression          = "(?i)(STATEMENT:|DETAIL:|HINT:|CONTEXT:|QUERY:|execute .*:|duration:.*statement:)"
+		drop_counter_reason = "postgres_query_data"
+	}
+
+	stage.regex {
+		expression = "(?i)(?P<pg_level>LOG|INFO|WARNING|ERROR|FATAL|PANIC):"
+	}
+
+	stage.template {
+		source   = "level"
+		template = "{{ if eq .pg_level \"WARNING\" }}warn{{ else if or (eq .pg_level \"ERROR\") (eq .pg_level \"FATAL\") (eq .pg_level \"PANIC\") }}error{{ else }}info{{ end }}"
+	}
+
+	stage.pack {
+		labels           = ["level"]
+		ingest_timestamp = false
+	}
+	forward_to = [loki.process.sanitized.receiver]
+}

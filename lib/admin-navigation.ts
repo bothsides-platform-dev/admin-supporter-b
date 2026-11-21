@@ -1,15 +1,20 @@
 import type { AdminPermission } from './auth/permissions';
-export type AdminNavigationItem = { href: string; label: string; permission: AdminPermission };
+/** 메뉴 옆에 대기 건수를 붙일 항목의 키. */
+export type AdminNavigationCountKey = 'review' | 'nameChange' | 'pgMembers';
+export type AdminNavigationCounts = Partial<Record<AdminNavigationCountKey, number>>;
+export type AdminNavigationItem = { href: string; label: string; permission: AdminPermission; countKey?: AdminNavigationCountKey };
 export const ADMIN_NAVIGATION: { label: string; items: AdminNavigationItem[] }[] = [
   { label: '운영 현황', items: [
     { href: '/', label: '대시보드', permission: 'data.view' },
     { href: '/metrics', label: '핵심 지표', permission: 'data.view' },
+    { href: '/pg-status', label: 'PG사별 현황', permission: 'data.view' },
+    { href: '/observability', label: '시스템 관측', permission: 'observability.view' },
     { href: '/guest-journeys', label: '견적 작성 여정', permission: 'data.view' },
   ] },
   { label: '심사 업무', items: [
-    { href: '/review', label: '입점 심사', permission: 'data.view' },
-    { href: '/name-change-requests', label: '이름 변경 심사', permission: 'data.view' },
-    { href: '/admin/pg-members', label: 'PG 담당자 승인', permission: 'data.view' },
+    { href: '/review', label: '입점 심사', permission: 'data.view', countKey: 'review' },
+    { href: '/name-change-requests', label: '이름 변경 심사', permission: 'data.view', countKey: 'nameChange' },
+    { href: '/admin/pg-members', label: 'PG 담당자 승인', permission: 'data.view', countKey: 'pgMembers' },
   ] },
   { label: '데이터 관리', items: [
     { href: '/users', label: '회원', permission: 'data.view' },

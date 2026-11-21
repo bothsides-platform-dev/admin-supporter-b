@@ -1,6 +1,12 @@
 import { WorkspaceReviewInfo } from '@/components/WorkspaceReviewInfo';
+import { cache } from 'react';
+import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import Link from 'next/link';
+import { AdminPageHeader } from '@/components/AdminPageHeader';
+import { CopyableValue } from '@/components/CopyableValue';
+import { ReasonTemplatePicker } from '@/components/ReasonTemplatePicker';
+import { MORE_INFO_REASON_TEMPLATES, REJECT_REASON_TEMPLATES } from '@/lib/review-reason-templates';
+import { AdminStatusBadge } from '@/components/AdminStatusBadge';
 import { getApplicationDetail } from '@/lib/server/queries/admin/review';
 import { SubmitButton } from '@/components/SubmitButton';
 import { approveWorkspaceAction } from '@/lib/server/actions/admin/approveWorkspaceAction';
@@ -18,6 +24,14 @@ import type { ReviewSnapshot } from '@/lib/server/actions/admin/reviewApplicatio
 
 const ALL_GRADES: MerchantTier[] = [...MERCHANT_TIERS];
 
+// generateMetadata 와 본문이 같은 조회를 한 번만 하도록 요청 단위로 캐시한다.
+const loadApplication = cache((id: string) => getApplicationDetail(id));
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const detail = await loadApplication((await params).id);
+  return { title: detail ? `${detail.workspace.name} 심사` : '입점 심사' };
+}
+
 export default async function ReviewDetailPage({
   params,
   searchParams,
@@ -33,7 +47,7 @@ export default async function ReviewDetailPage({
   const session = await requireAdminSession();
   const canReview = hasPermission(session, 'workspace.review');
   const canWriteNotes = hasPermission(session, 'notes.write');
-  const detail = await getApplicationDetail(id);
+  const detail = await loadApplication(id);
 
   if (!detail) notFound();
 
@@ -53,6 +67,12 @@ export default async function ReviewDetailPage({
     'use server';
     if (formData.get('next') !== '1') return;
     const nextId = await getNextReviewApplicationId(id, returnTo);
+    redirect(nextId ? `/review/${nextId}?returnTo=${encodeURIComponent(returnTo)}` : returnTo);
+  }
+
+  async function skipToNext() {
+    'use server';
+    const nextId = await getNextReviewApplicationId(id, returnTo, undefined, { skip: true });
     redirect(nextId ? `/review/${nextId}?returnTo=${encodeURIComponent(returnTo)}` : returnTo);
   }
 
@@ -84,15 +104,23 @@ export default async function ReviewDetailPage({
 
   return (
     <div className="space-y-6 max-w-3xl">
-      <div className="flex items-center gap-3">
-        <Link href={returnTo} className="text-on-surface-variant hover:text-on-surface text-body-small">
-          ← 목록
-        </Link>
-        <h1 className="text-headline-small font-semibold">{workspace.name}</h1>
-        <span className="text-label-small rounded bg-surface-container px-2 py-0.5">
-          {application.orgType === 'buyer' ? '구매사' : 'PG사'}
-        </span>
-      </div>
+      <AdminPageHeader
+        title={workspace.name}
+        breadcrumbs={[{ label: '입점 심사', href: returnTo }]}
+        badges={<>
+          <span className="text-label-small rounded bg-surface-container px-2 py-0.5">
+            {application.orgType === 'buyer' ? '구매사' : 'PG사'}
+          </span>
+          <AdminStatusBadge status={application.status} />
+        </>}
+        meta={<span>신청 ID <CopyableValue value={application.id} label="신청 ID" numeric /></span>}
+      >
+        {canReview && (
+          <form action={skipToNext}>
+            <SubmitButton className="rounded border border-outline px-3 py-1.5 text-label-small hover:bg-surface-container-low">건너뛰고 다음 대기 건</SubmitButton>
+          </form>
+        )}
+      </AdminPageHeader>
 
       {/* Actions — submitted 또는 needs_more_info 상태에서만 표시 (위로 이동) */}
       {canAct && (
@@ -158,11 +186,15 @@ export default async function ReviewDetailPage({
           <div className="rounded border border-error p-4 space-y-3">
             <h3 className="text-body-medium font-medium text-error">반려</h3>
             <ActionForm action={rejectAction} className="space-y-2">
-              <label className="block text-body-small text-on-surface-variant">반려 사유</label>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label htmlFor="reject-reason" className="block text-body-small text-on-surface-variant">반려 사유</label>
+                <ReasonTemplatePicker templates={REJECT_REASON_TEMPLATES} label="자주 쓰는 반려 사유" />
+              </div>
               <textarea
                 name="reason"
                 rows={3}
                 required
+                id="reject-reason"
                 placeholder="반려 사유를 입력하세요"
                 className="w-full rounded border border-outline px-3 py-2 text-body-small bg-surface resize-none focus:outline-none focus:ring-1 focus:ring-primary"
               />
@@ -179,11 +211,15 @@ export default async function ReviewDetailPage({
               {application.status === 'needs_more_info' ? '재요청' : '보완 요청'}
             </h3>
             <ActionForm action={moreInfoAction} className="space-y-2">
-              <label className="block text-body-small text-on-surface-variant">요청 사유</label>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label htmlFor="more-info-reason" className="block text-body-small text-on-surface-variant">요청 사유</label>
+                <ReasonTemplatePicker templates={MORE_INFO_REASON_TEMPLATES} label="자주 쓰는 보완 사유" />
+              </div>
               <textarea
                 name="reason"
                 rows={3}
                 required
+                id="more-info-reason"
                 placeholder="요청 사유를 입력하세요"
                 className="w-full rounded border border-outline px-3 py-2 text-body-small bg-surface resize-none focus:outline-none focus:ring-1 focus:ring-primary"
               />

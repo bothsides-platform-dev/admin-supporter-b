@@ -1,6 +1,7 @@
 import { headers } from 'next/headers';
 
 import { AdminDataTable, type AdminTableColumn } from '@/components/AdminDataTable';
+import { AdminPageHeader } from '@/components/AdminPageHeader';
 import { ConfirmButton } from '@/components/ConfirmButton';
 import { toActionState, type ActionState } from '@/lib/action-state';
 import { requireAdminSession } from '@/lib/auth/admin-session';
@@ -50,6 +51,8 @@ const columns: AdminTableColumn<PasskeyListRow>[] = [
   { key: 'actions', label: '관리', align: 'right', render: (row) => <PasskeyRowActions row={row} /> },
 ];
 
+export const metadata = { title: '내 패스키' };
+
 /** Every admin manages their own passkeys here; nobody else's are visible. */
 export default async function PasskeysPage() {
   const session = await requireAdminSession();
@@ -59,13 +62,10 @@ export default async function PasskeysPage() {
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div className="space-y-1">
-        <h1 className="text-headline-small font-semibold">내 패스키</h1>
-        <p className="text-body-small text-on-surface-variant">
-          패스키를 등록하면 로그인할 때 인증 앱 코드 대신 이 기기의 지문, 얼굴 인식 또는 기기 잠금으로 2단계 인증을 통과할 수 있습니다.
-          인증 앱 등록은 그대로 유지되므로 코드로도 계속 인증할 수 있습니다.
-        </p>
-      </div>
+      <AdminPageHeader
+        title="내 패스키"
+        description="패스키를 등록하면 로그인할 때 인증 앱 코드 대신 이 기기의 지문, 얼굴 인식 또는 기기 잠금으로 2단계 인증을 통과할 수 있습니다. 인증 앱 등록은 그대로 유지되므로 코드로도 계속 인증할 수 있습니다."
+      />
 
       <section className="space-y-2">
         <h2 className="text-title-small font-semibold">패스키 등록</h2>

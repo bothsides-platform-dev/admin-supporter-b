@@ -6,10 +6,10 @@ import { logoutAction } from '@/app/login/actions';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from './ThemeToggle';
 
-import { ADMIN_NAVIGATION } from '@/lib/admin-navigation';
+import { ADMIN_NAVIGATION, type AdminNavigationCounts } from '@/lib/admin-navigation';
 import { hasPermission, ROLE_LABELS, type AdminRole } from '@/lib/auth/permissions';
 
-export function AdminShell({ children, role = 'operator', adminId }: { children: React.ReactNode; role?: AdminRole; adminId?: string }) {
+export function AdminShell({ children, role = 'operator', adminId, counts = {} }: { children: React.ReactNode; role?: AdminRole; adminId?: string; counts?: AdminNavigationCounts }) {
   const pathname = usePathname();
 
   return (
@@ -22,7 +22,8 @@ export function AdminShell({ children, role = 'operator', adminId }: { children:
         <nav aria-label="관리 메뉴" className="max-h-48 flex-1 overflow-y-auto py-2 md:max-h-none">
           {ADMIN_NAVIGATION.map(group => <div key={group.label} className="mb-3">
             <p className="px-5 py-1 text-label-small text-on-surface-variant">{group.label}</p>
-          {group.items.filter(item => hasPermission({ role }, item.permission)).map(({ href, label }) => {
+          {group.items.filter(item => hasPermission({ role }, item.permission)).map(({ href, label, countKey }) => {
+            const waiting = countKey ? counts[countKey] ?? 0 : 0;
             const isActive = href === '/'
               ? pathname === '/'
               : pathname === href || pathname.startsWith(href + '/');
@@ -32,13 +33,18 @@ export function AdminShell({ children, role = 'operator', adminId }: { children:
                 href={href}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'flex items-center px-3 py-2 mx-2 text-body-medium rounded-[var(--md-sys-shape-small)]',
+                  'flex items-center justify-between gap-2 px-3 py-2 mx-2 text-body-medium rounded-[var(--md-sys-shape-small)]',
                   isActive
                     ? 'bg-secondary-container text-on-secondary-container font-medium'
                     : 'text-on-surface-variant hover:bg-surface-container-highest active:bg-surface-container-highest'
                 )}
               >
-                {label}
+                <span>{label}</span>
+                {waiting > 0 && (
+                  <span aria-label={`대기 ${waiting}건`} className="md-numeric rounded-full bg-primary px-1.5 text-label-small text-on-primary">
+                    {waiting > 99 ? '99+' : waiting}
+                  </span>
+                )}
               </Link>
             );
           })}

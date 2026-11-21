@@ -173,6 +173,10 @@ DB 변경이나 기존 알림 재발송은 필요하지 않다. 배포 후 기�
 
 ## 운영
 
+시스템 지표·로그는 `/observability`에서 확인한다. Grafana Cloud 연결, Alloy systemd 배포, Caddy/Postgres 계측과 수집 검수는 [관측 운영 런북](OBSERVABILITY.md)을 따른다. 앱 배포가 Cloud 계정이나 Alloy 서비스를 자동으로 생성하지는 않는다.
+
+2026-11-17 수동 릴리스의 실행 경로·소스 범위는 [관측 기능 운영 반영 기록](OBSERVABILITY_DEPLOYMENT_2026-11-17.md), 2026-11-18 Cloud 연결과 토큰 교체 경로는 [운영 연결 기록](OBSERVABILITY_DEPLOYMENT_2026-11-18.md)에 남겼다. 다음 배포 전에 이 릴리스의 코드와 현재 운영 환경변수를 이어받는다.
+
 | 작업 | 명령 |
 |---|---|
 | 로그 | `pm2 logs admin-supporter-b` |

@@ -29,3 +29,14 @@ export function listQuery(params: ListParams) {
   }
   return query.toString();
 }
+
+/** 검색어·유형·기간을 지우고 보던 상태 탭과 정렬만 남긴 목록 주소. */
+export function clearedListHref(path: string, params: ListParams): string {
+  const query = listQuery({ status: params.status, sort: params.sort });
+  return query ? `${path}?${query}` : path;
+}
+
+/** 검색어·유형·기간 중 하나라도 걸려 있는지. 상태는 보기(탭)라서 필터로 치지 않는다. */
+export function hasListFilters(params: ListParams): boolean {
+  return Boolean(params.q || params.type || params.from || params.to);
+}

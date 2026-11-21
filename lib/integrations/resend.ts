@@ -6,11 +6,8 @@
 //   1. `RESEND_API_KEY` set:    Resend.emails.send({ from, to, subject, html })
 //      → maps API result to `{ ok: true } | { ok: false, error }`.
 //
-//   2. `RESEND_API_KEY` unset:  fallback. Logs `[email DEV] event=... to=...
-//      subject=... dedupeKey=...` and resolves `{ ok: true }`. **html is never
-//      logged** — it's verbose and contains links not safe to dump in shared
-//      terminal scrollback. The console line replaces the legacy
-//      `devLogVerifyLink` / `devLogRfpInviteLink` helpers (now deleted).
+//   2. `RESEND_API_KEY` unset: fallback. Logs the event name only and resolves
+//      `{ ok: true }`. Recipient, subject, dedupe key and HTML stay out of logs.
 //
 // `from` defaults to `send@support-b.com` (override with `RESEND_FROM`). For
 // production sending, the resolved `from` MUST be on a domain verified in the
@@ -20,6 +17,7 @@
 import * as Sentry from '@sentry/nextjs';
 import { Resend } from 'resend';
 import type { Sender } from '@/lib/server/outbox/types';
+import { logServer } from '@/lib/observability/logger';
 
 const DEFAULT_FROM = 'send@support-b.com';
 
@@ -45,13 +43,7 @@ export const ResendSender: Sender = async (entry) => {
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey) {
-    // Format intentionally distinct from the deleted
-    // `[DEV signup-verify]` / `[DEV rfp-invite]` lines so the
-    // `grep -rn "[DEV " lib/server` regression gate stays at 0 hits.
-    // dedupeKey included per Step 10 spec, html intentionally excluded.
-    console.log(
-      `[email DEV] event=${entry.event} to=${entry.to} subject=${entry.subject} dedupeKey=${entry.dedupeKey ?? '-'}`,
-    );
+    logServer('info', 'email.dev', { event: entry.event });
     return { ok: true };
   }
 
@@ -70,9 +62,6 @@ export const ResendSender: Sender = async (entry) => {
       Sentry.captureException(new Error(`Email send failed: ${message}`), {
         extra: {
           event: entry.event,
-          to: entry.to,
-          subject: entry.subject,
-          dedupeKey: entry.dedupeKey ?? null,
         },
       });
       return { ok: false, error: message };
@@ -83,9 +72,6 @@ export const ResendSender: Sender = async (entry) => {
     Sentry.captureException(e, {
       extra: {
         event: entry.event,
-        to: entry.to,
-        subject: entry.subject,
-        dedupeKey: entry.dedupeKey ?? null,
       },
     });
     return { ok: false, error: (e as Error).message ?? 'resend_threw' };

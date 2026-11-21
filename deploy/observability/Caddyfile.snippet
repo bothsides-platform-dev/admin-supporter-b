@@ -1,0 +1,23 @@
+# Merge metrics into the EXISTING global block in bidit's Caddyfile:
+# {
+#     metrics
+# }
+#
+# Define this snippet outside site blocks, then import observability_access
+# inside each desired site block. Caddy's systemd stderr goes to the journal.
+(observability_access) {
+	log {
+		output stderr
+		format filter {
+			wrap json
+			fields {
+				request>headers delete
+				request>uri delete
+				request>remote_ip delete
+				request>remote_port delete
+				request>client_ip delete
+				user_id delete
+			}
+		}
+	}
+}

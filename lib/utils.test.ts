@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatKRW, formatPct, isSafeHttpUrl } from './utils';
+import { formatKRW, formatPct, isSafeHttpUrl, waitingDays } from './utils';
 
 describe('formatKRW', () => {
   it('천 단위 콤마와 원 단위를 붙인다', () => {
@@ -37,5 +37,19 @@ describe('isSafeHttpUrl', () => {
   it('파싱 불가능한 문자열은 차단한다', () => {
     expect(isSafeHttpUrl('not a url')).toBe(false);
     expect(isSafeHttpUrl('')).toBe(false);
+  });
+});
+
+describe('waitingDays', () => {
+  const now = Date.parse('2026-09-10T12:00:00Z');
+
+  it('지난 날 수를 내림해서 돌려준다', () => {
+    expect(waitingDays('2026-09-10T00:00:00Z', now)).toBe(0);
+    expect(waitingDays('2026-09-09T12:00:00Z', now)).toBe(1);
+    expect(waitingDays(new Date('2026-09-03T13:00:00Z'), now)).toBe(6);
+  });
+
+  it('미래 시각은 0 으로 본다', () => {
+    expect(waitingDays('2026-09-11T00:00:00Z', now)).toBe(0);
   });
 });
