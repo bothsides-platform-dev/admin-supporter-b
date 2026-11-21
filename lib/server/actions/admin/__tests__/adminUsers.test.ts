@@ -25,6 +25,14 @@ const rows = async () => (await client.query<{ email: string; totp_enabled_at: D
 const audit = async () => (await client.query<{ action: string; actor: string; entity_type: string }>(
   'SELECT action, actor, entity_type FROM admin_audit_logs ORDER BY occurred_at',
 )).rows;
+const insertPasskey = (adminUserId: string, credentialId: string) => client.query(
+  `INSERT INTO admin_passkeys (admin_user_id, credential_id, public_key, backup_eligible, backed_up, aaguid, label)
+   VALUES ($1, $2, 'pk', false, false, '00000000-0000-0000-0000-000000000000', '기기')`,
+  [adminUserId, credentialId],
+);
+const passkeyOwners = async () => (await client.query<{ admin_user_id: string; credential_id: string }>(
+  'SELECT admin_user_id, credential_id FROM admin_passkeys ORDER BY credential_id',
+)).rows;
 
 beforeEach(async () => {
   mocks.denied = false;
@@ -64,6 +72,13 @@ describe('removeAdminUserAction', () => {
     expect(await audit()).toEqual([{ action: 'admin_user.delete', actor: 'ops@example.com', entity_type: 'admin_user' }]);
   });
 
+  it('takes the removed admin\'s passkeys with it', async () => {
+    await insertPasskey(otherId, 'cred-other');
+    await insertPasskey(mocks.actorId, 'cred-mine');
+    await expect(removeAdminUserAction(otherId)).resolves.toEqual({ ok: true });
+    expect(await passkeyOwners()).toEqual([{ admin_user_id: mocks.actorId, credential_id: 'cred-mine' }]);
+  });
+
   it('refuses self-removal, unknown ids and removing the last account', async () => {
     await expect(removeAdminUserAction(mocks.actorId)).resolves.toEqual({ ok: false, error: 'CANNOT_CHANGE_SELF' });
     await expect(removeAdminUserAction('99999999-9999-4999-8999-999999999999')).resolves.toEqual({ ok: false, error: 'NOT_FOUND' });
@@ -85,6 +100,19 @@ describe('resetAdminTotpAction', () => {
     expect(row).toEqual({ totp_secret_enc: null, totp_enabled_at: null, totp_last_used_step: null });
     expect((await client.query('SELECT * FROM login_attempts')).rows).toEqual([]);
     expect(await audit()).toEqual([{ action: 'admin_user.totp_reset', actor: 'ops@example.com', entity_type: 'admin_user' }]);
+  });
+
+  it('also deletes that admin\'s passkeys — a lost device must not keep passing 2FA — and only theirs', async () => {
+    await client.query(`UPDATE admin_users SET totp_secret_enc = 'v1:a:b:c', totp_enabled_at = now() WHERE id = '${otherId}'`);
+    await insertPasskey(otherId, 'cred-other-1');
+    await insertPasskey(otherId, 'cred-other-2');
+    await insertPasskey(mocks.actorId, 'cred-mine');
+    await expect(resetAdminTotpAction(otherId)).resolves.toEqual({ ok: true });
+    expect(await passkeyOwners()).toEqual([{ admin_user_id: mocks.actorId, credential_id: 'cred-mine' }]);
+    const { rows: [log] } = await client.query<{ payload_json: { before: { passkeys: number }; after: { passkeys: number } } }>(
+      `SELECT payload_json FROM admin_audit_logs WHERE action = 'admin_user.totp_reset'`,
+    );
+    expect(log.payload_json).toMatchObject({ before: { passkeys: 2 }, after: { passkeys: 0 } });
   });
 
   it('refuses resetting yourself or an unknown admin', async () => {

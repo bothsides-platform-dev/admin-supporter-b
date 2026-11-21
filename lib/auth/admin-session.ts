@@ -57,10 +57,22 @@ export function hasPassedMfa(identity: AdminIdentity, cookieValue: string | unde
   });
 }
 
-export async function requireAdminSession(): Promise<AdminSession> {
+/** Both factors passed, still carrying the login-session binding (`sid`). */
+export type VerifiedAdminIdentity = AdminIdentity & { totpEnabledAt: Date };
+
+/**
+ * For code that must tie something to this login session after 2FA — the
+ * passkey registration challenge. Everything else uses requireAdminSession.
+ */
+export async function requireVerifiedAdminIdentity(): Promise<VerifiedAdminIdentity> {
   const identity = await requireAdminIdentity();
   const jar = await cookies();
-  if (!hasPassedMfa(identity, jar.get(MFA_COOKIE_NAME)?.value, new Date())) redirect('/login/2fa');
+  if (!identity.totpEnabledAt || !hasPassedMfa(identity, jar.get(MFA_COOKIE_NAME)?.value, new Date())) redirect('/login/2fa');
+  return { ...identity, totpEnabledAt: identity.totpEnabledAt };
+}
+
+export async function requireAdminSession(): Promise<AdminSession> {
+  const identity = await requireVerifiedAdminIdentity();
 
   // Current operating policy: every allowlisted administrator is a super admin.
   // Keep role/permission checks in callers so a future role resolver can replace

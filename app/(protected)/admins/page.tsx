@@ -31,7 +31,7 @@ function AdminRowActions({ row }: { row: AdminUserListRow }) {
       <ConfirmButton
         action={doReset}
         label="2단계 인증 초기화"
-        confirmMessage={`${row.email}의 2단계 인증을 초기화할까요?`}
+        confirmMessage={`${row.email}의 2단계 인증을 초기화할까요? 등록한 패스키도 함께 삭제됩니다.`}
         confirmLabel="초기화"
         labelClassName={neutralButton}
         confirmClassName={dangerButton}

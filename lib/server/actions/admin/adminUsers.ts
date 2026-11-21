@@ -3,7 +3,7 @@
 import { asc, eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { adminAuditLogs, adminUsers, loginAttempts } from '@/lib/db/schema';
+import { adminAuditLogs, adminPasskeys, adminUsers, loginAttempts } from '@/lib/db/schema';
 import { requireAdminPermission } from '@/lib/auth/admin-session';
 import { mfaAttemptKey, normalizeAdminEmail } from '@/lib/auth/admin-users';
 import { actionDb, isUniqueViolation } from '@/lib/server/actions/auth/_shared';
@@ -75,9 +75,11 @@ export async function removeAdminUserAction(adminUserId: string): Promise<Result
 }
 
 /**
- * Lost-phone recovery: clear another admin's TOTP so they re-enroll at next
- * login. Clearing totp_enabled_at also invalidates every 2FA cookie they hold
- * (the cookie is bound to it), and the attempt lock is lifted.
+ * Lost-device recovery: clear another admin's TOTP so they re-enroll at next
+ * login, and delete their passkeys — a passkey left on a lost laptop must not
+ * keep passing 2FA. Clearing totp_enabled_at also invalidates every 2FA cookie
+ * they hold (the cookie is bound to it, however it was earned), and the
+ * attempt lock is lifted.
  */
 export async function resetAdminTotpAction(adminUserId: string): Promise<Result> {
   const session = await requireAdminPermission('admin.manage');
@@ -94,6 +96,10 @@ export async function resetAdminTotpAction(adminUserId: string): Promise<Result>
       .update(adminUsers)
       .set({ totpSecretEnc: null, totpEnabledAt: null, totpLastUsedStep: null, updatedAt: new Date() })
       .where(eq(adminUsers.id, adminUserId));
+    const removedPasskeys = await tx
+      .delete(adminPasskeys)
+      .where(eq(adminPasskeys.adminUserId, adminUserId))
+      .returning({ id: adminPasskeys.id });
     await tx.delete(loginAttempts).where(eq(loginAttempts.key, mfaAttemptKey(target.email)));
     await tx.insert(adminAuditLogs).values({
       actor: session.adminId,
@@ -101,8 +107,12 @@ export async function resetAdminTotpAction(adminUserId: string): Promise<Result>
       entityType: 'admin_user',
       entityId: adminUserId,
       payloadJson: {
-        before: { email: target.email, totpEnabledAt: target.totpEnabledAt?.toISOString() ?? null },
-        after: { totpEnabledAt: null },
+        before: {
+          email: target.email,
+          totpEnabledAt: target.totpEnabledAt?.toISOString() ?? null,
+          passkeys: removedPasskeys.length,
+        },
+        after: { totpEnabledAt: null, passkeys: 0 },
       },
     });
     return { ok: true as const };
