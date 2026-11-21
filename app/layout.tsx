@@ -11,7 +11,7 @@ const pretendard = localFont({
 });
 
 export const metadata: Metadata = {
-  title: '서포트비 어드민',
+  title: { default: '서포트비 어드민', template: '%s · 서포트비 어드민' },
   robots: { index: false, follow: false },
 };
 

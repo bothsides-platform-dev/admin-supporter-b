@@ -1,8 +1,9 @@
 import { QuoteTermsSchema, projectQuoteTerms, type QuoteTerms } from '@/lib/quote/terms';
-import { and, asc, desc, eq, gte, ilike, inArray, lt, or, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, inArray, lt, ne, or, sql } from 'drizzle-orm';
 import { ADMIN_PAGE_SIZE, dateBounds, pageNumber, type ListParams } from '@/lib/admin-list';
 import {
   rfps,
+  rfpInvitations,
   workspaces,
   bids,
   bizProfiles,
@@ -73,6 +74,12 @@ export type BidDetailRow = {
   submittedAt: Date;
 };
 
+type PgInvitationRow = Pick<typeof rfpInvitations.$inferSelect, 'pgWsId' | 'sentAt' | 'openedAt'> & {
+  pgWsName: string;
+};
+type PgBidResponse = { round: number; status: Exclude<BidDetailRow['status'], 'draft'> };
+export type RfpPgResponseRow = PgInvitationRow & { latestBid: PgBidResponse | null };
+
 export type AttachmentRow = {
   id: string;
   name: string;
@@ -118,6 +125,19 @@ type RawBidRow = {
   submittedByName: string | null;
   submittedAt: Date;
 };
+
+function summarizePgResponses(invitations: PgInvitationRow[], rfpBids: RawBidRow[]): RfpPgResponseRow[] {
+  const latestByPg = new Map<string, PgBidResponse>();
+  for (const { pgWsId, round, status } of rfpBids) {
+    if (status === 'draft') continue;
+    const previous = latestByPg.get(pgWsId);
+    if (!previous || round > previous.round) latestByPg.set(pgWsId, { round, status });
+  }
+  return invitations.map((invitation) => ({
+    ...invitation,
+    latestBid: latestByPg.get(invitation.pgWsId) ?? null,
+  }));
+}
 
 export async function listAllRfps(
   opts: { q?: string; status?: string } = {},
@@ -215,9 +235,9 @@ export async function getRfpDetail(rfpId: string, db: DB = actionDb()) {
   // jsonb 컬럼이라 drizzle 이 unknown 으로 돌려준다 — 표시 전 타입 좁히기.
   const customPaymentMethods = asCustomPaymentMethods(rfp.customPaymentMethods);
 
-  // 아래 3개 쿼리는 서로 독립적(모두 rfpId 만으로 조회)이라 병렬로 실행한다 —
+  // 아래 쿼리는 서로 독립적(모두 rfpId 만으로 조회)이라 병렬로 실행한다 —
   // proposalAttachments 만 rawBids 의 bidIds 에 의존하므로 별도로 이어서 조회.
-  const [rawBids, contractRow, rfpAttachments] = (await Promise.all([
+  const [rawBids, contractRow, rfpAttachments, invitations] = (await Promise.all([
     db
       .select({
         id: bids.id,
@@ -260,7 +280,18 @@ export async function getRfpDetail(rfpId: string, db: DB = actionDb()) {
       })
       .from(attachments)
       .where(and(eq(attachments.rfpId, rfpId), eq(attachments.status, 'ready'))),
-  ])) as [RawBidRow[], ContractRow[], AttachmentRow[]];
+    db
+      .select({
+        pgWsId: rfpInvitations.pgWsId,
+        pgWsName: workspaces.name,
+        sentAt: rfpInvitations.sentAt,
+        openedAt: rfpInvitations.openedAt,
+      })
+      .from(rfpInvitations)
+      .innerJoin(workspaces, eq(workspaces.id, rfpInvitations.pgWsId))
+      .where(and(eq(rfpInvitations.rfpId, rfpId), ne(rfpInvitations.status, 'draft')))
+      .orderBy(asc(workspaces.name), asc(rfpInvitations.pgWsId)),
+  ])) as [RawBidRow[], ContractRow[], AttachmentRow[], PgInvitationRow[]];
 
   // numeric(precision,scale) 컬럼은 drizzle 이 문자열로 돌려준다 — 표시 전 변환.
   const normalizedBids: BidDetailRow[] = rawBids.map((b: RawBidRow) => ({
@@ -320,6 +351,7 @@ export async function getRfpDetail(rfpId: string, db: DB = actionDb()) {
       : null,
     currentTerms,
     customPaymentMethods,
+    pgResponses: summarizePgResponses(invitations, rawBids),
     bids: normalizedBids,
     contract,
     attachments: rfpAttachments,

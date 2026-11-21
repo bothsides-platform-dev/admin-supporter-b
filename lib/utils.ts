@@ -13,6 +13,11 @@ export function formatDateKST(date: string | Date): string {
   return new Date(date).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul' })
 }
 
+/** 접수 시각부터 지금까지 지난 날 수(내림). 미래 시각은 0. */
+export function waitingDays(since: string | Date, now: number = Date.now()): number {
+  return Math.max(0, Math.floor((now - new Date(since).getTime()) / 86_400_000))
+}
+
 // bidit(lib/utils/format.ts)와 동일 구현 — admin 최초의 금액/요율 포맷터.
 // numeric(precision,scale) 컬럼은 drizzle-orm 이 문자열로 돌려주므로 호출부에서
 // Number(...)로 변환한 뒤 넘긴다.

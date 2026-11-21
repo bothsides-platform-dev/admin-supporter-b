@@ -58,3 +58,10 @@ it('유형·상태·검색어·한국 날짜 필터를 현재 목록에서 이�
   expect(await getNextReviewApplicationId(done, '/review?status=approved', db)).toBeNull();
   expect(await getNextReviewApplicationId(done, '/review?status=all', db)).toBe(buyer);
 });
+
+it('건너뛰기는 지금 건 뒤의 대기 건으로 가고 끝에 닿으면 멈춘다', async () => {
+  const skip = (id: string) => getNextReviewApplicationId(id, '/review?status=open&sort=oldest', db, { skip: true });
+  expect(await skip(buyer)).toBe(pg);
+  expect(await skip(pg)).toBe(newest);
+  expect(await skip(newest)).toBeNull();
+});

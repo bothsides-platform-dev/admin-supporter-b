@@ -38,11 +38,8 @@ export function appBaseUrl(): string {
   );
 }
 
-// (Step 10) The previous `devLogVerifyLink` console fallback is gone. The
-// equivalent dev affordance now lives in `lib/integrations/resend.ts` —
-// `ResendSender` logs `[email DEV] event=... to=... subject=... dedupeKey=...`
-// when `RESEND_API_KEY` is unset, so every action's verify URL surfaces
-// through the unified outbox path instead of action-specific helpers.
+// ResendSender logs only the event name when RESEND_API_KEY is unset.
+// Recipients, verification URLs and mail contents stay out of collected logs.
 
 // 15-minute bucket used for `signup-verify` dedupe keys so a flurry of resend
 // clicks within the same window don't spam the queue. Step 1 bucket = floor

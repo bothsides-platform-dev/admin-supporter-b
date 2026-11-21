@@ -1,0 +1,26 @@
+// Copy to /etc/alloy/observability/postgres.alloy after creating the monitor role.
+prometheus.exporter.postgres "database" {
+	data_source_names        = [sys.env("POSTGRES_MONITOR_DSN")]
+	disable_settings_metrics = true
+}
+
+discovery.relabel "postgres" {
+	targets = prometheus.exporter.postgres.database.targets
+
+	rule {
+		target_label = "job"
+		replacement  = "integrations/postgres"
+	}
+
+	rule {
+		target_label = "instance"
+		replacement  = sys.env("OBSERVABILITY_INSTANCE")
+	}
+}
+
+prometheus.scrape "postgres" {
+	targets         = discovery.relabel.postgres.output
+	scrape_interval = "60s"
+	scrape_timeout  = "10s"
+	forward_to      = [prometheus.relabel.cloud.receiver]
+}

@@ -52,7 +52,7 @@ it('대시보드 건수가 연결된 목록의 신청·담당자 상태와 일�
       INSERT INTO rfps VALUES ('sent'), ('sent'), ('closed');
     `);
     const db = drizzle(client) as unknown as Parameters<typeof getDashboardStats>[0];
-    expect(await getDashboardStats(db)).toEqual({ pendingReviewCount: 1, activeRfpCount: 2, pendingNameChangeCount: 1, pendingMemberCount: 1 });
+    expect(await getDashboardStats(db)).toEqual({ openReviewCount: 1, pendingReviewCount: 1, activeRfpCount: 2, pendingNameChangeCount: 1, pendingMemberCount: 1 });
     const oldest = await getOldestApplications(db);
     expect(oldest).toHaveLength(1);
     expect(oldest[0]).toMatchObject({ id: '20000000-0000-4000-8000-000000000001', waitingDays: 3 });

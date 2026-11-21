@@ -1,3 +1,4 @@
+import { AdminPageHeader } from '@/components/AdminPageHeader';
 import { ActionForm } from '@/components/ActionForm';
 import { AdminDataTable, type AdminTableColumn } from '@/components/AdminDataTable';
 import { ConfirmButton } from '@/components/ConfirmButton';
@@ -47,6 +48,8 @@ function AdminRowActions({ row }: { row: AdminUserListRow }) {
     </div>
   );
 }
+
+export const metadata = { title: '관리자 계정' };
 
 export default async function AdminsPage() {
   const session = await requireAdminPermission('admin.manage');
@@ -98,13 +101,10 @@ export default async function AdminsPage() {
 
   return (
     <div className="space-y-6 max-w-5xl">
-      <div className="space-y-1">
-        <h1 className="text-headline-small font-semibold">관리자 계정</h1>
-        <p className="text-body-small text-on-surface-variant">
-          여기 등록된 Google 계정만 어드민에 로그인할 수 있고, 로그인할 때마다 인증 앱의 2단계 인증 코드가 필요합니다.
-          2단계 인증 미등록 계정은 처음 로그인하는 사람이 등록하므로, 추가한 뒤 바로 등록하도록 안내해 주세요.
-        </p>
-      </div>
+      <AdminPageHeader
+        title="관리자 계정"
+        description="여기 등록된 Google 계정만 어드민에 로그인할 수 있고, 로그인할 때마다 인증 앱의 2단계 인증 코드가 필요합니다. 2단계 인증 미등록 계정은 처음 로그인하는 사람이 등록하므로, 추가한 뒤 바로 등록하도록 안내해 주세요."
+      />
 
       <section className="space-y-2">
         <h2 className="text-title-small font-semibold">관리자 추가</h2>

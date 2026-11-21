@@ -1,9 +1,10 @@
+import { AdminPageHeader } from '@/components/AdminPageHeader';
 import { listPgMembersPage } from '@/lib/server/queries/admin/pgMembers';
 import { AdminListControls } from '@/components/AdminListControls';
 import { AdminListPagination } from '@/components/AdminListPagination';
 import { AdminDataTable, type AdminTableColumn } from '@/components/AdminDataTable';
 import type { PgMemberRow } from '@/lib/server/queries/admin/pgMembers';
-import { type ListParams } from '@/lib/admin-list';
+import { clearedListHref, hasListFilters, type ListParams } from '@/lib/admin-list';
 import { requireAdminSession } from '@/lib/auth/admin-session';
 import { hasPermission } from '@/lib/auth/permissions';
 import { approveMemberAction } from '@/lib/server/actions/admin/approveMemberAction';
@@ -12,6 +13,8 @@ import { AdminStatusBadge } from '@/components/AdminStatusBadge';
 import { ConfirmButton } from '@/components/ConfirmButton';
 import { toActionState } from '@/lib/action-state';
 import { formatKST } from '@/lib/utils';
+
+export const metadata = { title: 'PG 담당자 승인' };
 
 export default async function PgMembersPage({
   searchParams,
@@ -22,7 +25,8 @@ export default async function PgMembersPage({
   const { status } = params;
   const { rows: members, total, page } = await listPgMembersPage(params);
   const canReview = hasPermission(await requireAdminSession(), 'workspace.review');
-  const filtered = Boolean(status && status !== 'all' && status !== 'pending_approval' || params.q || params.from || params.to);
+  const filtered = hasListFilters(params);
+  const defaultView = !status || status === 'pending' || status === 'pending_approval';
   const columns: AdminTableColumn<PgMemberRow>[] = [
     { key: 'name', label: '담당자', render: (m) => <><div>{m.name}</div><div className="text-label-small text-on-surface-variant">{m.email}</div></> },
     { key: 'workspace', label: '워크스페이스', render: (m) => m.workspaceName },
@@ -47,22 +51,11 @@ export default async function PgMembersPage({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-headline-small font-semibold">PG 담당자 승인</h1>
-      <AdminListControls path="/admin/pg-members" params={params} sortOptions={[{ value: 'name', label: '이름순' }]} dateLabel="합류일">
+      <AdminPageHeader title="PG 담당자 승인" />
+      <AdminListControls path="/admin/pg-members" params={{ ...params, status: status === 'pending' ? undefined : status }} statusLabel="담당자 승인 상태별 보기" statusViews={[{ value: '', label: '승인 대기' }, { value: 'approved', label: '승인됨' }, { value: 'rejected', label: '거부됨' }, { value: 'all', label: '전체' }]} sortOptions={[{ value: 'name', label: '이름순' }]} dateLabel="합류일">
         <input name="q" defaultValue={params.q ?? ''} placeholder="담당자 또는 회사 검색" aria-label="담당자 또는 회사 검색" className="rounded border border-outline-variant bg-surface px-3 py-1.5 text-body-small" />
-        <select
-          name="status"
-          aria-label="PG 담당자 승인 상태"
-          defaultValue={status === 'pending' ? '' : status ?? ''}
-          className="rounded border border-outline-variant px-3 py-1.5 text-body-small bg-surface"
-        >
-          <option value="">승인 대기</option>
-          <option value="approved">승인됨</option>
-          <option value="rejected">거부됨</option>
-          <option value="all">전체</option>
-        </select>
       </AdminListControls>
-      <AdminDataTable caption="PG 담당자 목록" rows={members} columns={columns} getKey={(m) => `${m.workspaceId}:${m.userId}`} emptyMessage={filtered ? '검색 조건에 맞는 담당자가 없습니다.' : '승인 대기 중인 담당자가 없습니다.'} />
+      <AdminDataTable caption="PG 담당자 목록" rows={members} columns={columns} getKey={(m) => `${m.workspaceId}:${m.userId}`} emptyMessage={filtered ? '검색 조건에 맞는 담당자가 없습니다.' : defaultView ? '승인 대기 중인 담당자가 없습니다.' : '이 상태의 담당자가 없습니다.'} emptyAction={filtered ? { label: '필터 초기화', href: clearedListHref('/admin/pg-members', params) } : undefined} />
       <AdminListPagination path="/admin/pg-members" params={params} page={page} total={total} />
     </div>
   );

@@ -1,3 +1,7 @@
+import { AdminPageHeader } from '@/components/AdminPageHeader';
+import { CopyableValue } from '@/components/CopyableValue';
+import { AdminDataTable, type AdminTableColumn } from '@/components/AdminDataTable';
+import { AdminListPagination } from '@/components/AdminListPagination';
 import Link from 'next/link';
 import { listAuditLogs, type AuditFilters } from '@/lib/server/queries/admin/audit-log';
 import { formatKST } from '@/lib/utils';
@@ -5,6 +9,8 @@ import { AUDIT_ACTION_LABELS, AUDIT_ENTITY_LABELS, AuditLogDetails, auditEntityH
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 const single = (value: string | string[] | undefined) => typeof value === 'string' ? value : '';
+
+export const metadata = { title: '감사 로그' };
 
 export default async function AuditLogPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
@@ -22,9 +28,22 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Sea
   for (const [key, value] of Object.entries(filters)) if (key !== 'page' && value) query.set(key, String(value));
   const pageHref = (number: number) => `/audit-log?${new URLSearchParams([...query, ['page', String(number)]]).toString()}`;
 
+  const columns: AdminTableColumn<(typeof rows)[number]>[] = [
+    { key: 'occurredAt', label: '시각', cellClassName: 'whitespace-nowrap text-label-small text-on-surface-variant md-numeric', render: ({ log }) => formatKST(log.occurredAt) },
+    { key: 'action', label: '작업 및 변경 내용', cellClassName: 'min-w-56', render: ({ log }) => <><span className="font-medium">{AUDIT_ACTION_LABELS[log.action] ?? log.action}</span><AuditLogDetails log={log} /></> },
+    {
+      key: 'entity', label: '대상', cellClassName: 'text-label-small text-on-surface-variant',
+      render: ({ log, workspaceType, bidRfpId }) => {
+        const href = auditEntityHref(log, workspaceType, bidRfpId);
+        return <><span>{AUDIT_ENTITY_LABELS[log.entityType] ?? log.entityType}</span>{href && <Link href={href} className="ml-2 text-primary hover:underline">열기</Link>}<CopyableValue value={log.entityId} display={`${log.entityId.slice(0, 8)}…`} label="대상 ID" numeric className="ml-2" /></>;
+      },
+    },
+    { key: 'actor', label: '처리자', cellClassName: 'text-label-small text-on-surface-variant', render: ({ log }) => log.actor },
+  ];
+
   return (
     <div className="space-y-4">
-      <h1 className="text-headline-small font-semibold">감사 로그</h1>
+      <AdminPageHeader title="감사 로그" />
       <form method="get" className="grid gap-3 rounded border border-outline-variant p-4 sm:grid-cols-2 lg:grid-cols-4">
         <label className="text-label-small text-on-surface-variant">처리자<input name="actor" defaultValue={filters.actor} placeholder="처리자 검색" className="mt-1 w-full rounded border border-outline-variant bg-surface px-3 py-2 text-body-small text-on-surface" /></label>
         <label className="text-label-small text-on-surface-variant">대상 유형<select name="entityType" defaultValue={filters.entityType} className="mt-1 w-full rounded border border-outline-variant bg-surface px-3 py-2 text-body-small text-on-surface"><option value="">전체</option>{Object.entries(AUDIT_ENTITY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
@@ -35,18 +54,9 @@ export default async function AuditLogPage({ searchParams }: { searchParams: Sea
         <label className="text-label-small text-on-surface-variant">종료일<input type="date" name="to" defaultValue={filters.to} className="mt-1 w-full rounded border border-outline-variant bg-surface px-3 py-2 text-body-small text-on-surface" /></label>
         <div className="flex items-end gap-2 sm:col-span-2"><button className="rounded bg-primary px-4 py-2 text-label-small text-on-primary">검색</button><Link href="/audit-log" className="rounded border border-outline-variant px-4 py-2 text-label-small">초기화</Link></div>
       </form>
-      <p className="text-label-small text-on-surface-variant">전체 {total}건, {total ? (page - 1) * pageSize + 1 : 0}–{Math.min(page * pageSize, total)}건 표시</p>
       {error && <p role="alert" className="text-body-small text-error">{error}</p>}
-      <div className="overflow-x-auto rounded border border-outline-variant">
-        <table className="w-full text-body-small">
-          <thead><tr className="border-b border-outline-variant bg-surface-container-low"><th className="px-4 py-2 text-left">시각</th><th className="px-4 py-2 text-left">작업 및 변경 내용</th><th className="px-4 py-2 text-left">대상</th><th className="px-4 py-2 text-left">처리자</th></tr></thead>
-          <tbody>{rows.map(({ log, workspaceType, bidRfpId }) => {
-            const href = auditEntityHref(log, workspaceType, bidRfpId);
-            return <tr key={log.id} className="border-b border-outline-variant last:border-0 align-top"><td className="whitespace-nowrap px-4 py-3 text-label-small text-on-surface-variant md-numeric">{formatKST(log.occurredAt)}</td><td className="min-w-56 px-4 py-3"><span className="font-medium">{AUDIT_ACTION_LABELS[log.action] ?? log.action}</span><AuditLogDetails log={log} /></td><td className="px-4 py-3 text-label-small text-on-surface-variant"><span>{AUDIT_ENTITY_LABELS[log.entityType] ?? log.entityType}</span>{href ? <Link href={href} className="ml-2 text-primary hover:underline md-numeric">{log.entityId.slice(0, 8)}…</Link> : <span className="ml-2 md-numeric">{log.entityId.slice(0, 8)}…</span>}</td><td className="px-4 py-3 text-label-small text-on-surface-variant">{log.actor}</td></tr>;
-          })}{rows.length === 0 && <tr><td colSpan={4} className="px-4 py-8 text-center text-on-surface-variant">조건에 맞는 감사 로그가 없습니다.</td></tr>}</tbody>
-        </table>
-      </div>
-      <nav className="flex items-center justify-end gap-3 text-label-small" aria-label="감사 로그 페이지"><span>{page} / {Math.max(1, Math.ceil(total / pageSize))} 페이지</span>{page > 1 && <Link href={pageHref(page - 1)} className="rounded border border-outline-variant px-3 py-2">이전</Link>}{page * pageSize < total && <Link href={pageHref(page + 1)} className="rounded border border-outline-variant px-3 py-2">다음</Link>}</nav>
+      <AdminDataTable caption="감사 로그" rows={rows} columns={columns} getKey={({ log }) => log.id} emptyMessage="조건에 맞는 감사 로그가 없습니다." rowClassName="align-top" hoverRows={false} />
+      <AdminListPagination path="/audit-log" page={page} total={total} pageSize={pageSize} hrefFor={pageHref} />
     </div>
   );
 }

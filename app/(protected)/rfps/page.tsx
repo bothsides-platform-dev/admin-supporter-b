@@ -1,12 +1,16 @@
+import { AdminPageHeader } from '@/components/AdminPageHeader';
 import { listAllRfpsPage } from '@/lib/server/queries/admin/rfps';
 import { AdminListControls } from '@/components/AdminListControls';
 import { AdminListPagination } from '@/components/AdminListPagination';
+import { RfpViewTabs } from '@/components/RfpViewTabs';
 import { AdminDataTable, type AdminTableColumn } from '@/components/AdminDataTable';
 import type { RfpListRow } from '@/lib/server/queries/admin/rfps';
-import { listQuery, type ListParams } from '@/lib/admin-list';
+import { clearedListHref, hasListFilters, listQuery, type ListParams } from '@/lib/admin-list';
 import Link from 'next/link';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
 import { formatDateKST } from '@/lib/utils';
+
+export const metadata = { title: 'RFP' };
 
 export default async function RfpsPage({
   searchParams,
@@ -17,7 +21,7 @@ export default async function RfpsPage({
   const { q, status } = params;
   const { rows: rfpList, total, page } = await listAllRfpsPage(params);
   const returnTo = `/rfps?${listQuery(params)}`;
-  const filtered = Boolean(q || status || params.from || params.to);
+  const filtered = hasListFilters(params);
   const columns: AdminTableColumn<RfpListRow>[] = [
     { key: 'code', label: '코드', render: (rfp) => <span className="md-numeric text-label-small text-on-surface-variant">{rfp.code}</span> },
     { key: 'title', label: '제목', render: (rfp) => <Link href={`/rfps/${rfp.id}?returnTo=${encodeURIComponent(returnTo)}`} className="text-primary hover:underline">{rfp.title}</Link> },
@@ -28,8 +32,9 @@ export default async function RfpsPage({
 
   return (
     <div className="space-y-4">
-      <h1 className="text-headline-small font-semibold">RFP 전체 목록</h1>
-      <AdminListControls path="/rfps" params={params} sortOptions={[{ value: 'deadline', label: '마감 임박순' }]} dateLabel="마감일">
+      <AdminPageHeader title="RFP 전체 목록" />
+      <RfpViewTabs current="rfps" />
+      <AdminListControls path="/rfps" params={params} statusLabel="RFP 상태별 보기" statusViews={[{ value: '', label: '전체' }, { value: 'draft', label: '초안' }, { value: 'sent', label: '발송' }, { value: 'closed', label: '마감' }, { value: 'cancelled', label: '취소' }, { value: 'awarded', label: '낙찰' }]} sortOptions={[{ value: 'deadline', label: '마감 임박순' }]} dateLabel="마감일">
         <input
           name="q"
           aria-label="RFP 제목 또는 코드 검색"
@@ -37,21 +42,8 @@ export default async function RfpsPage({
           placeholder="제목 또는 코드 검색"
           className="rounded border border-outline-variant px-3 py-1.5 text-body-small bg-surface focus:outline-none focus:ring-1 focus:ring-primary w-64"
         />
-        <select
-          name="status"
-          aria-label="RFP 상태"
-          defaultValue={status ?? ''}
-          className="rounded border border-outline-variant px-3 py-1.5 text-body-small bg-surface"
-        >
-          <option value="">전체</option>
-          <option value="draft">초안</option>
-          <option value="sent">발송</option>
-          <option value="closed">마감</option>
-          <option value="cancelled">취소</option>
-          <option value="awarded">낙찰</option>
-        </select>
       </AdminListControls>
-      <AdminDataTable caption="RFP 목록" rows={rfpList} columns={columns} getKey={(rfp) => rfp.id} emptyMessage={filtered ? '검색 조건에 맞는 RFP가 없습니다.' : '등록된 RFP가 없습니다.'} />
+      <AdminDataTable caption="RFP 목록" rows={rfpList} columns={columns} getKey={(rfp) => rfp.id} emptyMessage={filtered ? '검색 조건에 맞는 RFP가 없습니다.' : status ? '이 상태의 RFP가 없습니다.' : '등록된 RFP가 없습니다.'} emptyAction={filtered ? { label: '필터 초기화', href: clearedListHref('/rfps', params) } : undefined} />
       <AdminListPagination path="/rfps" params={params} page={page} total={total} />
     </div>
   );

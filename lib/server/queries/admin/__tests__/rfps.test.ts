@@ -37,6 +37,11 @@ const SCHEMA_SQL = `
     updated_at timestamptz NOT NULL DEFAULT now(),
     sent_at timestamptz
   );
+  CREATE TABLE rfp_invitations (
+    rfp_id uuid NOT NULL, pg_ws_id uuid NOT NULL, status text NOT NULL DEFAULT 'pending',
+    sent_at timestamptz NOT NULL DEFAULT now(), opened_at timestamptz,
+    UNIQUE (rfp_id, pg_ws_id)
+  );
   CREATE TABLE bids (
     id uuid PRIMARY KEY,
     rfp_id uuid NOT NULL,
@@ -103,6 +108,9 @@ async function seedFullRfp(client: PGlite) {
       '[{"id":"custom-x","label":"기타수단"}]',
       '{"_v":1,"feeRate":"3.5"}', 'new'
     );
+    INSERT INTO rfp_invitations (rfp_id, pg_ws_id, status, sent_at, opened_at) VALUES
+      ('${RFP_ID}', '${PG_ALPHA_WS}', 'opened', '2026-09-14T00:00:00Z', '2026-09-14T00:15:00Z'),
+      ('${RFP_ID}', '${PG_BETA_WS}', 'pending', '2026-09-14T00:00:00Z', NULL);
     INSERT INTO bids (id, rfp_id, pg_ws_id, settle_cycle, settle_limit, guarantee_insurance, payment_fees, custom_fees, memo, round, status, submitted_by) VALUES
       ('${BID_ALPHA_R1}', '${RFP_ID}', '${PG_ALPHA_WS}', 'D+1', '5000000.00', '1000000.00', '{"card":0.0125,"virtual_account":300}', '{"custom-x":0.02}', '견적 메모1', 1, 'submitted', '${PG_ALPHA_USER}'),
       ('${BID_ALPHA_R2}', '${RFP_ID}', '${PG_ALPHA_WS}', 'D+2', '6000000.00', '1200000.00', '{}', '{}', '', 2, 'submitted', '${PG_ALPHA_USER}'),
@@ -118,6 +126,49 @@ async function seedFullRfp(client: PGlite) {
 }
 
 describe('getRfpDetail', () => {
+  it('발송한 초대의 열람 기록을 반환하고 다른 RFP의 견적이나 초안은 응답으로 세지 않는다', async ({ onTestFinished }) => {
+    const client = new PGlite();
+    onTestFinished(() => client.close());
+    await seedFullRfp(client);
+    const unsentPg = '10000000-0000-4000-8000-000000000004';
+    const otherRfp = '20000000-0000-4000-8000-000000000002';
+    await client.exec(`
+      INSERT INTO workspaces VALUES ('${unsentPg}', 'GammaPG');
+      INSERT INTO rfps (id, code, buyer_ws_id, title, deadline, share_token, status, created_by)
+      VALUES ('${otherRfp}', 'P-2609-0002', '${BUYER_WS}', '다른 RFP', now(), 'other', 'sent', '${CREATOR}');
+      INSERT INTO rfp_invitations (rfp_id, pg_ws_id, status) VALUES
+        ('${RFP_ID}', '${unsentPg}', 'draft'),
+        ('${otherRfp}', '${unsentPg}', 'pending'),
+        ('${otherRfp}', '${PG_ALPHA_WS}', 'accepted');
+      UPDATE bids SET rfp_id = '${otherRfp}' WHERE pg_ws_id = '${PG_ALPHA_WS}';
+      UPDATE bids SET status = 'draft' WHERE id = '${BID_BETA_R1}';
+    `);
+
+    const detail = await getRfpDetail(RFP_ID, drizzle(client));
+    const sentAt = new Date('2026-09-14T00:00:00Z');
+    expect(detail?.pgResponses).toEqual([
+      { pgWsId: PG_ALPHA_WS, pgWsName: 'AlphaPG', sentAt, openedAt: new Date('2026-09-14T00:15:00Z'), latestBid: null },
+      { pgWsId: PG_BETA_WS, pgWsName: 'BetaPG', sentAt, openedAt: null, latestBid: null },
+    ]);
+  });
+
+  it('재견적은 PG당 한 줄로 묶고, 이후 초안이 있어도 마지막 제출 회차와 철회를 보존한다', async ({ onTestFinished }) => {
+    const client = new PGlite();
+    onTestFinished(() => client.close());
+    await seedFullRfp(client);
+    await client.exec(`
+      UPDATE bids SET status = 'withdrawn' WHERE id = '${BID_ALPHA_R2}';
+      INSERT INTO bids (id, rfp_id, pg_ws_id, settle_cycle, round, status, submitted_by)
+      VALUES (gen_random_uuid(), '${RFP_ID}', '${PG_ALPHA_WS}', 'D+1', 3, 'draft', '${PG_ALPHA_USER}');
+    `);
+
+    const detail = await getRfpDetail(RFP_ID, drizzle(client));
+    expect(detail?.pgResponses.map(({ pgWsId, latestBid }) => [pgWsId, latestBid])).toEqual([
+      [PG_ALPHA_WS, { round: 2, status: 'withdrawn' }],
+      [PG_BETA_WS, { round: 1, status: 'submitted' }],
+    ]);
+  });
+
   it('v2 상태가 숫자 열보다 우선하며 NULL을 0으로 노출하지 않는다', async () => {
     const client = new PGlite();
     await seedFullRfp(client);
@@ -233,6 +284,7 @@ describe('getRfpDetail', () => {
     if (!detail) throw new Error('detail must not be null');
 
     expect(detail.bizProfile).toBeNull();
+    expect(detail.pgResponses).toEqual([]);
     expect(detail.bids).toEqual([]);
     expect(detail.contract).toBeNull();
     // bidIds가 비어있으면 proposalAttachments 쿼리 자체를 건너뛴다(단축 분기).

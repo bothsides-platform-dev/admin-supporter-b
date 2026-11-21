@@ -1,8 +1,10 @@
-import { and, asc, desc, eq, gte, ilike, lt, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, ilike, inArray, lt, sql } from 'drizzle-orm';
 import { ADMIN_PAGE_SIZE, dateBounds, pageNumber, type ListParams } from '@/lib/admin-list';
 import { workspaces, verificationApplications, pgProfiles, bizProfiles } from '@/lib/db/schema';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 import { getWorkspaceAdminUser } from './workspaceOwner';
+import { REVIEW_OPEN_STATUS, REVIEW_OPEN_STATUSES, REVIEW_WAITING_STATUSES } from '@/lib/review-queue';
+import { waitingDays } from '@/lib/utils';
 
 type DB = ReturnType<typeof actionDb>;
 
@@ -13,6 +15,8 @@ export interface PendingApplicationRow {
   orgType: string;
   status: string;
   submittedAt: Date;
+  /** 운영자 처리를 기다리는 상태일 때만 값이 있다. */
+  waitingDays: number | null;
   reviewedAt: Date | null;
 }
 
@@ -20,7 +24,9 @@ export async function listApplicationsPage(opts: ListParams = {}, db: DB = actio
   const { fromDate, toDate } = dateBounds(opts.from, opts.to);
   const validStatus = ['submitted', 'review_pending', 'needs_more_info', 'approved', 'rejected'];
   const where = and(
-    validStatus.includes(opts.status ?? '') ? eq(verificationApplications.status, opts.status as 'submitted' | 'review_pending' | 'needs_more_info' | 'approved' | 'rejected') : undefined,
+    opts.status === REVIEW_OPEN_STATUS
+      ? inArray(verificationApplications.status, [...REVIEW_OPEN_STATUSES])
+      : validStatus.includes(opts.status ?? '') ? eq(verificationApplications.status, opts.status as 'submitted' | 'review_pending' | 'needs_more_info' | 'approved' | 'rejected') : undefined,
     ['buyer', 'pg'].includes(opts.type ?? '') ? eq(verificationApplications.orgType, opts.type!) : undefined,
     opts.q ? ilike(workspaces.name, `%${opts.q}%`) : undefined,
     fromDate ? gte(verificationApplications.submittedAt, fromDate) : undefined,
@@ -32,7 +38,12 @@ export async function listApplicationsPage(opts: ListParams = {}, db: DB = actio
   const rows = await db.select({ applicationId: verificationApplications.id, workspaceId: workspaces.id, workspaceName: workspaces.name, orgType: verificationApplications.orgType, status: verificationApplications.status, submittedAt: verificationApplications.submittedAt, reviewedAt: verificationApplications.reviewedAt })
     .from(verificationApplications).innerJoin(workspaces, eq(verificationApplications.workspaceId, workspaces.id)).where(where)
     .orderBy(...order).limit(ADMIN_PAGE_SIZE).offset((page - 1) * ADMIN_PAGE_SIZE);
-  return { rows: rows as PendingApplicationRow[], total, page };
+  const now = Date.now();
+  return {
+    rows: rows.map((row) => ({ ...row, waitingDays: REVIEW_WAITING_STATUSES.includes(row.status) ? waitingDays(row.submittedAt, now) : null })) as PendingApplicationRow[],
+    total,
+    page,
+  };
 }
 
 export async function getApplicationDetail(applicationId: string, db: DB = actionDb()) {

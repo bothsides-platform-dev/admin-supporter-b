@@ -1,12 +1,15 @@
+import { AdminPageHeader } from '@/components/AdminPageHeader';
 import Link from 'next/link';
 import { getDashboardStats, getHotlist, getOldestApplications } from '@/lib/server/queries/admin/dashboard';
+
+export const metadata = { title: '대시보드' };
 
 export default async function AdminDashboardPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const [stats, hotlist, oldest, params] = await Promise.all([getDashboardStats(), getHotlist(), getOldestApplications(), searchParams]);
 
   return (
     <div className="space-y-6">
-      <h1 className="text-headline-small font-semibold">대시보드</h1>
+      <AdminPageHeader title="대시보드" />
 
       {params.error === 'PermissionDenied' && <p role="alert" className="rounded border border-error p-3 text-error">이 작업을 수행할 권한이 없습니다. 담당 관리자에게 요청해 주세요.</p>}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

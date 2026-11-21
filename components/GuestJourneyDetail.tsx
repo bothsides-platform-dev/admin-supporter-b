@@ -3,6 +3,7 @@ import type { getGuestJourney } from '@/lib/server/queries/admin/guestJourneys';
 import { journeyAction, journeyStatus, journeyStep, journeyTime } from '@/lib/guest-journey-display';
 import { Chip } from './primitives/Chip';
 import { AdminDataTable } from './AdminDataTable';
+import { AdminPageHeader } from './AdminPageHeader';
 import { AdminListPagination } from './AdminListPagination';
 
 type Detail = NonNullable<Awaited<ReturnType<typeof getGuestJourney>>>;
@@ -11,11 +12,11 @@ const gaUrl = 'https://analytics.google.com/analytics/web/#/analysis/a396924123p
 export function GuestJourneyDetail({ detail }: { detail: Detail }) {
   const { journey, events, answers, lastEvent } = detail;
   return <div className="space-y-6">
-    <div className="flex flex-wrap items-center gap-3">
-      <Link href="/guest-journeys" className="text-body-small text-on-surface-variant hover:underline">← 여정 목록</Link>
-      <h1 className="text-headline-small font-semibold">견적 작성 여정</h1>
-      <Chip label={journeyStatus(journey.status)} color={journey.status === 'submitted' ? 'tertiary' : 'surface'} />
-    </div>
+    <AdminPageHeader
+      title="견적 작성 여정"
+      breadcrumbs={[{ label: '여정 목록', href: '/guest-journeys' }]}
+      badges={<Chip label={journeyStatus(journey.status)} color={journey.status === 'submitted' ? 'tertiary' : 'surface'} />}
+    />
     <section aria-label="여정 정보" className="rounded border border-outline-variant p-4 space-y-2 text-body-small">
       <p>초안 <span className="md-numeric break-all">{journey.draftId}</span></p>
       <p>시작 <span className="md-numeric">{journeyTime(journey.createdAt)} KST</span></p>

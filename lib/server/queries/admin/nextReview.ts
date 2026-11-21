@@ -14,6 +14,7 @@ export async function getNextReviewApplicationId(
   handledApplicationId: string,
   returnTo = '/review',
   db: DB = actionDb(),
+  options: { skip?: boolean } = {},
 ): Promise<string | null> {
   const params = returnTo === '/review' || returnTo.startsWith('/review?')
     ? new URL(returnTo, 'http://admin.local').searchParams
@@ -27,6 +28,19 @@ export async function getNextReviewApplicationId(
   const type = params.get('type');
   const q = params.get('q')?.trim();
   const { fromDate, toDate } = dateBounds(params.get('from') ?? undefined, params.get('to') ?? undefined);
+  // 건너뛰기: 처리하지 않은 건이 큐에 그대로 남으므로, 가장 오래된 건이 아니라
+  // 지금 건 "뒤"의 건을 골라야 두 건 사이를 오가지 않는다. 끝에 닿으면 null.
+  let afterCurrent;
+  if (options.skip) {
+    const [current] = await db.select({ submittedAt: verificationApplications.submittedAt })
+      .from(verificationApplications).where(eq(verificationApplications.id, handledApplicationId)).limit(1);
+    if (current) {
+      afterCurrent = or(
+        gt(verificationApplications.submittedAt, current.submittedAt),
+        and(eq(verificationApplications.submittedAt, current.submittedAt), gt(verificationApplications.id, handledApplicationId)),
+      );
+    }
+  }
   const newer = alias(verificationApplications, 'newer_review_application');
   const hasNewerApplication = db.select({ one: sql<number>`1` }).from(newer).where(and(
     eq(newer.workspaceId, verificationApplications.workspaceId),
@@ -42,6 +56,7 @@ export async function getNextReviewApplicationId(
       ne(verificationApplications.id, handledApplicationId),
       inArray(verificationApplications.status, statuses),
       notExists(hasNewerApplication),
+      afterCurrent,
       type === 'buyer' || type === 'pg' ? eq(verificationApplications.orgType, type) : undefined,
       q ? ilike(workspaces.name, `%${q}%`) : undefined,
       fromDate ? gte(verificationApplications.submittedAt, fromDate) : undefined,

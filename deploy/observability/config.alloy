@@ -1,0 +1,194 @@
+// Grafana Alloy 1.22.0. Native Linux service; see docs/OBSERVABILITY.md.
+logging {
+	level  = "warn"
+	format = "json"
+}
+
+prometheus.exporter.unix "host" {
+	set_collectors = ["cpu", "meminfo", "filesystem", "loadavg", "diskstats", "netdev", "time"]
+}
+
+discovery.relabel "host" {
+	targets = prometheus.exporter.unix.host.targets
+
+	rule {
+		target_label = "job"
+		replacement  = "integrations/node_exporter"
+	}
+
+	rule {
+		target_label = "instance"
+		replacement  = sys.env("OBSERVABILITY_INSTANCE")
+	}
+}
+
+prometheus.scrape "host" {
+	targets         = discovery.relabel.host.output
+	scrape_interval = "60s"
+	scrape_timeout  = "10s"
+	forward_to      = [prometheus.relabel.cloud.receiver]
+}
+
+prometheus.scrape "caddy" {
+	targets = [{
+		__address__ = "127.0.0.1:2019",
+		job         = "integrations/caddy",
+		instance    = sys.env("OBSERVABILITY_INSTANCE"),
+	}]
+	scrape_interval = "60s"
+	scrape_timeout  = "10s"
+	forward_to      = [prometheus.relabel.cloud.receiver]
+}
+
+// Exporter's own health: queue drops, memory and a heartbeat for absence alerts.
+prometheus.scrape "alloy" {
+	targets = [{
+		__address__ = "127.0.0.1:12345",
+		job         = "integrations/alloy",
+		instance    = sys.env("OBSERVABILITY_INSTANCE"),
+	}]
+	scrape_interval = "60s"
+	scrape_timeout  = "10s"
+	forward_to      = [prometheus.relabel.cloud.receiver]
+}
+
+prometheus.relabel "cloud" {
+	forward_to = [prometheus.remote_write.cloud.receiver]
+
+	rule {
+		target_label = "environment"
+		replacement  = sys.env("OBSERVABILITY_ENVIRONMENT")
+	}
+	// Keep a small, explicit set; no SQL text, URL, user or business labels.
+	rule {
+		source_labels = ["__name__"]
+		regex         = "up|scrape_duration_seconds|node_(cpu_seconds_total|memory_.*|filesystem_.*|load.*|disk_.*|network_.*|time_seconds)|caddy_http_(requests_total|request_duration_seconds_.*)|pg_(up|stat_database_.*)|process_(resident_memory_bytes|cpu_seconds_total|start_time_seconds)|prometheus_remote_storage_(samples_pending|samples_failed_total|samples_retried_total|samples_dropped_total)|loki_(write_.*|source_file_.*|source_journal_.*|process_dropped_lines_total)"
+		action        = "keep"
+	}
+}
+
+prometheus.remote_write "cloud" {
+	endpoint {
+		url = sys.env("GRAFANA_METRICS_WRITE_URL")
+
+		basic_auth {
+			username = sys.env("GRAFANA_METRICS_USER")
+			password = sys.env("GRAFANA_WRITE_TOKEN")
+		}
+
+		queue_config {
+			min_shards = 1
+			max_shards = 2
+			capacity   = 2500
+		}
+	}
+
+	wal {
+		truncate_frequency = "1h"
+		min_keepalive_time = "5m"
+		max_keepalive_time = "2h"
+	}
+}
+
+local.file_match "pm2" {
+	path_targets = [
+		{__path__ = sys.env("PM2_LOG_DIR") + "/bidit-*.log", service = "bidit"},
+		{__path__ = sys.env("PM2_LOG_DIR") + "/admin-supporter-b-*.log", service = "admin"},
+	]
+	sync_period = "10s"
+}
+
+loki.source.file "pm2" {
+	targets       = local.file_match.pm2.targets
+	tail_from_end = true
+	forward_to    = [loki.process.sanitized.receiver]
+}
+
+// Caddy runtime errors, plus access logs if the supplied Caddy snippet is enabled.
+loki.source.journal "caddy" {
+	matches    = "_SYSTEMD_UNIT=caddy.service"
+	max_age    = "1h"
+	labels     = {service = "caddy"}
+	forward_to = [loki.process.sanitized.receiver]
+}
+
+loki.process "sanitized" {
+	stage.decolorize { }
+	// Whitelist structured fields BEFORE upload. Request bodies/headers/URLs are omitted.
+	stage.json {
+		expressions = {
+			safe            = "{level: level, msg: not_null(msg, message, _entry), time: not_null(time, ts), event: event, requestId: requestId, traceId: traceId, error: not_null(err.message, error.message), errorType: not_null(err.type, error.name), status: status, duration: duration, method: request.method, logger: logger}",
+			timestamp       = "time",
+			caddy_timestamp = "ts",
+		}
+	}
+
+	stage.timestamp {
+		source            = "timestamp"
+		format            = "RFC3339Nano"
+		fallback_formats  = ["UnixMs"]
+		action_on_failure = "skip"
+	}
+
+	stage.timestamp {
+		source            = "caddy_timestamp"
+		format            = "Unix"
+		action_on_failure = "skip"
+	}
+
+	stage.output {
+		source = "safe"
+	}
+	// Free-text fallback (PM2 startup/stack lines) and message fields.
+	stage.replace {
+		expression = "(?i)(?:bearer|basic) ([a-z0-9._~+/=-]+)"
+		replace    = "[Filtered]"
+	}
+
+	stage.replace {
+		expression = "(?i)(?:token|secret|password|passwd|api[_-]?key|authorization|cookie)[\"']?\\s*[:=]\\s*[\"']?([^\\s,\"'&}]+)"
+		replace    = "[Filtered]"
+	}
+
+	stage.replace {
+		expression = "(?i)([a-z0-9.!#$%&'*+/=?^_{}|~-]+@[a-z0-9.-]+\\.[a-z]{2,})"
+		replace    = "[Email]"
+	}
+
+	stage.replace {
+		expression = "(https://hooks\\.slack\\.com/services/[^\\s\"'<>]+)"
+		replace    = "[Filtered]"
+	}
+
+	stage.replace {
+		expression = "(?i)(?:postgres(?:ql)?|redis|https?)://([^\\s/@]+:[^\\s/@]+)@"
+		replace    = "[Filtered]"
+	}
+
+	stage.static_labels {
+		values = {
+			job         = "admin-observability",
+			environment = sys.env("OBSERVABILITY_ENVIRONMENT"),
+			instance    = sys.env("OBSERVABILITY_INSTANCE"),
+		}
+	}
+
+	stage.label_keep {
+		values = ["job", "environment", "instance", "service"]
+	}
+	forward_to = [loki.write.cloud.receiver]
+}
+
+loki.write "cloud" {
+	max_streams = 20
+
+	endpoint {
+		url = sys.env("GRAFANA_LOGS_WRITE_URL")
+
+		basic_auth {
+			username = sys.env("GRAFANA_LOGS_USER")
+			password = sys.env("GRAFANA_WRITE_TOKEN")
+		}
+		batch_size = "256KiB"
+	}
+}

@@ -1,3 +1,4 @@
+import { AdminPageHeader } from '@/components/AdminPageHeader';
 import { MERCHANT_TIERS, MERCHANT_TIER_LABELS } from '@/lib/types/bid';
 import { RegisteredIndustryBrowser } from '@/components/RegisteredIndustryBrowser';
 import { MccIndustryPicker } from '@/components/MccIndustryPicker';
@@ -19,6 +20,8 @@ const ERRORS: Record<string, string> = {
   GROUP_NOT_FOUND: '해당 업종을 찾을 수 없어요. 새로고침해주세요.',
   DUPLICATE_GROUP_NAME: '같은 이름의 업종이 이미 있어요.',
 };
+
+export const metadata = { title: 'PG 추천 기준' };
 
 export default async function PgRecommendationsPage({
   searchParams,
@@ -59,12 +62,7 @@ export default async function PgRecommendationsPage({
 
   return (
     <div className="max-w-5xl space-y-6">
-      <div>
-        <h1 className="text-headline-small font-semibold">PG 추천 기준</h1>
-        <p className="mt-1 text-body-small text-on-surface-variant">
-          업종의 접수 기준과 PG 추천 순서를 정해요. 같은 PG사를 여러 업종에 연결할 수 있어요. 확인된 입점 조건과 요율만 등록해주세요.
-        </p>
-      </div>
+      <AdminPageHeader title="PG 추천 기준" description="업종의 접수 기준과 PG 추천 순서를 정해요. 같은 PG사를 여러 업종에 연결할 수 있어요. 확인된 입점 조건과 요율만 등록해주세요." />
 
       {error && (
         <p role="alert" className="rounded border border-error px-4 py-3 text-body-small text-error">

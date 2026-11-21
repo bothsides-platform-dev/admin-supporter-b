@@ -116,3 +116,29 @@ describe('입점 심사 사업자정보 조회 링크', () => {
     }
   });
 });
+
+describe('입점 심사 목록의 기본 큐', () => {
+  it('상태 없이 들어오면 처리 대기 건을 오래된 순으로 조회한다', async () => {
+    await ReviewListPage({ searchParams: Promise.resolve({}) });
+    expect(mocks.list).toHaveBeenCalledWith(expect.objectContaining({ status: 'open', sort: 'oldest' }));
+  });
+
+  it('상태를 고르면 그 상태와 고른 정렬을 그대로 쓴다', async () => {
+    await ReviewListPage({ searchParams: Promise.resolve({ status: 'all' }) });
+    expect(mocks.list).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'all', sort: undefined }));
+    await ReviewListPage({ searchParams: Promise.resolve({ status: 'open', sort: 'newest' }) });
+    expect(mocks.list).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'open', sort: 'newest' }));
+  });
+
+  it('처리 대기 건이 없으면 필터가 걸린 것처럼 안내하지 않는다', async () => {
+    const html = JSON.stringify(await ReviewListPage({ searchParams: Promise.resolve({}) }));
+    expect(html).toContain('처리할 입점 신청이 없습니다.');
+    expect(html).not.toContain('필터 초기화');
+  });
+
+  it('검색어가 걸린 빈 목록에는 보던 탭을 유지하는 필터 초기화 링크를 준다', async () => {
+    const html = JSON.stringify(await ReviewListPage({ searchParams: Promise.resolve({ q: '없는 회사' }) }));
+    expect(html).toContain('검색 조건에 맞는 신청이 없습니다.');
+    expect(html).toContain('/review?status=open');
+  });
+});

@@ -1,3 +1,4 @@
+import { AdminPageHeader } from '@/components/AdminPageHeader';
 import { hasPermission } from '@/lib/auth/permissions';
 import { eq } from 'drizzle-orm';
 import { requireAdminSession } from '@/lib/auth/admin-session';
@@ -5,6 +6,8 @@ import { actionDb } from '@/lib/server/actions/auth/_shared';
 import { pgAgreementRates } from '@/lib/db/schema';
 import { listSellers } from '@/lib/server/queries/admin/sellers';
 import { AgreementRatesForm } from '@/components/AgreementRatesForm';
+
+export const metadata = { title: '장기합의서 수수료 기준' };
 
 export default async function AgreementRatesPage({
   searchParams,
@@ -23,12 +26,7 @@ export default async function AgreementRatesPage({
     : [];
   return (
     <div className="max-w-4xl space-y-6">
-      <header>
-        <h1 className="text-headline-small font-semibold">장기합의서 수수료 기준</h1>
-        <p className="mt-2 text-body-medium text-on-surface-variant">
-          PG사별 표준 수수료를 등록해요. 표준 요율과 선정 요율의 차이가 합의서의 할인 폭이 돼요.
-        </p>
-      </header>
+      <AdminPageHeader title="장기합의서 수수료 기준" description="PG사별 표준 수수료를 등록해요. 표준 요율과 선정 요율의 차이가 합의서의 할인 폭이 돼요." />
       <form method="get" className="flex flex-wrap items-end gap-3">
         <label htmlFor="pg" className="space-y-2 text-body-small">
           <span className="block">PG사</span>

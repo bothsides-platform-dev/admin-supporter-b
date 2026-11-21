@@ -1,4 +1,9 @@
+import { cache } from 'react';
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { AdminPageHeader } from '@/components/AdminPageHeader';
+import { CopyableValue } from '@/components/CopyableValue';
+import { AdminDataTable, type AdminTableColumn } from '@/components/AdminDataTable';
 import Link from 'next/link';
 import { getUserDetail } from '@/lib/server/queries/admin/users';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
@@ -19,6 +24,16 @@ import { AdminAuditHistory } from '@/components/AdminAuditHistory';
 import { DangerousDeleteForm } from '@/components/DangerousDeleteForm';
 import { safeListReturnTo } from '@/lib/admin-return-to';
 
+// generateMetadata 와 본문이 같은 조회를 한 번만 하도록 요청 단위로 캐시한다.
+const loadUser = cache((id: string) => getUserDetail(id));
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const detail = await loadUser((await params).id);
+  return { title: detail ? detail.user.name : '회원' };
+}
+
+type Membership = NonNullable<Awaited<ReturnType<typeof getUserDetail>>>['memberships'][number];
+
 export default async function UserDetailPage({
   params,
   searchParams,
@@ -28,7 +43,7 @@ export default async function UserDetailPage({
 }) {
   const { id } = await params;
   const returnTo = safeListReturnTo((await searchParams).returnTo, '/users');
-  const [detail, session, history] = await Promise.all([getUserDetail(id), requireAdminSession(), listEntityAuditLogs('user', id)]);
+  const [detail, session, history] = await Promise.all([loadUser(id), requireAdminSession(), listEntityAuditLogs('user', id)]);
   if (!detail) notFound();
 
   const { user, memberships } = detail;
@@ -54,26 +69,50 @@ export default async function UserDetailPage({
     return deleteUserAction(user.id, String(formData.get('confirmationName') ?? ''), returnTo);
   }
 
+  const membershipColumns: AdminTableColumn<Membership>[] = [
+    { key: 'workspace', label: '워크스페이스', render: (m) => <Link href={`${m.workspaceType === 'buyer' ? '/buyers' : '/sellers'}/${m.workspaceId}`} className="text-primary hover:underline">{m.workspaceName}</Link> },
+    { key: 'type', label: '유형', cellClassName: 'text-label-small text-on-surface-variant', render: (m) => (m.workspaceType === 'buyer' ? '구매사' : 'PG사') },
+    { key: 'role', label: '역할', cellClassName: 'text-label-small', render: (m) => (m.role === 'admin' ? '관리자' : '멤버') },
+    { key: 'joinedAt', label: '가입일', cellClassName: 'md-numeric text-label-small text-on-surface-variant', render: (m) => formatDateKST(m.joinedAt) },
+    {
+      key: 'actions', label: '관리', hideLabel: true, align: 'right',
+      render: (m) => {
+        if (!canManageWorkspace) return null;
+        async function doRemove() {
+          'use server';
+          return toActionState(await removeWorkspaceMemberAction(m.workspaceId, user.id), '멤버를 제외했습니다.');
+        }
+        return (
+          <>
+            <ConfirmButton
+              action={doRemove}
+              label="제외"
+              confirmMessage="이 멤버를 제외하시겠습니까?"
+              confirmLabel="제외"
+              labelClassName="text-label-small text-error hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
+              confirmClassName="text-label-small text-error hover:underline"
+              disabled={m.isLastAdmin}
+            />
+            {m.isLastAdmin && <span className="ml-2 text-label-small text-on-surface-variant">마지막 관리자는 제외할 수 없습니다.</span>}
+          </>
+        );
+      },
+    },
+  ];
+
   return (
     <div className="space-y-6 max-w-4xl">
-      <div className="space-y-1">
-        <Link href={returnTo} className="text-on-surface-variant hover:text-on-surface text-body-small">
-          ← 목록
-        </Link>
-        <div className="flex items-center gap-3">
-          <h1 className="text-headline-small font-semibold">{user.name}</h1>
-          {isDeleted ? (
-            <AdminStatusBadge status="deleted" />
-          ) : (
-            <AdminStatusBadge status={user.status} />
-          )}
-        </div>
-      </div>
+      <AdminPageHeader
+        title={user.name}
+        breadcrumbs={[{ label: '회원', href: returnTo }]}
+        badges={<AdminStatusBadge status={isDeleted ? 'deleted' : user.status} />}
+        meta={<span>회원 ID <CopyableValue value={user.id} label="회원 ID" numeric /></span>}
+      />
 
       <section className="rounded border border-outline-variant divide-y divide-outline-variant">
         <div className="px-4 py-3 flex gap-4">
           <span className="text-label-small text-on-surface-variant w-32 shrink-0">이메일</span>
-          <span className="text-body-small">{user.email}</span>
+          <span className="text-body-small"><CopyableValue value={user.email} label="이메일" /></span>
         </div>
         {user.phone && (
           <div className="px-4 py-3 flex gap-4">
@@ -113,63 +152,7 @@ export default async function UserDetailPage({
         <h2 className="text-title-small font-semibold mb-3">
           소속 워크스페이스 ({memberships.length})
         </h2>
-        <div className="rounded border border-outline-variant overflow-hidden">
-          <table className="w-full text-body-small">
-            <thead>
-              <tr className="border-b border-outline-variant bg-surface-container-low">
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">워크스페이스</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">유형</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">역할</th>
-                <th className="px-4 py-2 text-left text-label-small text-on-surface-variant font-medium">가입일</th>
-                <th className="px-4 py-2"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {memberships.map((m) => {
-                async function doRemove() {
-                  'use server';
-                  return toActionState(await removeWorkspaceMemberAction(m.workspaceId, user.id), '멤버를 제외했습니다.');
-                }
-                return (
-                  <tr
-                    key={m.workspaceId}
-                    className="border-b border-outline-variant last:border-0"
-                  >
-                    <td className="px-4 py-3"><Link href={`${m.workspaceType === 'buyer' ? '/buyers' : '/sellers'}/${m.workspaceId}`} className="text-primary hover:underline">{m.workspaceName}</Link></td>
-                    <td className="px-4 py-3 text-label-small text-on-surface-variant">
-                      {m.workspaceType === 'buyer' ? '구매사' : 'PG사'}
-                    </td>
-                    <td className="px-4 py-3 text-label-small">
-                      {m.role === 'admin' ? '관리자' : '멤버'}
-                    </td>
-                    <td className="px-4 py-3 md-numeric text-label-small text-on-surface-variant">
-                      {formatDateKST(m.joinedAt)}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {canManageWorkspace && <ConfirmButton
-                        action={doRemove}
-                        label="제외"
-                        confirmMessage="이 멤버를 제외하시겠습니까?"
-                        confirmLabel="제외"
-                        labelClassName="text-label-small text-error hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
-                        confirmClassName="text-label-small text-error hover:underline"
-                        disabled={m.isLastAdmin}
-                      />}
-                      {canManageWorkspace && m.isLastAdmin && <span className="ml-2 text-label-small text-on-surface-variant">마지막 관리자는 제외할 수 없습니다.</span>}
-                    </td>
-                  </tr>
-                );
-              })}
-              {memberships.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-on-surface-variant">
-                    소속 워크스페이스 없음
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <AdminDataTable caption="소속 워크스페이스" rows={memberships} columns={membershipColumns} getKey={(m) => m.workspaceId} emptyMessage="소속 워크스페이스 없음" hoverRows={false} />
       </section>
 
       <AdminAuditHistory logs={history} entityType="user" entityId={user.id} />
