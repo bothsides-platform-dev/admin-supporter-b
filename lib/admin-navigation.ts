@@ -27,5 +27,6 @@ export const ADMIN_NAVIGATION: { label: string; items: AdminNavigationItem[] }[]
     { href: '/agreement-rates', label: '장기합의서 수수료 기준', permission: 'data.view' },
     { href: '/audit-log', label: '감사 로그', permission: 'audit.view' },
     { href: '/admins', label: '관리자 계정', permission: 'admin.manage' },
+    { href: '/passkeys', label: '내 패스키', permission: 'data.view' },
   ] },
 ];

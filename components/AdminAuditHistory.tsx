@@ -22,6 +22,7 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'agreement_rates.update': '수수료 기준 변경',
   'admin_user.create': '관리자 추가', 'admin_user.delete': '관리자 삭제',
   'admin_user.totp_enroll': '2단계 인증 등록', 'admin_user.totp_reset': '2단계 인증 초기화',
+  'admin_user.passkey_register': '패스키 등록', 'admin_user.passkey_remove': '패스키 삭제',
 };
 
 export const AUDIT_ENTITY_LABELS: Record<string, string> = {
@@ -50,6 +51,7 @@ const FIELD_LABELS: Record<string, string> = {
   body: '내용', userId: '회원 ID', workspaceId: '워크스페이스 ID',
   email: '이메일', type: '유형', days: '연장 일수', oldDeadline: '기존 마감일',
   newDeadline: '새 마감일', totpEnabledAt: '2단계 인증 등록 시각',
+  passkeys: '패스키 수', passkeyId: '패스키 ID', label: '기기 이름', backupEligible: '여러 기기 동기화',
 };
 const GRADE_LABELS: Record<string, string> = {
   sole: '영세', small: '중소 1', medium: '중소 2', large: '중소 3', general: '일반',

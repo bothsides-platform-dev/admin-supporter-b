@@ -19,6 +19,23 @@ export async function createAdminAuthDb(): Promise<{ client: PGlite; db: DB }> {
       CONSTRAINT admin_users_email_unique UNIQUE (email),
       CONSTRAINT admin_users_email_lower CHECK (email = lower(email))
     );
+    CREATE TABLE IF NOT EXISTS "admin_passkeys" (
+      "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+      "admin_user_id" uuid NOT NULL,
+      "credential_id" text NOT NULL,
+      "public_key" text NOT NULL,
+      "sign_count" bigint DEFAULT 0 NOT NULL,
+      "transports" text[],
+      "backup_eligible" boolean NOT NULL,
+      "backed_up" boolean NOT NULL,
+      "aaguid" text NOT NULL,
+      "label" text NOT NULL,
+      "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+      "last_used_at" timestamp with time zone,
+      CONSTRAINT "admin_passkeys_credential_id_unique" UNIQUE("credential_id"),
+      CONSTRAINT "admin_passkeys_admin_user_id_admin_users_id_fk" FOREIGN KEY ("admin_user_id") REFERENCES "public"."admin_users"("id") ON DELETE cascade ON UPDATE no action
+    );
+    CREATE INDEX IF NOT EXISTS "admin_passkeys_admin_user_idx" ON "admin_passkeys" USING btree ("admin_user_id");
     CREATE TABLE login_attempts (
       key text PRIMARY KEY, count integer NOT NULL DEFAULT 0,
       locked_until timestamptz, updated_at timestamptz NOT NULL DEFAULT now()

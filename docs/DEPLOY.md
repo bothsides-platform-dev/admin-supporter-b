@@ -83,7 +83,7 @@ journalctl -u caddy -f          # admin 서브도메인 인증서 발급 확인
 
 ## 관리자 계정·2단계 인증 (TOTP)
 
-로그인은 **Google 로그인 → `admin_users`에 있는 이메일인지 확인 → 인증 앱 6자리 코드(TOTP)** 순서다. 2단계 인증은 한 번 통과하면 12시간 유지되고, 로그아웃하거나 Google로 다시 로그인하면 다시 묻는다. 코드를 5번 틀리면 15분 동안 잠긴다(공유 `login_attempts` 테이블, 키 `admin-2fa:<email>`).
+로그인은 **Google 로그인 → `admin_users`에 있는 이메일인지 확인 → 인증 앱 6자리 코드(TOTP) 또는 등록한 패스키** 순서다. 2단계 인증은 한 번 통과하면 12시간 유지되고, 로그아웃하거나 Google로 다시 로그인하면 다시 묻는다. 코드를 5번 틀리면 15분 동안 잠긴다(공유 `login_attempts` 테이블, 키 `admin-2fa:<email>`).
 
 ### 최초 전환 순서 (env 허용 목록 → `admin_users`)
 
@@ -97,11 +97,32 @@ journalctl -u caddy -f          # admin 서브도메인 인증서 발급 확인
 4. 이 앱을 배포한다. 배포 전에 발급된 로그인 세션은 한 번 로그아웃되므로 **모든 관리자가 다시 로그인해 QR로 인증 앱을 등록**한다. 미등록 계정은 그 Google 계정으로 처음 로그인한 사람이 등록하게 되니, 배포 직후 바로 등록하도록 안내한다.
 5. **`ADMIN_EMAILS`는 롤백 가능성이 없어질 때까지 남겨 둔다.** 이전 버전 admin은 이 값으로 허용 목록을 판단하므로, 지운 상태로 롤백하면 아무도 로그인하지 못한다. 모두 등록한 것을 `/admins`에서 확인하고 롤백할 일이 없다고 판단되면 `ADMIN_EMAILS`·`ADMIN_SUPER_EMAILS`를 지운다. 롤백해도 `admin_users` 테이블과 행은 남겨 둔다(이전 버전은 무시한다).
 
-### 휴대폰 분실·잠김 복구
+### 패스키 (지문·얼굴 인식·기기 잠금)
 
-- 다른 관리자가 `/admins`에서 **2단계 인증 초기화**를 누른다. 대상자는 다음 로그인 때 QR로 다시 등록하고, 잠금도 함께 풀린다. 본인 계정은 본인이 초기화할 수 없다.
-- 로그인할 수 있는 관리자가 아무도 없으면 공유 DB에서 직접 초기화한다.
+인증 앱을 등록한 관리자는 메뉴의 **내 패스키**(`/passkeys`)에서 패스키를 추가할 수 있다. 등록한 뒤에는 2단계 인증 화면에서 코드 대신 **패스키로 인증**을 누르면 된다. 인증 앱 등록은 그대로 남으므로 코드로도 계속 로그인할 수 있다.
+
+- **등록에는 현재 인증 앱 코드가 한 번 더 필요하다.** 로그인된 세션을 탈취해도 자기 패스키를 심어 12시간 재인증 한도를 넘기지 못하게 하기 위해서다. 방금 로그인에 쓴 코드는 다시 쓸 수 없으므로 새 코드가 뜨면 입력한다. 여기서 틀린 코드도 로그인과 같은 5회 잠금에 합산된다.
+- 패스키 인증은 코드 잠금과 별개다. 코드가 15분 잠겨 있어도 패스키로는 로그인할 수 있다.
+- 한 사람당 10개까지 등록한다. 등록·삭제는 감사 로그에 `admin_user.passkey_register`·`admin_user.passkey_remove`로 남는다.
+- **새 환경변수는 없다.** 패스키는 `AUTH_URL`의 호스트(`admin.<도메인>`)에 묶인다. 이 호스트를 바꾸면 기존 패스키는 모두 쓸 수 없게 되어 다시 등록해야 한다. `AUTH_URL`이 없거나 IP 주소인 환경에서는 패스키 버튼과 등록 화면이 나오지 않고 인증 앱 코드만 쓴다.
+
+**배포 순서 (DDL 선행)** — 운영과 스테이징 모두 같다.
+
+1. bidit의 `admin_passkeys` 스키마를 **`main`까지 반영**한다. 이유와 `shared/schema-ready`에서 멈추는 동작은 위 `admin_users` 전환과 같다.
+2. bidit 체크아웃에서 DDL을 적용하고 `shared/schema-ready`를 기록한다. `admin_users`가 먼저 있어야 하고 시드는 없다. 구 버전 admin은 이 테이블을 무시한다.
+   ```bash
+   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f scripts/migrations/20261121-admin-passkeys.sql
+   ```
+3. 그다음 이 앱을 배포한다. **테이블 없이 먼저 배포하면 패스키를 쓰지 않는 관리자의 코드 로그인까지 실패한다**(2단계 인증 화면이 이 테이블을 조회한다).
+4. 롤백하면 이전 버전은 이 테이블을 무시하고 인증 앱 코드만 받는다. 테이블과 행은 남겨 둔다.
+
+### 휴대폰·기기 분실·잠김 복구
+
+- 다른 관리자가 `/admins`에서 **2단계 인증 초기화**를 누른다. 대상자의 인증 앱 등록과 **패스키가 모두 삭제**되고, 다음 로그인 때 QR로 다시 등록하며, 잠금도 함께 풀린다. 본인 계정은 본인이 초기화할 수 없다.
+- 패스키를 등록한 기기만 잃어버렸고 로그인은 할 수 있다면, 본인이 **내 패스키**에서 그 패스키를 삭제한다.
+- 로그인할 수 있는 관리자가 아무도 없으면 공유 DB에서 직접 초기화한다. 패스키도 함께 지운다.
   ```sql
+  DELETE FROM admin_passkeys WHERE admin_user_id = (SELECT id FROM admin_users WHERE email = 'a@example.com');
   UPDATE admin_users SET totp_secret_enc = NULL, totp_enabled_at = NULL, totp_last_used_step = NULL, updated_at = now()
    WHERE email = 'a@example.com';
   DELETE FROM login_attempts WHERE key = 'admin-2fa:a@example.com';
@@ -169,7 +190,8 @@ DB 변경이나 기존 알림 재발송은 필요하지 않다. 배포 후 기�
   `/etc/caddy/Caddyfile`의 admin 블록이 `127.0.0.1:4242`인지 확인 (bidit 레포에서 동기화).
 - **로그인 거부**: 본인 Google 이메일이 `admin_users`에 (소문자로) 있는지, OAuth 리디렉트 URI에
   `https://admin.<도메인>/api/auth/callback/google`이 등록됐는지 확인.
-- **2단계 인증 화면에서 오류**: `ADMIN_TOTP_ENCRYPTION_KEY`가 설정돼 있고 시크릿을 암호화할 때 쓴 키와 같은지 확인.
+- **2단계 인증 화면에서 오류**: `ADMIN_TOTP_ENCRYPTION_KEY`가 설정돼 있고 시크릿을 암호화할 때 쓴 키와 같은지 확인. `admin_passkeys` 테이블이 없어도 이 화면이 실패한다(위 패스키 배포 순서).
+- **패스키 버튼이나 등록 화면이 안 보임**: `AUTH_URL`이 `https://admin.<도메인>`으로 설정돼 있는지 확인. 접속 주소와 `AUTH_URL`의 호스트가 다르면 브라우저가 패스키를 거부한다.
   키가 바뀌었으면 위 "휴대폰 분실·잠김 복구"의 SQL로 초기화한 뒤 다시 등록한다. 코드가 계속 틀리면 휴대폰 시계가 자동 설정인지 확인한다.
 - **TLS 안 됨**: `dig +short admin.<도메인>`이 고정 IP를 가리키는지, `journalctl -u caddy`의 ACME 에러 확인.
 - **DB 접속 실패**: bidit의 Postgres 컨테이너가 떠 있는지(`docker compose -f ~/supporter-b/docker-compose.prod.yml ps`),

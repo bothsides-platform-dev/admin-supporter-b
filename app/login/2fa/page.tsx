@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import QRCode from 'qrcode';
 
@@ -8,10 +8,12 @@ import { hasPassedMfa, requireAdminIdentity } from '@/lib/auth/admin-session';
 import { ensurePendingTotpSecret, readMfaLock } from '@/lib/auth/admin-users';
 import { safeLoginDestination } from '@/lib/auth/login-destination';
 import { MFA_COOKIE_NAME } from '@/lib/auth/mfa-cookie';
+import { preparePasskeySignIn, relyingParty } from '@/lib/auth/passkeys';
 import { formatSecretForDisplay, otpauthUri } from '@/lib/auth/totp';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 import { formatKST } from '@/lib/utils';
 import { submitTotpAction } from './actions';
+import { PasskeySignIn } from './PasskeySignIn';
 
 const ERROR_MESSAGES: Record<string, string> = {
   INVALID_CODE: '인증 코드가 맞지 않습니다. 앱에 지금 표시된 6자리 코드를 입력해 주세요.',
@@ -35,6 +37,9 @@ export default async function TwoFactorPage({
   const lockedUntil = await readMfaLock(db, identity.email, now);
   const enrolling = !identity.totpEnabledAt;
   const secret = enrolling ? await ensurePendingTotpSecret(db, identity.adminUserId, now) : null;
+  // Offered only to an enrolled admin who registered a passkey; it stays available while the code path is locked.
+  const relying = enrolling ? null : relyingParty((await headers()).get('host'));
+  const passkey = relying ? await preparePasskeySignIn(db, identity, relying, now) : null;
   const qrSrc = secret
     ? `data:image/svg+xml;utf8,${encodeURIComponent(
         await QRCode.toString(otpauthUri(identity.email, secret), {
@@ -65,8 +70,19 @@ export default async function TwoFactorPage({
             <li>아래 QR 코드를 스캔하거나 설정 키를 직접 입력합니다.</li>
             <li>앱에 표시된 6자리 코드를 입력해 등록을 마칩니다.</li>
           </ol>
+        ) : passkey ? (
+          <p className="text-body-small text-on-surface-variant">패스키로 인증하거나 인증 앱의 6자리 코드를 입력해 주세요.</p>
         ) : (
           <p className="text-body-small text-on-surface-variant">인증 앱에 표시된 6자리 코드를 입력해 주세요.</p>
+        )}
+
+        {passkey && (
+          <PasskeySignIn
+            options={passkey.options}
+            token={passkey.token}
+            expiresAt={passkey.expiresAt}
+            callbackUrl={destination}
+          />
         )}
 
         {qrSrc && secret && (
@@ -101,7 +117,7 @@ export default async function TwoFactorPage({
               autoComplete="one-time-code"
               pattern="[0-9 \-]*"
               maxLength={9}
-              autoFocus
+              autoFocus={!passkey}
               disabled={Boolean(lockedUntil)}
               placeholder="123456"
               className="w-full rounded border border-outline-variant bg-surface px-3 py-2 text-body-large tracking-widest md-numeric focus:outline-none focus:ring-1 focus:ring-primary disabled:opacity-50"
@@ -109,7 +125,10 @@ export default async function TwoFactorPage({
           </label>
           <SubmitButton
             disabled={Boolean(lockedUntil)}
-            className="w-full rounded bg-primary px-4 py-2 text-label-large text-on-primary disabled:opacity-50"
+            // One filled button per screen: the passkey button takes that role when it is offered.
+            className={passkey
+              ? 'w-full rounded border border-primary px-4 py-2 text-label-large text-primary hover:bg-primary/10 disabled:opacity-50'
+              : 'w-full rounded bg-primary px-4 py-2 text-label-large text-on-primary disabled:opacity-50'}
           >
             {enrolling ? '등록하고 계속' : '확인'}
           </SubmitButton>
@@ -120,9 +139,14 @@ export default async function TwoFactorPage({
             다른 계정으로 로그인
           </button>
         </form>
+        {!enrolling && relying && !passkey && (
+          <p className="text-body-small text-on-surface-variant">
+            로그인한 뒤 ‘내 패스키’에서 지문이나 얼굴 인식을 등록하면 다음부터 코드 없이 인증할 수 있습니다.
+          </p>
+        )}
         {!enrolling && (
           <p className="text-body-small text-on-surface-variant">
-            휴대폰을 잃어버렸다면 다른 관리자에게 2단계 인증 초기화를 요청해 주세요.
+            휴대폰이나 등록한 기기를 잃어버렸다면 다른 관리자에게 2단계 인증 초기화를 요청해 주세요.
           </p>
         )}
       </div>
