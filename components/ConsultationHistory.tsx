@@ -1,11 +1,9 @@
-import Link from 'next/link';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 import { judgeContact, setAssignee } from '@/lib/server/actions/admin/consultations';
 import {
   activeMembers,
   caseHistory,
   formatTime,
-  requestCases,
   type CaseRow,
 } from '@/lib/server/consultations/queries';
 import { ActionForm } from './ActionForm';
@@ -18,7 +16,7 @@ function eventName(key: string) {
   if (key === 'late-quote') return '견적 마감 경과';
   return '견적 제출 안내';
 }
-async function Review({ c, canManage }: { c: CaseRow; canManage: boolean }) {
+export async function ConsultationHistory({ c, canManage }: { c: CaseRow; canManage: boolean }) {
   const db = actionDb();
   const [{ questions, events, evidence }, members] = await Promise.all([
     caseHistory(db, c.review_id),
@@ -26,14 +24,9 @@ async function Review({ c, canManage }: { c: CaseRow; canManage: boolean }) {
   ]);
   return (
     <article className="space-y-3 rounded border border-outline-variant p-4">
-      <h3 className="text-title-medium">
-        <Link className="underline" href={'/consultations/' + c.pg_id}>
-          {c.pg_name}
-        </Link>{' '}
-        · {c.assignee_name ?? '미배정'}
-      </h3>
+      <h4 className="font-medium">PG 상담 담당자 · {c.assignee_name ?? '미배정'}</h4>
       <p>
-        첫 연락 {formatTime(c.first_contact_at)} (기한 {formatTime(c.contact_due)})<br />
+        PG 첫 연락 시각 · {formatTime(c.first_contact_at)} (기한 {formatTime(c.contact_due)})<br />
         견적 제출 {formatTime(c.quoted_at)} (마감 {formatTime(c.quote_due)})
       </p>
       <details>
@@ -128,17 +121,5 @@ async function Review({ c, canManage }: { c: CaseRow; canManage: boolean }) {
         </ul>
       )}
     </article>
-  );
-}
-export async function ConsultationHistory({ rfpId, canManage }: { rfpId: string; canManage: boolean }) {
-  const cases = await requestCases(actionDb(), rfpId);
-  if (!cases.length) return null;
-  return (
-    <section id="consultations" className="space-y-3">
-      <h2 className="text-title-large">PG 상담 이력</h2>
-      {cases.map((c) => (
-        <Review key={c.review_id} c={c} canManage={canManage} />
-      ))}
-    </section>
   );
 }

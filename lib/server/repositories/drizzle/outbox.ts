@@ -10,6 +10,9 @@ import type { OutboxRepo, Tx } from '../types';
 
 type OutboxRow = typeof outboxEntries.$inferSelect;
 
+// The service worker revalidates consultation recipients and records deadline email receipts.
+const adminDeliverableEvent = sql`${outboxEntries.event}::text not in ('rfp.consultation', 'rfp.deadline_reminder')`;
+
 function rowToEntry(row: OutboxRow): OutboxEntry {
   return {
     id: row.id,
@@ -78,7 +81,7 @@ export class DrizzleOutboxRepository implements OutboxRepo {
       .where(
         and(
           eq(outboxEntries.status, 'pending'),
-          sql`${outboxEntries.event}::text <> 'rfp.consultation'`,
+          adminDeliverableEvent,
           lte(outboxEntries.scheduledAt, sql`now()`),
         ),
       )
@@ -171,7 +174,7 @@ export class DrizzleOutboxRepository implements OutboxRepo {
         .where(
           and(
             eq(outboxEntries.status, 'pending'),
-          sql`${outboxEntries.event}::text <> 'rfp.consultation'`,
+            adminDeliverableEvent,
             lte(outboxEntries.scheduledAt, sql`now()`),
           ),
         )

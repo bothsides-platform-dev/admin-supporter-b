@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import { PGlite } from '@electric-sql/pglite';
 import { drizzle } from 'drizzle-orm/pglite';
+import { renderToReadableStream } from 'react-dom/server';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import type { DB } from '@/lib/db';
-import { caseHistory, correctionDraft, corrections, operationsQueue, policyFor } from '../queries';
+import { RfpConsultationHistory } from '@/components/RfpConsultationHistory';
+import { caseHistory, correctionDraft, corrections, formatTime, operationsQueue, policyFor } from '../queries';
 import { confirmCorrection, reassign, adjudicate, savePolicy } from '../manage';
 import { setAssignee } from '@/lib/server/actions/admin/consultations';
 const gate = vi.hoisted(() => ({ denied: false }));
@@ -34,7 +36,7 @@ beforeEach(async () => {
     CREATE TABLE pg_recommendation_groups(id uuid,name text,sort_order int);
     CREATE TABLE pg_assignment_policies(pg_id uuid primary key,enabled boolean,alimtalk_ready boolean,manager_id uuid,contact_days int,threshold int,window_days int,roster jsonb);
     CREATE TABLE rfps(id uuid primary key,code text,status text default 'sent');
-    CREATE TABLE rfp_pg_reviews(id uuid primary key,rfp_id uuid,pg_workspace_id uuid,status text default 'requested',created_at timestamptz default now());
+    CREATE TABLE rfp_pg_reviews(id uuid primary key,rfp_id uuid,pg_ws_id uuid,status text default 'requested',created_at timestamptz default now());
     CREATE TABLE pg_consultation_cases(review_id uuid primary key,assignee uuid,revision int default 1,contact_due timestamptz default now()-interval '1 day',quote_due timestamptz default now()+interval '1 day',late_quote_due timestamptz,quoted_at timestamptz,consent_at timestamptz,consent_text text);
     CREATE TABLE pg_consultation_progress(review_id uuid,first_contact_at timestamptz,contact_late boolean default false,quote_late boolean default false,disputed boolean default false);
     CREATE TABLE pg_consultation_questions(id uuid primary key,review_id uuid,reported_by uuid,reported_at timestamptz default now(),answer text,answered_at timestamptz,channel text,judgment text,reason text,judged_at timestamptz,judged_by text);
@@ -69,7 +71,7 @@ async function seedCase(code: string, company = pg, disputed = false, late = tru
   const rfp = randomUUID(),
     review = randomUUID();
   await client.query('insert into rfps(id,code)values($1,$2)', [rfp, code]);
-  await client.query('insert into rfp_pg_reviews(id,rfp_id,pg_workspace_id)values($1,$2,$3)', [
+  await client.query('insert into rfp_pg_reviews(id,rfp_id,pg_ws_id)values($1,$2,$3)', [
     review,
     rfp,
     company,
@@ -107,6 +109,31 @@ it('미배정의 같은 PG 담당자를 변경하고 최초 기한, 배정 차�
   await expect(setAssignee(review, { status: 'idle' }, new FormData())).rejects.toThrow(
     'PermissionDenied',
   );
+});
+it('RFP 상세에서 배정된 회차의 담당자와 첫 연락을 표시하고 과거 회차에서만 기록 없음으로 표시한다', async () => {
+  const id = await seedCase('P-DETAIL');
+  const [c] = await operationsQueue(db);
+  const contact = '2026-11-19T07:14:00Z';
+  await reassign(db, actor, id, rep, 1, '담당자 지정');
+  await client.query('update pg_consultation_progress set first_contact_at=$1 where review_id=$2', [contact, id]);
+  const review = {
+    id, pgId: pg, pg: '시범PG', status: 'reviewing' as const,
+    reason: '', createdAt: contact, updatedAt: contact,
+  };
+  const section = await RfpConsultationHistory({
+    rfpId: c.rfp_id,
+    canManage: false,
+    signings: [],
+    reviews: [review, { ...review, id: randomUUID(), pgId: other, pg: '과거PG', status: 'withdrawn' }],
+  });
+  const stream = await renderToReadableStream(section);
+  await stream.allReady;
+  const html = (await new Response(stream).text()).replaceAll('<!-- -->', '');
+  expect(html.match(/id="consultations"/g)).toHaveLength(1);
+  expect(html).toContain('PG 상담 담당자 · 담당자');
+  expect(html).toContain('PG 첫 연락 시각 · ' + formatTime(contact));
+  expect(html.match(/PG 상담 담당자 · 기록 없음/g)).toHaveLength(1);
+  expect(html.match(/PG 첫 연락 시각 · 기록 없음/g)).toHaveLength(1);
 });
 it('기간 내 확정된 동일 PG 상담만 합의 건수에 포함하고 운영자 확정 한 번에 메일 한 통을 예약한다', async () => {
   const first = await seedCase('P-FIRST');

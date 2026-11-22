@@ -89,11 +89,11 @@ export function companies(db: Reader) {
 export async function policyFor(db: Reader, pgId: string) {
   return (await rows<Policy>(db, sql`select * from pg_assignment_policies where pg_id=${pgId}`))[0];
 }
-const caseQuery = sql`select c.review_id,r.rfp_id,f.code,r.pg_workspace_id pg_id,w.name pg_name,
+const caseQuery = sql`select c.review_id,r.rfp_id,f.code,r.pg_ws_id pg_id,w.name pg_name,
  c.assignee,u.name assignee_name,c.revision,r.status,r.status in ('requested','reviewing','quoted') and f.status='sent' active,
  c.contact_due,c.quote_due,c.late_quote_due,c.quoted_at,p.first_contact_at,p.contact_late,p.quote_late,p.disputed,c.consent_at,c.consent_text
  from pg_consultation_cases c join pg_consultation_progress p using(review_id) join rfp_pg_reviews r on r.id=c.review_id
- join rfps f on f.id=r.rfp_id join workspaces w on w.id=r.pg_workspace_id left join users u on u.id=c.assignee`;
+ join rfps f on f.id=r.rfp_id join workspaces w on w.id=r.pg_ws_id left join users u on u.id=c.assignee`;
 
 export function operationsQueue(db: Reader) {
   return rows<CaseRow>(
@@ -151,7 +151,7 @@ export async function correctionDraft(db: Reader, pgId: string) {
   const since = sql`now() - ${policy.window_days} * interval '1 day'`;
   const cases = await rows<CaseRow>(
     db,
-    sql`${caseQuery} where r.pg_workspace_id=${pgId} and not p.disputed
+    sql`${caseQuery} where r.pg_ws_id=${pgId} and not p.disputed
     and ((p.contact_late and c.contact_due >= ${since}) or (p.quote_late and coalesce(c.late_quote_due,c.quote_due) >= ${since}))
     and not exists(
       select 1 from pg_consultation_corrections n

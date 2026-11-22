@@ -52,7 +52,7 @@ async function lockCase(tx: Tx, reviewId: string) {
   const [c] = await rows<{ assignee: string | null; revision: number; pg_id: string; active: boolean }>(
     tx,
     sql`
-    select c.assignee,c.revision,r.pg_workspace_id pg_id,r.status in ('requested','reviewing','quoted') and f.status='sent' active
+    select c.assignee,c.revision,r.pg_ws_id pg_id,r.status in ('requested','reviewing','quoted') and f.status='sent' active
     from pg_consultation_cases c join rfp_pg_reviews r on r.id=c.review_id join rfps f on f.id=r.rfp_id where c.review_id=${reviewId}`,
   );
   return { ...c, rfpId: rfp.id };
