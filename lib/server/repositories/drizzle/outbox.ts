@@ -78,6 +78,7 @@ export class DrizzleOutboxRepository implements OutboxRepo {
       .where(
         and(
           eq(outboxEntries.status, 'pending'),
+          sql`${outboxEntries.event}::text <> 'rfp.consultation'`,
           lte(outboxEntries.scheduledAt, sql`now()`),
         ),
       )
@@ -170,6 +171,7 @@ export class DrizzleOutboxRepository implements OutboxRepo {
         .where(
           and(
             eq(outboxEntries.status, 'pending'),
+          sql`${outboxEntries.event}::text <> 'rfp.consultation'`,
             lte(outboxEntries.scheduledAt, sql`now()`),
           ),
         )
