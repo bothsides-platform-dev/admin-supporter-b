@@ -25,6 +25,7 @@ import { Chip } from '@/components/primitives/Chip';
 import { requireAdminSession } from '@/lib/auth/admin-session';
 import { hasPermission } from '@/lib/auth/permissions';
 import { listEntityAuditLogs } from '@/lib/server/queries/admin/audit-log';
+import { ConsultationHistory } from '@/components/ConsultationHistory';
 import { AdminAuditHistory } from '@/components/AdminAuditHistory';
 import { safeListReturnTo } from '@/lib/admin-return-to';
 import { deleteRfpAction } from '@/lib/server/actions/admin/deleteRfpAction';
@@ -544,6 +545,7 @@ export default async function RfpDetailPage({
           </p>
         )}
       </section>
+      <ConsultationHistory rfpId={rfp.id} canManage={canManage} />
       <div id="history" className="scroll-mt-4">
         <AdminAuditHistory logs={history} entityType="rfp" entityId={rfp.id} />
       </div>
