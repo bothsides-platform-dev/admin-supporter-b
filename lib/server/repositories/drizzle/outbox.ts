@@ -2,13 +2,16 @@
 // pending, markResult, and `flush(sender, limit)` which drains pending rows
 // through a `Sender` under FOR UPDATE SKIP LOCKED so concurrent cron + post-
 // commit callers don't double-deliver.
-import { eq, ne, isNotNull, sql, lte, and, inArray } from 'drizzle-orm';
+import { eq, isNotNull, sql, lte, and, inArray } from 'drizzle-orm';
 import { outboxEntries } from '@/lib/db/schema';
 import type { DB } from '@/lib/db/index';
 import type { OutboxEntry, OutboxEvent, Sender } from '../../outbox/types';
 import type { OutboxRepo, Tx } from '../types';
 
 type OutboxRow = typeof outboxEntries.$inferSelect;
+
+// The service worker revalidates consultation recipients and records deadline email receipts.
+const adminDeliverableEvent = sql`${outboxEntries.event}::text not in ('rfp.consultation', 'rfp.deadline_reminder')`;
 
 function rowToEntry(row: OutboxRow): OutboxEntry {
   return {
@@ -78,6 +81,7 @@ export class DrizzleOutboxRepository implements OutboxRepo {
       .where(
         and(
           eq(outboxEntries.status, 'pending'),
+          adminDeliverableEvent,
           lte(outboxEntries.scheduledAt, sql`now()`),
         ),
       )
@@ -170,8 +174,7 @@ export class DrizzleOutboxRepository implements OutboxRepo {
         .where(
           and(
             eq(outboxEntries.status, 'pending'),
-            // The main service owns deadline email claims and provider receipts.
-            ne(outboxEntries.event, 'rfp.deadline_reminder'),
+            adminDeliverableEvent,
             lte(outboxEntries.scheduledAt, sql`now()`),
           ),
         )

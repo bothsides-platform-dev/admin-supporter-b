@@ -2,6 +2,10 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.9.0.0] - 2026-11-22
+
+- PG별 담당자·합의 기한을 설정하고 미배정·지연 상담의 재배정, 미수신 판정과 책임자 시정 요청을 처리한다.
+
 ## [0.8.7.0] - 2026-11-15
 
 ### Added

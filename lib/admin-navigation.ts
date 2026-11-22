@@ -9,6 +9,7 @@ export const ADMIN_NAVIGATION: { label: string; items: AdminNavigationItem[] }[]
     { href: '/tasks', label: '후속 업무', permission: 'data.view' },
     { href: '/search', label: '고객 검색', permission: 'data.view' },
     { href: '/metrics', label: '핵심 지표', permission: 'data.view' },
+    { href: '/consultations', label: 'PG 상담 배정·지연', permission: 'data.view' },
     { href: '/pg-status', label: 'PG사별 현황', permission: 'data.view' },
     { href: '/observability', label: '시스템 관측', permission: 'observability.view' },
     { href: '/guest-journeys', label: '견적 작성 여정', permission: 'data.view' },

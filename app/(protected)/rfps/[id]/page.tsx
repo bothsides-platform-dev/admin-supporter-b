@@ -345,7 +345,7 @@ export default async function RfpDetailPage({
       {canManage && <ExtendDeadlineForm action={extendAction} />}
 
       <RfpPgResponseTable rows={pgResponses} overviewHref={fromPgStatus ? returnTo : undefined} />
-      <RfpConsultationHistory {...consultation} rfpId={rfp.id} />
+      <RfpConsultationHistory {...consultation} rfpId={rfp.id} canManage={canManage} />
 
       {/* Bid list */}
       <section id="bids" className="scroll-mt-4">

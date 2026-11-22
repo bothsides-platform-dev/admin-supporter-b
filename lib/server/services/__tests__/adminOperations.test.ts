@@ -41,6 +41,7 @@ beforeAll(async () => {
     create table rfp_matching_requests(rfp_id uuid primary key);
     create table contracts(rfp_id uuid primary key);
     create table rfp_pg_reviews(id uuid primary key,rfp_id uuid,pg_ws_id uuid,status text,created_at timestamptz default now());
+    create table pg_consultation_cases(review_id uuid primary key);
     create table rfp_invitations(id uuid primary key,rfp_id uuid,pg_ws_id uuid,status text,sent_at timestamptz default now(),expires_at timestamptz default '2099-02-01');
     create table bids(id uuid primary key,rfp_id uuid,pg_ws_id uuid,round int,status text,submitted_at timestamptz default now());
     create table rfp_requote_requests(rfp_id uuid,pg_ws_id uuid,round int,status text,deadline timestamptz);
@@ -149,9 +150,18 @@ it('실제 초대와 승인 회원만 예약하고 재요청·자동 알림과 �
   expect(await enqueueReminders(rfp, [t.token], '재시도', db)).toEqual({ ok: true, queued: 0, existing: 1 });
   const [entry] = await reminderHistory(rfp, db);
   expect(entry).toMatchObject({ status: 'pending', messageId: null, pg: '같은회사' });
-  const adminSender = vi.fn();
-  expect(await new DrizzleOutboxRepository(db).flush(adminSender)).toEqual({ ok: 0, failed: 0 });
-  expect(adminSender).not.toHaveBeenCalled();
+  const outbox = new DrizzleOutboxRepository(db);
+  await client.query(
+    "insert into outbox_entries(event,to_addr,subject,html) values ('rfp.consultation',$1,'상담 안내','상담 안내')",
+    [t.email],
+  );
+  const invite = await outbox.enqueue({ event: 'rfp.invited', to: t.email, subject: '초대', html: '초대' });
+  expect((await outbox.pending(10)).map((row) => row.id)).toEqual([invite!.id]);
+  const adminSender = vi.fn().mockResolvedValue({ ok: true });
+  expect(await outbox.flush(adminSender)).toEqual({ ok: 1, failed: 0 });
+  expect(adminSender).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: invite!.id }));
+  const pending = await client.query("select event from outbox_entries where status='pending' order by event");
+  expect(pending.rows).toEqual([{ event: 'rfp.consultation' }, { event: 'rfp.deadline_reminder' }]);
   const exceptionId = randomUUID();
   expect(
     await saveFollowup(
@@ -207,4 +217,18 @@ it('조회 역할의 업무 변경·발송·요율 변경을 막고 DB보다 먼
   permission.mockRejectedValueOnce(new Error('denied'));
   await expect(enqueueReminders(rfp, [], '', db)).rejects.toThrow('denied');
   expect(permission).toHaveBeenLastCalledWith('reminders.send');
+});
+
+it('상담 배정 대상으로 바뀐 회차의 이전 미리보기는 일반 마감 메일을 예약할 수 없다', async () => {
+  const current = randomUUID();
+  await client.query("insert into rfp_pg_reviews(id,rfp_id,pg_ws_id,status) values ($1,$2,$3,'reviewing')", [
+    current, rfp2, pg,
+  ]);
+  const [target] = await reminderPreview(rfp2, db);
+  expect(target).toMatchObject({ review: current, userId: user });
+  await client.query('insert into pg_consultation_cases(review_id) values ($1)', [current]);
+  expect(await reminderPreview(rfp2, db)).toEqual([]);
+  expect(await enqueueReminders(rfp2, [target.token], '이전 미리보기', db)).toEqual({
+    ok: false, error: 'RECIPIENTS_CHANGED',
+  });
 });

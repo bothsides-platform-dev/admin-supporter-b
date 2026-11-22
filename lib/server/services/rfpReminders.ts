@@ -29,6 +29,7 @@ async function candidates(db: ReadDb, rfpId: string, lock = false) {
       and not exists(select 1 from rfp_matching_requests m where m.rfp_id=r.id)
     union all select v.pg_ws_id,v.id,null from rfp_pg_reviews v
     where v.rfp_id=r.id and v.status in ('requested','reviewing','quoted')
+      and not exists(select 1 from pg_consultation_cases c where c.review_id=v.id)
   ) p on true
   join workspaces w on w.id=p.pg_ws_id and w.type='pg' and w.status='active'
   join workspace_members wm on wm.workspace_id=w.id and wm.approval_status='approved'

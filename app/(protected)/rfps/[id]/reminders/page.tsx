@@ -105,7 +105,12 @@ export default async function RemindersPage({ params }: { params: Promise<{ id: 
               </SubmitButton>
             </ActionForm>
           ) : (
-            <p className="text-body-small">새로 안내할 수신자가 없습니다.</p>
+            <p className="text-body-small">
+              새로 안내할 수신자가 없습니다.{' '}
+              <Link href={`/rfps/${id}#consultations`} className="text-primary">
+                PG 상담 배정·마감 안내 이력 보기
+              </Link>
+            </p>
           )}
         </section>
       )}
