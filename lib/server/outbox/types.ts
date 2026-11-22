@@ -6,6 +6,7 @@ export type OutboxEvent =
   | 'auth.email-change'
   | 'rfp.invited'
   | 'rfp.sent'
+  | 'rfp.deadline_reminder'
   | 'bid.submitted'
   | 'rfp.awarded'
   | 'workspace.invited'

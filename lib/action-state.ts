@@ -11,7 +11,10 @@ export type ActionState =
 export const IDLE_ACTION_STATE: ActionState = { status: 'idle' };
 
 const ERROR_MESSAGES: Record<string, string> = {
+  STALE_FOLLOWUP: '이미 저장됐거나 동료가 변경한 업무입니다. 새로고침해서 최신 기록을 확인해 주세요.',
   INVALID_INPUT: '입력값을 확인해 주세요.',
+  RECIPIENTS_CHANGED: '수신자나 견적 상태가 바뀌었습니다. 새로고침 후 대상을 다시 확인해 주세요.',
+  RECEIPT_UNKNOWN: '공급자 결과를 확인할 수 없습니다. 기존 기록을 확인해 주세요.',
   WORKSPACE_SUSPENDED: '정지된 워크스페이스는 승인할 수 없습니다. 정지 사유를 먼저 확인해 주세요.',
   REASON_REQUIRED: '사유를 입력해 주세요.',
   BODY_REQUIRED: '내용을 입력해 주세요.',

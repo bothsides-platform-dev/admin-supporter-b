@@ -27,6 +27,7 @@ export * from './login-attempts';
 export * from './admin';
 export * from './admin-users';
 export * from './admin-passkeys';
+export * from './admin-followups';
 export * from './pg-recommendations';
 export * from './pg-matching';
 export * from './chat-conversations';

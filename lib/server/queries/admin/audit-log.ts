@@ -1,12 +1,13 @@
 import { and, count, desc, eq, gte, ilike, inArray, lt, or, sql, type SQL } from 'drizzle-orm';
 import { adminAuditLogs, bids, verificationApplications, workspaces } from '@/lib/db/schema';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
+import { isUuid } from '@/lib/utils';
 
 export type AuditLogRow = typeof adminAuditLogs.$inferSelect;
 
 export type AuditFilters = { page?: number; actor?: string; entityType?: string; entityId?: string; workspaceId?: string; action?: string; from?: string; to?: string };
 export const AUDIT_PAGE_SIZE = 30;
-export const isAuditUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+export const isAuditUuid = isUuid;
 
 function kstDay(value: string, nextDay = false): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;

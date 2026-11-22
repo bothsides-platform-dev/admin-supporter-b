@@ -12,13 +12,16 @@ export const AUDIT_ACTION_LABELS: Record<string, string> = {
   'workspace.suspend': '워크스페이스 정지', 'workspace.unsuspend': '워크스페이스 활성화',
   'user.suspend': '회원 정지', 'user.unsuspend': '회원 활성화', 'user.hard_delete': '회원 영구 삭제',
   'note.create': '어드민 노트 추가', 'note.delete': '어드민 노트 삭제',
-  'reminder.send': '리마인더 발송', 'bid.hide': '입찰 철회',
+  'reminder.send': '리마인더 요청 (발송 미확인)', 'bid.hide': '입찰 철회',
+  'reminder.enqueue': '견적 마감 안내 예약',
+  'followup.create': '후속 업무 등록', 'followup.update': '후속 업무 변경',
+  'followup.complete': '후속 업무 완료', 'followup.link': '후속 업무 대상 연결',
   'rfp.extend': '마감 연장', 'rfp.hard_delete': 'RFP 영구 삭제', 'pg_matching.policy_save': 'PG 매칭 정책 저장',
   'agreement_rates.saved': '수수료 기준 변경',
   'membership.approve': '멤버 승인', 'membership.reject': '멤버 반려',
   'pg_recommendation.group_save': 'PG 추천 그룹 저장', 'pg_recommendation.group_delete': 'PG 추천 그룹 삭제',
   'workspace.grade.update': '영중소구간 변경', 'rfp.extend_deadline': '마감 연장',
-  'rfp.reminder.send': '리마인더 발송', 'bid.withdraw': '입찰 철회',
+  'rfp.reminder.send': '리마인더 요청 (발송 미확인)', 'bid.withdraw': '입찰 철회',
   'agreement_rates.update': '수수료 기준 변경',
   'admin_user.create': '관리자 추가', 'admin_user.delete': '관리자 삭제',
   'admin_user.totp_enroll': '2단계 인증 등록', 'admin_user.totp_reset': '2단계 인증 초기화',
@@ -29,13 +32,14 @@ export const AUDIT_ENTITY_LABELS: Record<string, string> = {
   workspace: '워크스페이스', user: '회원', admin_note: '노트', note: '노트',
   rfp: 'RFP', bid: '입찰', verification_application: '심사 신청',
   workspace_member: '워크스페이스 멤버', pg_agreement_rates: '수수료 기준',
-  pg_recommendation_group: 'PG 추천 그룹', admin_user: '관리자 계정',
+  pg_recommendation_group: 'PG 추천 그룹', admin_user: '관리자 계정', followup: '후속 업무',
 };
 
 export function auditEntityHref(log: AuditLogRow, workspaceType?: 'buyer' | 'pg' | null, bidRfpId?: string | null): string | null {
   switch (log.entityType) {
     case 'user': return `/users/${log.entityId}`;
     case 'rfp': return `/rfps/${log.entityId}`;
+    case 'followup': return `/tasks/${log.entityId}`;
     case 'verification_application': return `/review/${log.entityId}`;
     case 'workspace': case 'workspace_member': case 'pg_agreement_rates': return workspaceType === 'buyer' ? `/buyers/${log.entityId}` : workspaceType === 'pg' ? `/sellers/${log.entityId}` : null;
     case 'bid': return bidRfpId ? `/rfps/${bidRfpId}` : null;

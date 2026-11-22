@@ -15,3 +15,7 @@ export const pgMatchingPolicies = pgTable('pg_matching_policies', {
   policy: jsonb('policy').$type<StoredMatchingPolicy>().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+// Read-side reference to the consultation round owned by bidit.
+export const rfpPgReviews = pgTable('rfp_pg_reviews', {
+  id: uuid('id').primaryKey(),
+});

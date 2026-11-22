@@ -19,7 +19,7 @@ import { listWorkspaceAuditLogs } from '@/lib/server/queries/admin/audit-log';
 import { getWorkspaceDeletionImpact } from '@/lib/server/queries/admin/deletion-impact';
 import { AdminAuditHistory } from '@/components/AdminAuditHistory';
 import { DangerousDeleteForm } from '@/components/DangerousDeleteForm';
-import { safeListReturnTo } from '@/lib/admin-return-to';
+import { listReturnLabel, safeListReturnTo } from '@/lib/admin-return-to';
 import type { MerchantTier } from '@/lib/types/biz-profile';
 import { actionFailure, toActionState, type ActionState } from '@/lib/action-state';
 import Link from 'next/link';
@@ -90,10 +90,10 @@ export default async function SellerDetailPage({
     <div className="space-y-6 max-w-4xl">
       <AdminPageHeader
         title={workspace.name}
-        breadcrumbs={[{ label: returnTo.startsWith('/pg-status') ? 'PG사별 현황' : '판매사', href: returnTo }]}
+        breadcrumbs={[{ label: listReturnLabel(returnTo, '판매사'), href: returnTo }]}
         badges={<AdminStatusBadge status={workspace.status} />}
         meta={<span>워크스페이스 ID <CopyableValue value={workspace.id} label="워크스페이스 ID" numeric /></span>}
-      />
+      ><Link href={`/tasks?workspace=${workspace.id}`} className="text-body-small text-primary">이 회사의 후속 업무</Link></AdminPageHeader>
       <AdminSectionNav items={[...(pgProfile ? [{ id: 'pg-profile', label: 'PG 프로필' }] : []), { id: 'members', label: '멤버' }, { id: 'bids', label: '최근 입찰' }, { id: 'history', label: '변경 이력' }]} />
 
       {canManage && <GradeEditForm action={saveGrade} currentGrade={grade} />}

@@ -2,7 +2,7 @@
 // pending, markResult, and `flush(sender, limit)` which drains pending rows
 // through a `Sender` under FOR UPDATE SKIP LOCKED so concurrent cron + post-
 // commit callers don't double-deliver.
-import { eq, isNotNull, sql, lte, and, inArray } from 'drizzle-orm';
+import { eq, ne, isNotNull, sql, lte, and, inArray } from 'drizzle-orm';
 import { outboxEntries } from '@/lib/db/schema';
 import type { DB } from '@/lib/db/index';
 import type { OutboxEntry, OutboxEvent, Sender } from '../../outbox/types';
@@ -170,6 +170,8 @@ export class DrizzleOutboxRepository implements OutboxRepo {
         .where(
           and(
             eq(outboxEntries.status, 'pending'),
+            // The main service owns deadline email claims and provider receipts.
+            ne(outboxEntries.event, 'rfp.deadline_reminder'),
             lte(outboxEntries.scheduledAt, sql`now()`),
           ),
         )

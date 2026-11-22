@@ -10,23 +10,25 @@ import { getRfpDetail } from '@/lib/server/queries/admin/rfps';
 import { AdminStatusBadge } from '@/components/AdminStatusBadge';
 import { BidFeeMatrix } from '@/components/BidFeeMatrix';
 import { RfpPgResponseTable } from '@/components/RfpPgResponseTable';
+import { RfpConsultationHistory } from '@/components/RfpConsultationHistory';
+import { getRfpHistory } from '@/lib/server/queries/admin/rfpBoard';
 import { extendRfpDeadlineAction } from '@/lib/server/actions/admin/extendRfpDeadlineAction';
 import { ExtendDeadlineForm } from '@/components/ExtendDeadlineForm';
 import { ActionForm } from '@/components/ActionForm';
 import { SubmitButton } from '@/components/SubmitButton';
 import { actionFailure, actionSuccess, toActionState, type ActionState } from '@/lib/action-state';
-import { formatKST, formatDateKST, formatKRW, isSafeHttpUrl } from '@/lib/utils';
+import { formatKST, formatDateKST, formatKRW, isSafeHttpUrl, isUuid } from '@/lib/utils';
 import { hideQuoteAction } from '@/lib/server/actions/admin/hideQuoteAction';
-import { sendReminderAction } from '@/lib/server/actions/admin/sendReminderAction';
 import { paymentMethodLabel, merchantTierLabel } from '@/lib/types/bid';
 import { CONTRACT_TYPE_LABELS, STRIP_PATH_FEE_RATE, solutionLabel } from '@/lib/types/rfp-terms';
 import { taxTypeLabel, gradeSourceLabel } from '@/lib/types/biz-profile';
 import { Chip } from '@/components/primitives/Chip';
-import { requireAdminSession } from '@/lib/auth/admin-session';
+import { requireAdminPermission } from '@/lib/auth/admin-session';
 import { hasPermission } from '@/lib/auth/permissions';
 import { listEntityAuditLogs } from '@/lib/server/queries/admin/audit-log';
 import { AdminAuditHistory } from '@/components/AdminAuditHistory';
-import { safeListReturnTo } from '@/lib/admin-return-to';
+import { listReturnLabel, safeListReturnTo } from '@/lib/admin-return-to';
+
 import { deleteRfpAction } from '@/lib/server/actions/admin/deleteRfpAction';
 import { getRfpDeletionImpact } from '@/lib/server/queries/admin/deletion-impact';
 import { DangerousDeleteForm } from '@/components/DangerousDeleteForm';
@@ -78,7 +80,10 @@ function PgHiddenBadge() {
 }
 
 // generateMetadata 와 본문이 같은 조회를 한 번만 하도록 요청 단위로 캐시한다.
-const loadRfp = cache((id: string) => getRfpDetail(id));
+const loadRfp = cache(async (id: string) => {
+  await requireAdminPermission('data.view');
+  return isUuid(id) ? getRfpDetail(id) : null;
+});
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const detail = await loadRfp((await params).id);
@@ -95,10 +100,12 @@ export default async function RfpDetailPage({
   const { id } = await params;
   const returnTo = safeListReturnTo((await searchParams).returnTo, '/rfps');
   const fromPgStatus = returnTo.startsWith('/pg-status');
-  const [detail, session, history] = await Promise.all([
+  const session = await requireAdminPermission('data.view');
+  if (!isUuid(id)) notFound();
+  const [detail, history, consultation] = await Promise.all([
     loadRfp(id),
-    requireAdminSession(),
     listEntityAuditLogs('rfp', id),
+    getRfpHistory(id),
   ]);
   if (!detail) notFound();
   const canManage = hasPermission(session, 'rfp.manage');
@@ -141,12 +148,6 @@ export default async function RfpDetailPage({
       : actionFailure(result.error);
   }
 
-  async function reminderAction() {
-    'use server';
-    const allPgWsIds = bids.map((b) => b.pgWsId);
-    await sendReminderAction(undefined, rfp.id, allPgWsIds);
-  }
-
   async function doDelete(_previous: ActionState, formData: FormData): Promise<ActionState> {
     'use server';
     return deleteRfpAction(rfp.id, String(formData.get('confirmationName') ?? ''), returnTo);
@@ -159,6 +160,7 @@ export default async function RfpDetailPage({
     { id: 'payment-methods', label: '요청 결제수단' },
     { id: 'memo', label: '메모·첨부' },
     { id: 'pg-responses', label: 'PG사별 응답 현황' },
+    { id: 'consultations', label: 'PG 상담 및 서명 이력' },
     { id: 'bids', label: '견적 목록' },
     ...(bids.length > 0 ? [{ id: 'fee-matrix', label: '수수료 비교표' }] : []),
     ...(bids.some((b) => b.memo) ? [{ id: 'bid-memos', label: '견적별 메모' }] : []),
@@ -170,13 +172,16 @@ export default async function RfpDetailPage({
     <div className="space-y-6">
       <AdminPageHeader
         title={rfp.title}
-        breadcrumbs={[{ label: fromPgStatus ? 'PG사별 현황' : 'RFP', href: returnTo }]}
+        breadcrumbs={[{ label: listReturnLabel(returnTo, 'RFP'), href: returnTo }]}
         badges={<AdminStatusBadge status={rfp.status} />}
         meta={<>
           <span>코드 <CopyableValue value={rfp.code} label="RFP 코드" numeric /></span>
           <span>RFP ID <CopyableValue value={rfp.id} label="RFP ID" numeric /></span>
         </>}
-      />
+      >
+        <Link className="text-body-small text-primary" href={`/tasks?rfp=${rfp.id}`}>이 RFP의 후속 업무</Link>
+        <Link className="text-body-small text-primary" href={`/rfps/${rfp.id}/reminders`}>견적 마감 안내</Link>
+      </AdminPageHeader>
       <AdminSectionNav items={sections} className="lg:hidden" />
 
       <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_10rem] lg:items-start lg:gap-6">
@@ -340,21 +345,12 @@ export default async function RfpDetailPage({
       {canManage && <ExtendDeadlineForm action={extendAction} />}
 
       <RfpPgResponseTable rows={pgResponses} overviewHref={fromPgStatus ? returnTo : undefined} />
+      <RfpConsultationHistory {...consultation} rfpId={rfp.id} />
 
       {/* Bid list */}
       <section id="bids" className="scroll-mt-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-title-small font-semibold">견적 목록 ({bids.length}건)</h2>
-          {canManage && bids.length > 0 && (
-            <form action={reminderAction}>
-              <button
-                type="submit"
-                className="rounded border border-outline px-3 py-1.5 text-label-small text-on-surface hover:bg-surface-container-low"
-              >
-                전체 리마인더 발송
-              </button>
-            </form>
-          )}
         </div>
         <div className="rounded border border-outline-variant overflow-x-auto">
           <table className="min-w-full text-body-small">
@@ -441,6 +437,7 @@ export default async function RfpDetailPage({
                       {formatDateKST(bid.submittedAt)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
+                      {bid.status !== 'draft' && <Link className="text-primary" href={`/tasks?rfp=${rfp.id}&target=bid:${bid.id}`}>조건 확인 업무</Link>}
                       {canManage && bid.status === 'submitted' && (
                         <ActionForm action={hideBidAction} className="flex items-center gap-2">
                           <input

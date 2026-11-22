@@ -22,7 +22,7 @@ import { listEntityAuditLogs } from '@/lib/server/queries/admin/audit-log';
 import { getUserDeletionImpact } from '@/lib/server/queries/admin/deletion-impact';
 import { AdminAuditHistory } from '@/components/AdminAuditHistory';
 import { DangerousDeleteForm } from '@/components/DangerousDeleteForm';
-import { safeListReturnTo } from '@/lib/admin-return-to';
+import { listReturnLabel, safeListReturnTo } from '@/lib/admin-return-to';
 
 // generateMetadata 와 본문이 같은 조회를 한 번만 하도록 요청 단위로 캐시한다.
 const loadUser = cache((id: string) => getUserDetail(id));
@@ -104,7 +104,7 @@ export default async function UserDetailPage({
     <div className="space-y-6 max-w-4xl">
       <AdminPageHeader
         title={user.name}
-        breadcrumbs={[{ label: '회원', href: returnTo }]}
+        breadcrumbs={[{ label: listReturnLabel(returnTo, '회원'), href: returnTo }]}
         badges={<AdminStatusBadge status={isDeleted ? 'deleted' : user.status} />}
         meta={<span>회원 ID <CopyableValue value={user.id} label="회원 ID" numeric /></span>}
       />

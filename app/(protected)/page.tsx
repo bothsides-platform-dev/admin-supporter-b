@@ -1,11 +1,12 @@
 import { AdminPageHeader } from '@/components/AdminPageHeader';
 import Link from 'next/link';
 import { getDashboardStats, getHotlist, getOldestApplications } from '@/lib/server/queries/admin/dashboard';
+import { taskCounts } from '@/lib/server/queries/admin/followups';
 
 export const metadata = { title: '대시보드' };
 
 export default async function AdminDashboardPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const [stats, hotlist, oldest, params] = await Promise.all([getDashboardStats(), getHotlist(), getOldestApplications(), searchParams]);
+  const [stats, hotlist, oldest, tasks, params] = await Promise.all([getDashboardStats(), getHotlist(), getOldestApplications(), taskCounts(), searchParams]);
 
   return (
     <div className="space-y-6">
@@ -18,6 +19,15 @@ export default async function AdminDashboardPage({ searchParams }: { searchParam
         <StatCard label="이름 변경 대기" value={stats.pendingNameChangeCount} href="/name-change-requests?status=pending" />
         <StatCard label="담당자 승인 대기" value={stats.pendingMemberCount} href="/admin/pg-members?status=pending" />
       </div>
+
+      <section className="space-y-3">
+        <h2 className="text-title-medium font-semibold"><Link href="/tasks">후속 업무</Link></h2>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <StatCard label="미배정" value={tasks.unassigned} href="/tasks?view=unassigned" />
+          <StatCard label="오늘 할 일" value={tasks.today} href="/tasks?view=today" />
+          <StatCard label="기한 지남" value={tasks.overdue} href="/tasks?view=overdue" />
+        </div>
+      </section>
 
       <section className="space-y-3">
         <h2 className="text-title-medium font-semibold">오래 기다린 입점 신청</h2>
