@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { requireAdminPermission } from '@/lib/auth/admin-session';
 import { actionDb } from '@/lib/server/actions/auth/_shared';
 import { pgAgreementRates, workspaces, adminAuditLogs } from '@/lib/db/schema';
+import { publishedPoliciesAcceptRates } from '@/lib/server/instant-quotes';
 import { AgreementRatesSchema } from '@/lib/agreement-rates';
 
 const Input = z
@@ -34,6 +35,7 @@ export async function saveAgreementRatesAction(
       .from(pgAgreementRates)
       .where(eq(pgAgreementRates.pgWsId, pgWsId));
     if ((before?.version ?? 0) !== version) return { ok: false as const, error: 'RATES_CHANGED' };
+    if (!await publishedPoliciesAcceptRates(tx,pgWsId,rates)) return {ok:false as const,error:'INSTANT_QUOTE_RATE_CONFLICT'};
     const after = { pgWsId, version: version + 1, rates, updatedAt: new Date() };
     await tx
       .insert(pgAgreementRates)

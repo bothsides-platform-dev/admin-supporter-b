@@ -11,7 +11,7 @@ import type { OutboxRepo, Tx } from '../types';
 type OutboxRow = typeof outboxEntries.$inferSelect;
 
 // The service worker revalidates consultation recipients and records deadline email receipts.
-const adminDeliverableEvent = sql`${outboxEntries.event}::text not in ('rfp.consultation', 'rfp.deadline_reminder')`;
+const adminDeliverableEvent = sql`${outboxEntries.event}::text not in ('rfp.consultation', 'rfp.deadline_reminder', 'pg.instant_quote')`;
 
 function rowToEntry(row: OutboxRow): OutboxEntry {
   return {

@@ -27,6 +27,7 @@ export const ADMIN_NAVIGATION: { label: string; items: AdminNavigationItem[] }[]
   ] },
   { label: '운영 설정', items: [
     { href: '/pg-recommendations', label: 'PG 추천 기준', permission: 'data.view' },
+    { href: '/instant-quotes', label: 'PG 즉시 가입 견적', permission: 'data.view' },
     { href: '/agreement-rates', label: '장기합의서 수수료 기준', permission: 'data.view' },
     { href: '/audit-log', label: '감사 로그', permission: 'audit.view' },
     { href: '/admins', label: '관리자 계정', permission: 'admin.manage' },

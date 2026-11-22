@@ -20,6 +20,8 @@ beforeEach(async () => {
   client = new PGlite();
   await client.exec(`
     CREATE TABLE workspaces (id uuid PRIMARY KEY, type text NOT NULL);
+    CREATE TABLE instant_policies (pg_id uuid,policy jsonb);
+    CREATE TABLE instant_pg_channels (pg_id uuid primary key,enabled boolean);
     CREATE TABLE pg_agreement_rates (pg_ws_id uuid PRIMARY KEY REFERENCES workspaces(id), version integer NOT NULL DEFAULT 1, rates jsonb NOT NULL, updated_at timestamptz NOT NULL DEFAULT now());
     CREATE TABLE admin_audit_logs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), actor text NOT NULL, action text NOT NULL, entity_type text NOT NULL, entity_id uuid NOT NULL, payload_json jsonb, occurred_at timestamptz NOT NULL DEFAULT now());
     INSERT INTO workspaces VALUES ('${pgWsId}', 'pg'), ('${buyerId}', 'buyer');
