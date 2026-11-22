@@ -10,6 +10,7 @@ import { saveAgreementRatesAction } from '@/lib/server/actions/admin/agreementRa
 
 const messages: Record<string, string> = {
   INVALID_INPUT: '수수료를 확인해주세요. 정률은 0~100%, 가상계좌는 건당 정수 금액으로 입력해요.',
+  INSTANT_QUOTE_RATE_CONFLICT: '공개 중인 즉시 견적의 모든 약정가에 맞는 판가를 입력해주세요. 약정 조건도 바뀌면 먼저 해당 PG의 신규 접수를 중단해주세요.',
   RATES_CHANGED: '다른 관리자가 기준을 변경했어요. 입력값을 확인한 뒤 최신 기준을 다시 열어주세요.',
   PG_WORKSPACE_REQUIRED: 'PG사를 다시 선택해주세요.',
 };
