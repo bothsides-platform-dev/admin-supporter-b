@@ -9,7 +9,9 @@ import { ThemeToggle } from './ThemeToggle';
 import { ADMIN_NAVIGATION, type AdminNavigationCounts } from '@/lib/admin-navigation';
 import { hasPermission, ROLE_LABELS, type AdminRole } from '@/lib/auth/permissions';
 
-export function AdminShell({ children, role = 'operator', adminId, counts = {} }: { children: React.ReactNode; role?: AdminRole; adminId?: string; counts?: AdminNavigationCounts }) {
+export function AdminShell({ children, role = 'operator', adminId, counts = {}, marketingEnabled = false }: {
+  children: React.ReactNode; role?: AdminRole; adminId?: string; counts?: AdminNavigationCounts; marketingEnabled?: boolean;
+}) {
   const pathname = usePathname();
 
   return (
@@ -22,13 +24,15 @@ export function AdminShell({ children, role = 'operator', adminId, counts = {} }
         <nav aria-label="관리 메뉴" className="max-h-48 flex-1 overflow-y-auto py-2 md:max-h-none">
           {ADMIN_NAVIGATION.map(group => <div key={group.label} className="mb-3">
             <p className="px-5 py-1 text-label-small text-on-surface-variant">{group.label}</p>
-          {group.items.filter(item => hasPermission({ role }, item.permission)).map(({ href, label, countKey }) => {
+          {group.items.filter(item => hasPermission({ role }, item.permission) &&
+            (item.permission !== 'marketing.manage' || marketingEnabled)).map(({ href, label, countKey, fullPage }) => {
+            const MenuLink = fullPage ? 'a' : Link;
             const waiting = countKey ? counts[countKey] ?? 0 : 0;
             const isActive = href === '/'
               ? pathname === '/'
               : pathname === href || pathname.startsWith(href + '/');
             return (
-              <Link
+              <MenuLink
                 key={href}
                 href={href}
                 aria-current={isActive ? 'page' : undefined}
@@ -45,7 +49,7 @@ export function AdminShell({ children, role = 'operator', adminId, counts = {} }
                     {waiting > 99 ? '99+' : waiting}
                   </span>
                 )}
-              </Link>
+              </MenuLink>
             );
           })}
           </div>)}

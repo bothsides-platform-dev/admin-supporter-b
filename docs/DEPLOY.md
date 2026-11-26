@@ -19,7 +19,23 @@
 | Caddy 설정 (`admin.<도메인>` 라우트) | **bidit** `deploy/Caddyfile` | `admin.{$APP_DOMAIN} → 127.0.0.1:4242` |
 | admin 앱 빌드·릴리스 (PM2) | **이 레포** | `scripts/deploy/lightsail-deploy.sh` |
 
-> **포트 4242 고정.** `ecosystem.config.cjs`(PM2), `package.json`(`dev`/`start`), bidit `deploy/Caddyfile`이 모두 4242로 일치해야 한다. 한 곳이라도 어긋나면 `admin.<도메인>`이 502.
+> **관리자 운영 포트는 4242다.** `ecosystem.config.cjs`의 `PORT`와 bidit `deploy/Caddyfile`의 관리자 프록시 대상이 일치해야 한다.
+
+### 마케팅툴
+
+**운영 현황 → 마케팅툴**은 `/marketing/`을 연다. 기존 `admin-supporter-b` PM2 프로세스가 같은 포트에서 마케팅 화면·API와 예약 대기열을 실행한다. 관리자 세션 확인은 같은 리스너의 내부 요청으로 처리하고, 관리자 허용 목록·2단계 인증·`marketing.manage` 권한을 매번 확인한다.
+
+두 저장소 모두 `main`의 최신 커밋이 CI 검사를 통과하면 `deploy/production` 브랜치를 전진시킨다. Lightsail의 기존 사용자 cron이 3분마다 두 브랜치를 확인한다. 두 버전이 준비되면 변경된 구성요소만 새 디렉터리에 설치한다. 관리자 변경은 새 Next.js 빌드를 만들고, 마케팅 변경은 기존 관리자 빌드를 재사용한다. 잠금으로 배포를 직렬화하며 빌드 직후 두 SHA를 다시 확인한다.
+
+**최초 연결**
+
+1. 마케팅 전송 전용 Ed25519 키를 발급한다. 마케팅 저장소의 `production` Environment에서 배포 허용 브랜치를 `main`으로 제한한다. 개인 키는 환경 시크릿 `MARKETING_DELIVERY_KEY`에, 호스트·사용자·신뢰된 SSH 호스트 공개 키 행은 환경 변수 `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_KNOWN_HOSTS`에 저장한다.
+2. 운영 `ec2-user` 계정에서 `bash scripts/deploy/install-auto-deploy.sh <전송용-공개키-파일>`을 실행한다. 이 키는 SSH 강제 명령으로 마케팅 수신 저장소의 `deploy/production` 브랜치만 갱신할 수 있다. 설치기는 실행 중인 관리자 릴리스의 환경 파일을 권한 0600으로 `~/admin-production/shared/`에 복사하고 기존 crontab에 배포 항목 하나를 추가한다. 이후 운영 설정은 이 shared 디렉터리에서 관리한다. 외부 연동 설정은 `MARKETING_ENV_FILE`에 지정한다.
+3. 로그인·2단계 인증을 마친 후 **운영 현황 → 마케팅툴**에서 초안을 저장해 확인한다. 기동 검사는 루프백 4242의 `/login`, 마케팅 MCP 메타데이터의 공개 주소와 PM2 실행 디렉터리를 확인한다.
+
+**상태와 복구**
+
+`journalctl -t admin-autodeploy`에서 배포 로그를 읽고, `readlink ~/admin-production/healthy`로 서비스 중인 관리자·마케팅 SHA 조합을 확인한다. 기동 검사 실패 시 직전 릴리스로 복구하고 첫 배포라면 기존 관리자 콘솔로 복귀한다. 실행 파일을 되돌릴 때도 SQLite·미디어·암호화 키는 영구 데이터 경로를 계속 사용한다. 새 커밋은 자동으로 시도한다. 같은 버전의 설정 문제를 고친 뒤에는 `python3 ~/admin-production/bootstrap.py --retry`로 재시도한다. 서비스 중인 변경을 취소하려면 해당 저장소의 `main`에 revert를 병합한다.
 
 ## 사전 조건 (콘솔 — 최초 1회)
 
@@ -129,7 +145,11 @@ journalctl -u caddy -f          # admin 서브도메인 인증서 발급 확인
   ```
 - 관리자 추가도 같은 방식으로 `INSERT INTO admin_users (email, created_by) VALUES ('…', 'manual:sql')`. 평소에는 `/admins` 화면을 쓴다(감사 로그에 남는다).
 
-## 갱신 배포 (이후 매번)
+## 갱신 배포
+
+자동배포를 설치한 환경에서는 두 저장소 중 변경한 쪽의 PR을 `main`에 병합한다. 운영 설정만 바꾸었다면 `~/admin-production/shared/`의 해당 환경 파일을 수정한 뒤 기존 관리자 프로세스를 재시작한다.
+
+단독 설치 환경의 수동 갱신 명령은 다음과 같다.
 
 ```bash
 cd ~/admin-supporter-b && bash scripts/deploy/lightsail-deploy.sh
@@ -182,7 +202,7 @@ DB 변경이나 기존 알림 재발송은 필요하지 않다. 배포 후 기�
 | 로그 | `pm2 logs admin-supporter-b` |
 | 상태/재시작 | `pm2 status` / `pm2 reload admin-supporter-b` |
 | 빌드 OOM 시 힙 더 낮추기 | `NODE_BUILD_HEAP_MB=768 bash scripts/deploy/lightsail-deploy.sh` |
-| 롤백 | `git checkout <이전-sha> && bash scripts/deploy/lightsail-deploy.sh` |
+| 자동배포 버전 되돌리기 | 해당 변경의 revert를 `main`에 병합 |
 
 ## 트러블슈팅
 

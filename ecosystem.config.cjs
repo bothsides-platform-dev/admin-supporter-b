@@ -3,10 +3,10 @@ module.exports = {
     {
       name: 'admin-supporter-b',
       cwd: __dirname,
-      script: './node_modules/next/dist/bin/next',
-      args: 'start -p 4242',
+      script: './server.mjs',
       instances: 1,
       exec_mode: 'fork',
+      kill_timeout: 15000,
       autorestart: true,
       max_restarts: 10,
       max_memory_restart: '512M',

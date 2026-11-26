@@ -2,7 +2,7 @@ import type { AdminPermission } from './auth/permissions';
 /** 메뉴 옆에 대기 건수를 붙일 항목의 키. */
 export type AdminNavigationCountKey = 'review' | 'nameChange' | 'pgMembers';
 export type AdminNavigationCounts = Partial<Record<AdminNavigationCountKey, number>>;
-export type AdminNavigationItem = { href: string; label: string; permission: AdminPermission; countKey?: AdminNavigationCountKey };
+export type AdminNavigationItem = { href: string; label: string; permission: AdminPermission; countKey?: AdminNavigationCountKey; fullPage?: boolean };
 export const ADMIN_NAVIGATION: { label: string; items: AdminNavigationItem[] }[] = [
   { label: '운영 현황', items: [
     { href: '/', label: '대시보드', permission: 'data.view' },
@@ -13,6 +13,7 @@ export const ADMIN_NAVIGATION: { label: string; items: AdminNavigationItem[] }[]
     { href: '/pg-status', label: 'PG사별 현황', permission: 'data.view' },
     { href: '/observability', label: '시스템 관측', permission: 'observability.view' },
     { href: '/guest-journeys', label: '견적 작성 여정', permission: 'data.view' },
+    { href: '/marketing/', label: '마케팅툴', permission: 'marketing.manage', fullPage: true },
   ] },
   { label: '심사 업무', items: [
     { href: '/review', label: '입점 심사', permission: 'data.view', countKey: 'review' },

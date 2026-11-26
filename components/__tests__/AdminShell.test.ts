@@ -27,6 +27,14 @@ function text(node: ReactNode): string {
 }
 
 describe('AdminShell', () => {
+  it('마케팅 권한을 가진 운영자에게 워크스페이스로 이동하는 링크를 표시한다', () => {
+    const menu = (role: 'operator' | 'viewer', marketingEnabled = true) => links(AdminShell({ children: null, role, marketingEnabled }))
+      .find(props => props.href === '/marketing/');
+    expect(text(menu('operator')?.children)).toBe('마케팅툴');
+    expect(menu('viewer')).toBeUndefined();
+    expect(menu('operator', false)).toBeUndefined();
+  });
+
   it('대기 건이 있는 심사 메뉴에만 건수를 붙인다', () => {
     pathRef.value = '/';
     const items = links(AdminShell({ children: null, counts: { review: 3, nameChange: 0, pgMembers: 120 } }));

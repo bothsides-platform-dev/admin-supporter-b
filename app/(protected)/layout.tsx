@@ -16,5 +16,5 @@ async function navigationCounts(): Promise<AdminNavigationCounts> {
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await requireAdminSession();
   const counts = await navigationCounts();
-  return <AdminShell role={session.role} adminId={session.adminId} counts={counts}>{children}</AdminShell>;
+  return <AdminShell role={session.role} adminId={session.adminId} counts={counts} marketingEnabled={!!process.env.MARKETING_TOOL_DIR}>{children}</AdminShell>;
 }

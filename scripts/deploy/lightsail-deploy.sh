@@ -24,6 +24,10 @@ die() { printf '\n\033[1;31mERROR: %s\033[0m\n' "$*" >&2; exit 1; }
 APP_NAME=admin-supporter-b
 APP_PORT=4242
 
+if [[ -f "$HOME/admin-production/bootstrap.py" && -L "$HOME/admin-production/legacy" ]]; then
+  exec python3 "$HOME/admin-production/bootstrap.py" "$@"
+fi
+
 # ── Runtime env: `.env.production` is the single source of truth ─────────────
 # This script deliberately does NOT export .env.production into the shell.
 # PM2 snapshots the shell env of whatever started the process, reuses it on
@@ -41,7 +45,7 @@ REQUIRED_VARS=(DATABASE_URL AUTH_SECRET PUBLIC_APP_URL NEXT_PUBLIC_BASE_URL)
 
 # Must be read from the file at boot, never inherited from the process env.
 # Verified against the live process after start.
-UNBAKED_VARS=(PUBLIC_APP_URL RESEND_FROM AUTH_URL DATABASE_URL AUTH_SECRET)
+UNBAKED_VARS=(PUBLIC_APP_URL RESEND_FROM AUTH_URL DATABASE_URL AUTH_SECRET MARKETING_TOOL_DIR MARKETING_DATA_DIR MARKETING_ENV_FILE)
 
 # Domains we have migrated off. A deploy that would ship one of these is a bug:
 # outbox templates render absolute links at enqueue time, so a stale value is
@@ -80,6 +84,12 @@ log "Validating .env.production"
   for var in "${REQUIRED_VARS[@]}"; do
     [ -n "${!var:-}" ] || die "$var is empty in .env.production."
   done
+  if [ -n "${MARKETING_TOOL_DIR:-}" ]; then
+    [[ "$MARKETING_TOOL_DIR" == /* && "${MARKETING_DATA_DIR:-}" == /* ]] || die "Marketing code and data directories need absolute paths."
+    if [ -n "${MARKETING_ENV_FILE:-}" ]; then
+      [[ "$MARKETING_ENV_FILE" == /* && -r "$MARKETING_ENV_FILE" ]] || die "MARKETING_ENV_FILE must name a readable file with an absolute path."
+    fi
+  fi
   # Scan values, not the raw file — a retired domain left in a comment is harmless.
   for var in "${REQUIRED_VARS[@]}" RESEND_FROM; do
     for domain in "${RETIRED_DOMAINS[@]}"; do
@@ -95,6 +105,19 @@ git pull --ff-only
 
 log "Installing dependencies (frozen lockfile, pnpm 9)"
 pnpm install --frozen-lockfile
+
+(
+  . ./.env.production
+  if [ -n "${MARKETING_TOOL_DIR:-}" ]; then
+    log "Preparing the configured marketing release"
+    cd "$MARKETING_TOOL_DIR"
+    pnpm install --prod --frozen-lockfile
+    node --input-type=module -e '
+      const { mountMarketing } = await import("./server/embedded.js");
+      if (typeof mountMarketing !== "function") process.exit(1);
+    '
+  fi
+)
 
 # Subshell: the build is the one step that needs env, to inline NEXT_PUBLIC_*.
 # Cap V8 heap below total RAM so the build hits GC before the OOM-killer. On the
@@ -176,5 +199,14 @@ Something exported them before PM2 started the app — check for a global
 systemd unit. Then: pm2 delete $APP_NAME && pm2 start ecosystem.config.cjs"
 fi
 log "Clean: ${UNBAKED_VARS[*]} all resolve from .env.production at boot"
+
+if ( . ./.env.production; [ -n "${MARKETING_TOOL_DIR:-}" ] ); then
+  log "Checking marketing on the admin listener"
+  curl --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 --max-time 5 \
+    "http://127.0.0.1:$APP_PORT/.well-known/oauth-protected-resource/marketing/mcp" |
+    node -e 'const metadata = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+      if (new URL(metadata.resource).pathname !== "/marketing/mcp") process.exit(1);' ||
+    die "Marketing did not start on the admin port. Check pm2 logs $APP_NAME."
+fi
 
 log "Deploy complete. Admin on 127.0.0.1:$APP_PORT (Caddy serves it on admin.<domain>:443)."

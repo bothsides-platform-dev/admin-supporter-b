@@ -3,7 +3,7 @@ export const ADMIN_PERMISSIONS = [
   'data.view', 'audit.view', 'workspace.review', 'workspace.manage',
   'user.manage', 'notes.write', 'tasks.write', 'rfp.manage', 'recommendation.edit',
   'agreement_rates.edit', 'workspace.delete', 'user.delete', 'rfp.delete',
-  'admin.manage', 'observability.view', 'reminders.send',
+  'admin.manage', 'observability.view', 'reminders.send', 'marketing.manage',
 ] as const;
 export type AdminPermission = typeof ADMIN_PERMISSIONS[number];
 export type AdminRole = 'viewer' | 'reviewer' | 'finance' | 'operator' | 'super_admin';
