@@ -14,6 +14,7 @@ import tempfile
 import time
 
 APP = "admin-supporter-b"
+PUBLIC_HOST = "admin.support-b.com"
 REF = "refs/heads/deploy/production"
 ENV_FILES = (".env", ".env.local", ".env.production", ".env.production.local")
 SHA = re.compile(r"[0-9a-f]{40}")
@@ -99,16 +100,18 @@ def admin_process():
 
 def http_ready(marketing):
     conn = http.client.HTTPConnection("127.0.0.1", 4242, timeout=3)
+    # Connect to the local listener with the same Host that Caddy forwards.
+    headers = {"Host": PUBLIC_HOST}
     try:
-        conn.request("GET", "/login")
+        conn.request("GET", "/login", headers=headers)
         login = conn.getresponse()
         login.read()
         if login.status != 200:
             return False
         if marketing:
-            conn.request("GET", "/.well-known/oauth-protected-resource/marketing/mcp")
+            conn.request("GET", "/.well-known/oauth-protected-resource/marketing/mcp", headers=headers)
             meta = conn.getresponse()
-            return meta.status == 200 and json.load(meta).get("resource") == "https://admin.support-b.com/marketing/mcp"
+            return meta.status == 200 and json.load(meta).get("resource") == f"https://{PUBLIC_HOST}/marketing/mcp"
         return True
     except (OSError, ValueError, http.client.HTTPException):
         return False

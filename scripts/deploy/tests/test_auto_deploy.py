@@ -4,12 +4,30 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 module = Path(__file__).resolve().parents[1] / "auto_deploy.py"
 spec = importlib.util.spec_from_file_location("admin_deploy", module)
 deploy = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(deploy)
+
+
+class ReadinessTest(unittest.TestCase):
+    def test_loopback_probe_uses_the_public_admin_host(self):
+        with patch.object(deploy.http.client, "HTTPConnection") as connect:
+            conn = connect.return_value
+            response = conn.getresponse.return_value
+            response.status = 200
+            response.read.return_value = b'{"resource":"https://admin.support-b.com/marketing/mcp"}'
+            self.assertTrue(deploy.http_ready(True))
+            connect.assert_called_once_with("127.0.0.1", 4242, timeout=3)
+            headers = {"Host": "admin.support-b.com"}
+            self.assertEqual(conn.request.call_args_list, [
+                call("GET", "/login", headers=headers),
+                call("GET", "/.well-known/oauth-protected-resource/marketing/mcp", headers=headers),
+            ])
+            response.read.return_value = b'{"resource":"https://other.example/marketing/mcp"}'
+            self.assertFalse(deploy.http_ready(True))
 
 
 class ReleaseTest(unittest.TestCase):
